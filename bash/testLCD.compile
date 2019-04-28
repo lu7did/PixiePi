@@ -1,0 +1,1 @@
+gcc -o testLCD testLCD.c -lwiringPi -lwiringPiDev
