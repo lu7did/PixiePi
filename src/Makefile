@@ -1,4 +1,4 @@
-all: ../testLCD ../testEncoder  ../testRotary ../tune 
+all: ../testLCD ../testEncoder  ../testRotary ../tune ../pixie 
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
@@ -6,7 +6,7 @@ LDFLAGS = -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio  -lpthread
 GCC = gcc
 CFLAGS  = -Wall -g -O2 -Wno-unused-variable
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
-LIBRPITX = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread
+LIBRPITX = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio 
 CCP = c++
 CC = cc
 
@@ -14,6 +14,9 @@ CC = cc
 
 ../tune : softDDS/tune.cpp /home/pi/librpitx/src/librpitx.a
 	$(CCP) $(CXXFLAGS) -o ../tune ./softDDS/tune.cpp  $(LIBRPITX)
+
+../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a
+	$(CCP) $(CXXFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
 
 ../testLCD : testLCD/testLCD.c 
 	$(GCC) -o ../testLCD ./testLCD/testLCD.c $(LDFLAGS)
