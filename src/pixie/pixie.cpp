@@ -81,7 +81,6 @@ typedef bool boolean;
 
 #define LCD_ON      0x08
 #define LCD_OFF     0x00
-#define LCD_LIGHT   LCD_ON  // On
 
 #define ENABLE  0b00000100 // Enable bit
 
@@ -159,6 +158,7 @@ int clkLastState=0;
 
 
 int fd;                   // seen by all subroutines
+int LCD_LIGHT=LCD_ON;  // On
 
 
 byte TX[8] = {
@@ -238,6 +238,15 @@ void lcdLoc(int line)   {
   lcd_byte(line, LCD_CMD);
 }
 
+void lcd_light(boolean v) {
+
+   if (v==true) {
+     LCD_LIGHT=LCD_ON;
+   } else {
+     LCD_LIGHT=LCD_OFF;
+   }
+
+}
 // out char to LCD at current position
 void typeChar(char val)   {
 
@@ -382,6 +391,7 @@ void updateSW(int gpio, int level, uint32_t tick)
         lcd_custom(0);
 	col++;
         col=col & 0x0f;
+        lcd_light((bool)(col & 0x01));
 
         //typeln(hi);
         //typeChar((char)val);
