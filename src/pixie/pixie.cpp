@@ -2,16 +2,23 @@
  * pixie.c
  * Raspberry Pi based transceiver
  *
+ * This program turns the Raspberry pi into a DDS software able
+ * to operate as the LO for a double conversion rig, in this case
+ * the popular Pixie setup, but can be extended to any other suitable
+ * scheme
+ *
  *
  * Created by Pedro E. Colla (lu7did@gmail.com)
  * Code excerpts from several packages:
- *    Adafruit's python code for CharLCDPlate
+ *    Adafruit's python code for CharLCDPlate 
+ *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
+ *    
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *  
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -25,18 +32,17 @@
  * 
  */
 
-#define PROGRAMID  "Pixie"
-#define PROG_VERSION "1.0"
-#define PROG_BUILD  "080"
-#define COPYRIGHT "(c) LU7DID 2019"
+//*----------------------------------------------------------------------------
+//*  includes
+//*----------------------------------------------------------------------------
 
+//*---- Generic includes
 
 #include <stdio.h>
 #include <wiringPi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -50,13 +56,20 @@
 #include <semaphore.h>
 #include <pigpio.h>
 #include <wiringPiI2C.h>
+#include <unistd.h>
+#include "/home/pi/librpitx/src/librpitx.h"
+#include <cstring>
 
+//*---- Program specific includes
 
 #include "pixie.h"
 #include "ClassMenu.h"
 #include "VFOSystem.h"
+#include "LCDLib.h"
 
-
+//*----------------------------------------------------------------------------
+//* Special macro definitions to adapt for previous code on the Arduino board
+//*----------------------------------------------------------------------------
 typedef unsigned char byte;
 typedef bool boolean;
 
@@ -67,28 +80,12 @@ typedef bool boolean;
 #define ENCODER_DT  18
 #define ENCODER_SW  27
 
+//*---  VFO initial setup
 
-//*--- Define some device parameters
-
-#define I2C_ADDR    0x27 // I2C device address
-
-//*--- LCD constants (16x2 I2C controlled LCD display assumed)
-
-#define LCD_CHR     1    // Mode - Sending data
-#define LCD_CMD     0    // Mode - Sending command
-#define LINE1       0x80 // 1st line
-#define LINE2       0xC0 // 2nd line
-
-#define LCD_ON      0x08
-#define LCD_OFF     0x00
-
-#define ENABLE  0b00000100 // Enable bit
-
-
-#define VFO_START 	 14000000
+#define VFO_START 	 14060000
 #define VFO_END          14399999
 #define VFO_BAND_START          4
-
+#define ONESEC               1000
 //*----------------------------------------------------------------------------------
 //*  System Status Word
 //*----------------------------------------------------------------------------------
@@ -132,9 +129,22 @@ typedef bool boolean;
 #define JUP       0B00000100
 #define JDOWN     0B00001000
 
+//*----------------------------------------------------------------------------
+//*  Program parameter definitions
+//*----------------------------------------------------------------------------
+
+const char   *PROGRAMID="PixiePi";
+const char   *PROG_VERSION="1.0";
+const char   *PROG_BUILD="00";
+const char   *COPYRIGHT="(c) LU7DID 2019";
+
+
 //*-------------------------------------------------------------------------------------------------
-//* Define class to manage VFO
+//* Main structures
 //*-------------------------------------------------------------------------------------------------
+
+//*--- VFO object
+
 VFOSystem vx(showFreq,NULL,NULL,NULL);
 
 //*--- Strutctures to hold menu definitions
@@ -148,18 +158,12 @@ MenuClass shf(ShiftUpdate);
 MenuClass lck(LckUpdate);
 MenuClass mod(ModUpdate);
 
+//*--- LCD management object
 
-//*---- Default values for Encoder + Push button
-
-int value=0;
-int lastEncoded=0;
-int counter=0;
-int clkLastState=0; 
-
-
-int fd;                   // seen by all subroutines
+LCDLib lcd(NULL);
 int LCD_LIGHT=LCD_ON;  // On
 
+//*--- LCD custom character definitions
 
 byte TX[8] = {
   0B11111,
@@ -190,250 +194,38 @@ byte B[8] = {
   0b11111,
 };
 
+byte K[8] = {31,17,27,27,27,17,31};
+byte S[8] = {31,17,23,17,29,17,31};
+byte B1[8]= {24,24,24,24,24,24,24};
+byte B2[8]= {30,30,30,30,30,30,30};
+byte B3[8]= {31,31,31,31,31,31,31};
 
-//*-----------------------------------------------------------------------------------
-//*--- Define System Status Words
-//*-----------------------------------------------------------------------------------
+
+//*---- Generic memory allocations
+
+int value=0;
+int lastEncoded=0;
+int counter=0;
+int clkLastState=0; 
+char hi[80];
+byte memstatus=0;
+int a;
+int anyargs = 0;
+float SetFrequency=VFO_START;
+float ppm=1000.0;
+struct sigaction sa;
+bool running=true;
+
+//*--- System Status Word initial definitions
 
 byte MSW = 0;
 byte TSW = 0;
 byte USW = 0;
 byte JSW = 0;
-byte val = 0;
-byte col = 0;
-void sigalarm_handler(int sig)
-{
-    // This gets called when the timer runs out.  Try not to do too much here;
-    // the recommended practice is to set a flag (of type sig_atomic_t), and have
-    // code elsewhere check that flag (e.g. in the main loop of your program)
-    setWord(&TSW,FTU,false);
-    setWord(&TSW,FTD,false);
-    setWord(&TSW,FTC,true);
 
-}
-//*=======================================================================================================================================================
-//* Handlers for LCD display
-//*=======================================================================================================================================================
-//*--- float to string
-void typeFloat(float myFloat)   {
-  char buffer[20];
-  sprintf(buffer, "%4.2f",  myFloat);
-  typeln(buffer);
-}
-
-//*--- int to string
-void typeInt(int i)   {
-  char array1[20];
-  sprintf(array1, "%d",  i);
-  typeln(array1);
-}
-
-//*--- clr lcd go home loc 0x80
-void ClrLcd(void)   {
-  lcd_byte(0x01, LCD_CMD);
-  lcd_byte(0x02, LCD_CMD);
-}
-//*--- go to location on LCD
-void lcdLoc(int line)   {
-  lcd_byte(line, LCD_CMD);
-}
-
-void lcd_light(boolean v) {
-
-   if (v==true) {
-     LCD_LIGHT=LCD_ON;
-   } else {
-     LCD_LIGHT=LCD_OFF;
-   }
-
-}
-// out char to LCD at current position
-void typeChar(char val)   {
-
-  lcd_byte(val, LCD_CHR);
-}
-
-
-// this allows use of any size string
-void typeln(const char *s)   {
-
-  while ( *s ) lcd_byte(*(s++), LCD_CHR);
-
-}
-
-void lcd_createCustom(byte charnum, byte* charset) {
-  lcd_byte (0b00010000 & charnum, LCD_CMD);      //# Start definine char charnum, line 0
-  for (int i=0;i<8;i++) {
-      lcd_byte (charset[i], LCD_CHR); //# first line solid line (11111b)
-  }
-
-//#continue sending data until all your chars are defined
-
-  lcd_byte (1, LCD_CMD);       //# Clear screen. Ends char define
-//  lcd_byte (LINE2, LCD_CMD);   //# start writing at line 1
-//  lcd_byte (0, LCD_CHR);       //# print first user defined character
-
-}
-void lcd_pos(byte line, byte col) {
-
-
-  lcd_byte(0b00000010,LCD_CMD); //Cursor home
-  if (line==0) {
-     lcd_byte (LINE1, LCD_CMD);   //# start writing at line 1
-  } else {
-     lcd_byte (LINE2, LCD_CMD);   //# start writing at line 1
-  }
-  for (int i=0; i<col;i++) {
-      lcd_byte(0b00010100,LCD_CMD); //Cursor shift right
-  }
-}
-void lcd_custom(byte charnum) {
-//
-//  lcd_byte (64, LCD_CMD);      //# Start definine char 0, line 0
-//  lcd_byte (0b11111, LCD_CHR); //# first line solid line (11111b)
-//  lcd_byte (0b10001, LCD_CHR); //# second line (10001b)
-//  lcd_byte (0b11011, LCD_CHR); //# second line (10001b)
-//  lcd_byte (0b11011, LCD_CHR); //# second line (10001b)
-//  lcd_byte (0b11011, LCD_CHR); //# second line (10001b)
-//  lcd_byte (0b11011, LCD_CHR); //# second line (10001b)
-//  lcd_byte (0b11111, LCD_CHR); //# first line solid line (11111b)
- 
-
-//#continue sending data until all your chars are defined
-//  lcd_byte (1, LCD_CMD);       //# Clear screen. Ends char define
-//  lcd_byte (LINE2, LCD_CMD);   //# start writing at line 1
-  lcd_byte (charnum, LCD_CHR);       //# print first user defined character
-
-}
-
-
-void lcd_byte(int bits, int mode)   {
-
-  //Send byte to data pins
-  // bits = the data
-  // mode = 1 for data, 0 for command
-  int bits_high;
-  int bits_low;
-
-  // uses the two half byte writes to LCD
-  bits_high = mode | (bits & 0xF0) | LCD_LIGHT ;
-  bits_low = mode | ((bits << 4) & 0xF0) | LCD_LIGHT ;
-
-  // High bits
-  wiringPiI2CReadReg8(fd, bits_high);
-  lcd_toggle_enable(bits_high);
-
-  // Low bits
-  wiringPiI2CReadReg8(fd, bits_low);
-  lcd_toggle_enable(bits_low);
-}
-
-void lcd_toggle_enable(int bits)   {
-  // Toggle enable pin on LCD display
-  delayMicroseconds(500);
-  wiringPiI2CReadReg8(fd, (bits | ENABLE));
-  delayMicroseconds(500);
-  wiringPiI2CReadReg8(fd, (bits & ~ENABLE));
-  delayMicroseconds(500);
-}
-void lcd_init()   {
-  // Initialise display
-  lcd_byte(0x33, LCD_CMD); // Initialise
-  lcd_byte(0x32, LCD_CMD); // Initialise
-  lcd_byte(0x06, LCD_CMD); // Cursor move direction
-  lcd_byte(0x0C, LCD_CMD); // 0x0F On, Blink Off
-  lcd_byte(0x28, LCD_CMD); // Data length, number of lines, font size
-  lcd_byte(0x01, LCD_CMD); // Clear display
-  delayMicroseconds(500);
-}
-
-//*=======================================================================================================================================================
-//* Implementarion of Menu Handlers
-//*=======================================================================================================================================================
-void setDDSFreq(){
-
-  //* dummy hook
-}
-
-void BandUpdate() {
-}
-void vfoUpdate() {
-}
-void StepUpdate() {
-}
-void ShiftUpdate() {
-}
-void LckUpdate() {
-}
-void ModUpdate() {
-}
-//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
-//* Interrupt handler routine for Rotary Encoder Push button
-//*--------------------------------------------------------------------------------------------------
-void updateSW(int gpio, int level, uint32_t tick)
-{
-
-        if (level != 0) {
-           return;
-        }
-        int pushSW=gpioRead(ENCODER_SW);
-        printf("Switch Pressed\n");
-        //char hi[80];
-        //val++;
-        //sprintf(hi,"value %d ",val);
-        ClrLcd();
-        lcd_createCustom(0,TX);
-        lcdLoc(LINE1);
-        typeln("0123456789012345");
-
-        lcd_pos(1,col);
-        //lcdLoc(LINE2);
-        lcd_custom(0);
-	col++;
-        col=col & 0x0f;
-        lcd_light((bool)(col & 0x01));
-
-        //typeln(hi);
-        //typeChar((char)val);
-
-
-}
-//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
-//* Interrupt handler for Rotary Encoder CW and CCW control
-//*--------------------------------------------------------------------------------------------------
-void updateEncoders(int gpio, int level, uint32_t tick)
-{
-
-
-        if (level != 0) {
-           return;
-        }
-
-       if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) {
-          return;
-       } 
-
-        int clkState=gpioRead(ENCODER_CLK);
-        int dtState= gpioRead(ENCODER_DT);
-
-        if (dtState != clkState) {
-          counter++;
-          setWord(&USW,BCW,true);
-        } else {
-          counter--;
-          setWord(&USW,BCCW,true);
-        }
-        //printf("Rotary encoder activated counter=%d\n",counter);
-        //ClrLcd();
-        //lcdLoc(LINE1);
-        //sprintf(buftext,"%s","Rotary encoder turned..."));
-        //typeln("Rotary encoder turned");
-
-        clkLastState=clkState;
-//        }
-    
-}
-
+//*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+//*                              ROUTINE STRUCTURE
+//*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getSSW Return status according with the setting of the argument bit onto the SW
 //*--------------------------------------------------------------------------------------------------
@@ -453,71 +245,173 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
   }
 
 }
+//*-------------------------------------------------------------------------------------------------
+//* print_usage
+//* help message at program startup
+//*-------------------------------------------------------------------------------------------------
+void print_usage(void)
+{
 
-void sig_handler(int sig) {
-   printf("\nProgram terminated....\n");
-   exit(0);
+fprintf(stderr,"\ntune -%s\n\
+Usage:\ntune  [-f Frequency] [-h] \n\
+-f floatfrequency carrier Hz(50 kHz to 1500 MHz),\n\
+-p set clock ppm instead of ntp adjust\n\
+-h            help (this help).\n\
+\n",\
+PROGRAMID);
 
 }
+
+
+//*=======================================================================================================================================================
+//* Implementarion of Menu Handlers
+//*=======================================================================================================================================================
+void setDDSFreq(){
+    printf("setDDSFreq callback executed");
+
+}
+void BandUpdate() {
+}
+void vfoUpdate() {
+}
+void StepUpdate() {
+}
+void ShiftUpdate() {
+}
+void LckUpdate() {
+}
+void ModUpdate() {
+}
+
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler routine for Rotary Encoder Push button
+//*--------------------------------------------------------------------------------------------------
+void updateSW(int gpio, int level, uint32_t tick)
+{
+        if (level != 0) {
+           return;
+        }
+        int pushSW=gpioRead(ENCODER_SW);
+        printf("Switch Pressed\n");
+
+}
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler for Rotary Encoder CW and CCW control
+//*--------------------------------------------------------------------------------------------------
+void updateEncoders(int gpio, int level, uint32_t tick)
+{
+        if (level != 0) {
+           return;
+        }
+
+       if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) {
+          return;
+       } 
+
+        int clkState=gpioRead(ENCODER_CLK);
+        int dtState= gpioRead(ENCODER_DT);
+
+        if (dtState != clkState) {
+          counter++;
+          setWord(&USW,BCW,true);
+        } else {
+          counter--;
+          setWord(&USW,BCCW,true);
+        }
+        clkLastState=clkState;
+    
+}
+
+//*---------------------------------------------------------------------------------------------
+//* Signal handlers, SIGALRM is used as a timer, all other signals means termination
+//*---------------------------------------------------------------------------------------------
+static void terminate(int num)
+{
+    running=false;
+   
+}
+//*---------------------------------------------------
+void sigalarm_handler(int sig)
+{
+    setWord(&TSW,FTU,false);
+    setWord(&TSW,FTD,false);
+    setWord(&TSW,FTC,true);
+
+}
+
 //*--------------------------------------------------------------------------------------------
 //* showFreq
-//* show frequency at the display
+//* manage the presentation of frequency to the LCD display
 //*--------------------------------------------------------------------------------------------
 void showFreq() {
 
-  char hi[80];
   FSTR v;  
     
   long int f=vx.get(vx.vfoAB); 
   vx.computeVFO(f,&v);
 
-  ClrLcd();
   if (v.millions < 10) {
-     sprintf(hi," %d.%d%d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands);
+     sprintf(hi," %d.%d%d%d %d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands,v.hundreds,v.tens);
   } else {
-     sprintf(hi,"%d.%d%d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands);
+     sprintf(hi,"%d.%d%d%d %d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands,v.hundreds,v.tens);
   }
-  lcdLoc(LINE1);
-  typeln(hi);
+  lcd.setCursor(0,1);
+  lcd.print(string(hi));
+
   if (getWord(TSW,FTU)==true) {
-     typeChar((char)127);
+     lcd.setCursor(9,1);
+     lcd.typeChar((char)127);
   } 
   if (getWord(TSW,FTD)==true) {
-     typeChar((char)126);
+     lcd.setCursor(9,1);
+     lcd.typeChar((char)126);
   }
   if (getWord(TSW,FTC)==true) {
-     typeChar((char)0x20);
+     lcd.setCursor(9,1);
+     lcd.typeChar((char)0x20);
   }
-  //signal(SIGALRM, &sigalrm_handler);  // set a signal handler
-  //alarm(2);  // set an alarm for 10 seconds from now
 
-//*---- Prepare to display
-  //lcd.setCursor(2, 1);
-
-  //if (v.millions <10) {
-  //  typeln(" ");
-  //}
   
-  //typeln(v.millions);
-  //typeln(".");
-  //typeln(v.hundredthousands);
-  //typeln(v.tenthousands);
-  //typeln(v.thousands);
+  signal(SIGALRM, &sigalarm_handler);  // set a signal handler
+  alarm(2);  // set an alarm for 10 seconds from now
 
-//**************************************
-//* Setup device specific frequency    *
-//**************************************
-  //setFrequencyHook(f,&v); 
-  //timepassed = millis();
-  //memstatus = 0; // Trigger memory write
+  memstatus = 0; // Trigger memory write
 
+}
+//*--------------------------------------------------------------------------------------------
+//* Show the standard panel in VFO mode (CLI=false) mode
+//*--------------------------------------------------------------------------------------------
+void showPanel() {
+
+   lcd.setCursor(0,0);
+   lcd.write(1);
+   
+   lcd.setCursor(2,0);
+   lcd.write(0);
+
+   lcd.setCursor(4,0);
+   lcd.write(3);
+
+   lcd.setCursor(6,0);
+   lcd.write(4);
+
+   lcd.setCursor(8,0);
+   lcd.print("CW");
+
+   lcd.setCursor(13,0);
+   lcd.write(7);
+   lcd.write(6);
+   lcd.write(5);
+   
 }
 
 //*----------------------------------------------------------------------------------------------------
 //* processVFO
-//* come here to update the VFO
+//* identify CW or CCW movements of the rotary encoder and changes the frequency accordingly
 //*----------------------------------------------------------------------------------------------------
 void processVFO() {
+
+//*--- CW (frequency increase)
 
    if (getWord(USW,BCW)==true) {
        if (vx.isVFOLocked()==false){
@@ -527,11 +421,15 @@ void processVFO() {
        }
       setWord(&USW,BCW,false);
       setWord(&TSW,FTU,true);
+      setWord(&TSW,FTD,false);
       setWord(&TSW,FTC,false);
       signal(SIGALRM, &sigalarm_handler);  // set a signal handler
       alarm(1);  // set an alarm for 10 seconds from now
       showFreq();
    }
+
+//*--- CCW frequency decrease
+
    if (getWord(USW,BCCW)==true) {
        if (vx.isVFOLocked()==false){
           vx.updateVFO(vx.vfoAB,-vx.vfostep[vx.vfoAB]); 
@@ -540,6 +438,7 @@ void processVFO() {
        }
        setWord(&USW,BCCW,false);
        setWord(&TSW,FTD,true);
+       setWord(&TSW,FTU,false);
        setWord(&TSW,FTC,false);
        showFreq();
        signal(SIGALRM, &sigalarm_handler);  // set a signal handler
@@ -549,19 +448,70 @@ void processVFO() {
  
 }
 
-
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
 
-    printf("%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
+//*--- Initial presentation
+
+    sprintf(hi,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
+    printf(hi);
+    dbg_setlevel(1);
+
+//*--- Process arguments (mostly an excerpt from tune.cpp
+
+       while(1)
+        {
+                a = getopt(argc, argv, "f:ehp:");
+        
+                if(a == -1) 
+                {
+                        if(anyargs) {
+                           break; 
+                        } else {
+                           a='h'; //print usage and exit
+                        }
+                }
+                anyargs = 1;    
+
+                switch(a)
+                {
+                case 'f': // Frequency
+                        SetFrequency = atof(optarg);
+                        break;
+                case 'p': //ppm
+                        ppm=atof(optarg);
+                        break;  
+                case 'h': // help
+                        print_usage();
+                        exit(1);
+                        break;
+                case -1:
+                break;
+                case '?':
+                        if (isprint(optopt) )
+                        {
+                                fprintf(stderr, "pixie: unknown option `-%c'.\n", optopt);
+                        }
+                        else
+                        {
+                                fprintf(stderr, "pixie: unknown option character `\\x%x'.\n", optopt);
+                        }
+                        print_usage();
+
+                        exit(1);
+                        break;                  
+                default:
+                        print_usage();
+                        exit(1);
+                        break;
+                }
+        }
 
 
-//**********************************************************************************************
-//*--- Initial value for system operating modes
-//**********************************************************************************************
+//*---- Establish initial values of system variables
 
     setWord(&MSW,CMD,false);
     setWord(&MSW,GUI,false);
@@ -586,8 +536,7 @@ int main(int argc, char* argv[])
     setWord(&JSW,JDOWN,false);
 
 
-
-//*--- Setup LCD menues
+//*--- Setup LCD menues for MENU mode (CLI=true)
 
     menuRoot.add((char*)"Band",&band);
     menuRoot.add((char*)"VFO",&vfo);
@@ -641,18 +590,29 @@ int main(int argc, char* argv[])
 
     counter = 0;
 
-    fd = wiringPiI2CSetup(I2C_ADDR);
-  
-//printf("fd = %d ", fd);
+//*--- Initialize LCD display
 
-    lcd_init(); // setup LCD
-    char array1[30];
-    sprintf(array1,"%s",PROGRAMID);
+    lcd.begin(16,2);
+    lcd.clear();
 
-    ClrLcd();
-    lcdLoc(LINE1);
-    typeln(PROGRAMID);
-    delay(1000);
+    lcd.createChar(0,TX);
+    lcd.createChar(1,A);
+    lcd.createChar(2,B);
+    lcd.createChar(3,K);
+    lcd.createChar(4,S);
+    lcd.createChar(5,B1);
+    lcd.createChar(6,B2);
+    lcd.createChar(7,B3);
+
+//*--- Show banner briefly (1 sec)
+
+    lcd.lcdLoc(LINE1);
+    char hi[80];
+    sprintf(hi,"%s %s [%s]",PROGRAMID,PROG_VERSION,PROG_BUILD);
+    lcd.print(string(hi));
+    lcd.lcdLoc(LINE2);
+    lcd.print(string(COPYRIGHT));
+    delay(ONESEC);
 
     if (wiringPiSetup () < 0) {
         printf ("Unable to setup wiringPi: %s\n", strerror (errno));
@@ -675,41 +635,92 @@ int main(int argc, char* argv[])
 
   vx.setVFO(VFOA);
 
+  vx.set(vx.vfoAB,SetFrequency);
 
+//*--- After the initializacion clear the LCD and show panel in VFOMode
 
-
-//*---- Signal handler
-
-    signal(SIGINT, sig_handler);
-    signal(SIGKILL, sig_handler);
+    lcd.clear();
     showFreq();
+    showPanel();
 
-//*===============================================================================================================VVVVV
-//*----- this is a transient test code, to be removed later
+//*---  Define the handler for the SIGALRM signal (timer)
 
+    signal(SIGALRM, &sigalarm_handler);  // set a signal handler
 
-signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-alarm(1);  // set an alarm for 10 seconds from now
+//*--- Define the rest of the signal handlers, basically as termination exceptions
 
-//for (int j = 0; j < 10 ; j++ ) {
-//
-//   unsigned char i=menuRoot.get();
-//   MenuClass* z=menuRoot.getChild(i);
-//   printf("<%d> %s\n",i,menuRoot.getCurrentText());
-//   menuRoot.move(false,true);
-//}
+    for (int i = 0; i < 64; i++) {
 
-while (true) {
-
-
-    processVFO();
-    if(getWord(TSW,FTC)==true){
-      showFreq();
-      setWord(&TSW,FTC,false);
+        if (i != SIGALRM ) {
+           std::memset(&sa, 0, sizeof(sa));
+           sa.sa_handler = terminate;
+           sigaction(i, &sa, NULL);
+        }
     }
 
-}
+//*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
+    generalgpio gengpio;
+    gengpio.setpulloff(4);
+    padgpio     pad;
+    pad.setlevel(7);
+    clkgpio     *clk=new clkgpio;
+    clk->SetAdvancedPllMode(true);
 
+    if(ppm!=1000) {   //ppm is set else use ntp
+      clk->Setppm(ppm);
+    }
+
+    clk->SetCenterFrequency(SetFrequency,10);
+    clk->SetFrequency(000);
+    clk->enableclk(4);
+
+//*--- DDS is running at the SetFrequency value (initial)
+
+    alarm(1);  // set an alarm for 1 seconds from now to clear all values
+
+//*--- Firmware initialization completed
+//*--- Execute an endless loop while runnint is true
+                
+    while(running)
+      {
+
+//*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
+
+         if (getWord(MSW,CMD)==false) {
+            processVFO();
+            if (SetFrequency != vx.get(vx.vfoAB)) {
+               int fVFO=vx.get(vx.vfoAB)/1000;
+	       int fPLL=int(SetFrequency/1000);
+               printf("PLL=%d VFO=%d\n",fPLL,fVFO);
+               SetFrequency = vx.get(vx.vfoAB) * 1.0;
+               clk->SetCenterFrequency(SetFrequency,10);
+               clk->SetFrequency(000);
+               clk->enableclk(4);
+            }
+
+            //showPanel();
+
+         } else {
+            // future GUI management
+
+         }
+
+//*--- Clear the frequency moved marker from the display
+
+         if(getWord(TSW,FTC)==true){
+           showFreq();
+           setWord(&TSW,FTC,false);
+         }
+      }
+
+//*--- running become false, the program is terminating
+
+    clk->disableclk(4);
+    clk->disableclk(20);
+    delete(clk);
+
+    printf("\nProgram terminated....\n");
+    exit(0);
 }
 
 

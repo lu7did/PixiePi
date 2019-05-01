@@ -1,4 +1,4 @@
-all: ../testLCD ../testEncoder  ../testRotary ../tune ../pixie 
+all: ../testLCD ../testEncoder  ../testRotary ../pixie 
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
@@ -12,10 +12,7 @@ CC = cc
 
 
 
-../tune : softDDS/tune.cpp /home/pi/librpitx/src/librpitx.a
-	$(CCP) $(CXXFLAGS) -o ../tune ./softDDS/tune.cpp  $(LIBRPITX)
-
-../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a
+../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a pixie/LCDLib.h pixie/VFOSystem.h pixie/ClassMenu.h
 	$(CCP) $(CXXFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
 
 ../testLCD : testLCD/testLCD.c 
