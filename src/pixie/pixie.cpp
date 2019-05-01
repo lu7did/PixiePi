@@ -625,12 +625,12 @@ int main(int argc, char* argv[])
 
   vx.setVFOBand(VFOA,VFO_BAND_START);
   vx.set(VFOA,VFO_START);
-  vx.setVFOStep(VFOA,VFO_STEP_1KHz);
+  vx.setVFOStep(VFOA,VFO_STEP_100Hz);
   vx.setVFOLimit(VFOA,VFO_START,VFO_END);
 
   vx.setVFOBand(VFOB,VFO_BAND_START);
   vx.set(VFOB,VFO_START);
-  vx.setVFOStep(VFOB,VFO_STEP_1KHz);
+  vx.setVFOStep(VFOB,VFO_STEP_100Hz);
   vx.setVFOLimit(VFOB,VFO_START,VFO_END);
 
   vx.setVFO(VFOA);
