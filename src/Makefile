@@ -17,7 +17,7 @@ CC = cc
 
     
 clean:
-        rm -r  ../pixie
+	rm -r  ../pixie
 
 install: all
-        install -m 0755 ../pixie /usr/bin
+	install -m 0755 ../pixie /usr/bin

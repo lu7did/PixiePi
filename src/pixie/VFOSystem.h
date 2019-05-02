@@ -25,7 +25,6 @@
 
 typedef unsigned char byte;
 typedef bool boolean;
-
 typedef void (*CALLBACK)();
 
 typedef struct {

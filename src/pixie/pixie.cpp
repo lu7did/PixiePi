@@ -12,6 +12,7 @@
  * Code excerpts from several packages:
  *    Adafruit's python code for CharLCDPlate 
  *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
+*     wiringPi library (git clone git://git.drogon.net/wiringPi)
  *    
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
@@ -40,7 +41,6 @@
 
 #include <stdio.h>
 #include <wiringPi.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -378,32 +378,6 @@ void showFreq() {
   memstatus = 0; // Trigger memory write
 
 }
-//*--------------------------------------------------------------------------------------------
-//* Show the standard panel in VFO mode (CLI=false) mode
-//*--------------------------------------------------------------------------------------------
-void showPanel() {
-
-   lcd.setCursor(0,0);
-   lcd.write(1);
-   
-   lcd.setCursor(2,0);
-   lcd.write(0);
-
-   lcd.setCursor(4,0);
-   lcd.write(3);
-
-   lcd.setCursor(6,0);
-   lcd.write(4);
-
-   lcd.setCursor(8,0);
-   lcd.print("CW");
-
-   lcd.setCursor(13,0);
-   lcd.write(7);
-   lcd.write(6);
-   lcd.write(5);
-   
-}
 
 //*----------------------------------------------------------------------------------------------------
 //* processVFO
@@ -447,7 +421,7 @@ void processVFO() {
    }
  
 }
-
+#include "gui.h"
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------
