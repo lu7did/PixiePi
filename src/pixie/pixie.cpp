@@ -114,7 +114,7 @@ typedef bool boolean;
 #define FT3       0B00000100
 #define FTU       0B00001000
 #define FTD       0B00010000
-#define FTC       0B00100000
+#define FVFO      0B00100000
 #define FDOG      0B01000000
 #define FBCK      0B10000000
 //*----- UI Control Word (USW)
@@ -271,7 +271,7 @@ PROGRAMID);
 }
 
 //*---------------------------------------------------------------------------
-//* Timer callback function
+//* Timer handler function
 //*---------------------------------------------------------------------------
 void timer_start(std::function<void(void)> func, unsigned int interval)
 {
@@ -285,17 +285,19 @@ void timer_start(std::function<void(void)> func, unsigned int interval)
     }
   }).detach();
 }
-
+//*---------------------------------------------------------------------------
+//* Timer callback function
+//*---------------------------------------------------------------------------
 void timer_exec()
 {
-  std::cout << "I am doing something" << std::endl;
+  //std::cout << "I am doing something" << std::endl;
 
   if (TVFO>0){
      TVFO--;
      if (TVFO==0){
         setWord(&TSW,FTU,false);
         setWord(&TSW,FTD,false);
-        setWord(&TSW,FTC,true);
+        setWord(&TSW,FVFO,true);
      }
   }
 
@@ -333,6 +335,7 @@ void updateSW(int gpio, int level, uint32_t tick)
            return;
         }
         int pushSW=gpioRead(ENCODER_SW);
+        setWord(&USW,BMULTI,true);
         printf("Switch Pressed\n");
 
 }
@@ -404,9 +407,10 @@ void showFreq() {
      lcd.setCursor(9,1);
      lcd.typeChar((char)126);
   }
-  if (getWord(TSW,FTC)==true) {
+  if (getWord(TSW,FVFO)==true) {
      lcd.setCursor(9,1);
      lcd.typeChar((char)0x20);
+     setWord(&TSW,FVFO,false);
   }
 
   
@@ -434,9 +438,10 @@ void processVFO() {
       setWord(&USW,BCW,false);
       setWord(&TSW,FTU,true);
       setWord(&TSW,FTD,false);
-      setWord(&TSW,FTC,false);
-      signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-      alarm(1);  // set an alarm for 10 seconds from now
+      setWord(&TSW,FVFO,false);
+      TVFO=1;
+      //signal(SIGALRM, &sigalarm_handler);  // set a signal handler
+      //alarm(1);  // set an alarm for 10 seconds from now
       showFreq();
    }
 
@@ -451,10 +456,11 @@ void processVFO() {
        setWord(&USW,BCCW,false);
        setWord(&TSW,FTD,true);
        setWord(&TSW,FTU,false);
-       setWord(&TSW,FTC,false);
+       setWord(&TSW,FVFO,false);
+       TVFO=0;
        showFreq();
-       signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-       alarm(1);  // set an alarm for 10 seconds from now
+       //signal(SIGALRM, &sigalarm_handler);  // set a signal handler
+       //alarm(1);  // set an alarm for 10 seconds from now
 
    }
  
@@ -716,16 +722,12 @@ int main(int argc, char* argv[])
             }
 
          } else {
-            CMD_FSM();
+            //CMD_FSM();
 
          }
-
+         CMD_FSM();
 //*--- Clear the frequency moved marker from the display
 
-         if(getWord(TSW,FTC)==true){
-           showFreq();
-           setWord(&TSW,FTC,false);
-         }
       }
 
 //*--- running become false, the program is terminating

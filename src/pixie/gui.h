@@ -87,6 +87,7 @@ void showPanel() {
 void menuFSM() {
 
    if (getWord(MSW,CMD)==false) {   //* VFO mode, no business here!
+
       return;
    }
 
@@ -120,7 +121,18 @@ void CMD_FSM() {
 //*--------------------------------------------------------------------------------------
 //*---- Process rotation of VFO encoder   (VFO Mode)
 //*--------------------------------------------------------------------------------------
-      return;
+      if(getWord(TSW,FVFO)==true){
+         showFreq();
+         setWord(&TSW,FVFO,false);
+      }
+
+      if (getWord(USW,BMULTI)==true) {
+         setWord(&USW,BMULTI,false);
+         setWord(&MSW,CMD,true);
+         showPanel();
+      } else {
+         return;
+      }
 
    }
 //******************************************************************************************
