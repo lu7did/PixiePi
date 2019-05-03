@@ -12,7 +12,7 @@ CC = cc
 
 
 
-../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a pixie/LCDLib.h pixie/VFOSystem.h pixie/ClassMenu.h
+../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a pixie/LCDLib.h pixie/VFOSystem.h pixie/ClassMenu.h pixie/pixie.h pixie/gui.h
 	$(CCP) $(CXXFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
 
     
