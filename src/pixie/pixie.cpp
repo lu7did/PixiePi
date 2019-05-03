@@ -270,9 +270,9 @@ PROGRAMID);
 
 }
 
-//*------------------------------------------------------------------------
-//* Timer thread
-//*------------------------------------------------------------------------
+//*---------------------------------------------------------------------------
+//* Timer callback function
+//*---------------------------------------------------------------------------
 void timer_start(std::function<void(void)> func, unsigned int interval)
 {
   std::thread([func, interval]()
@@ -285,9 +285,7 @@ void timer_start(std::function<void(void)> func, unsigned int interval)
     }
   }).detach();
 }
-//*---------------------------------------------------------------------------
-//* Timer callback function
-//*---------------------------------------------------------------------------
+
 void timer_exec()
 {
   std::cout << "I am doing something" << std::endl;
@@ -660,8 +658,7 @@ int main(int argc, char* argv[])
 //*---  Define the handler for the SIGALRM signal (timer)
 
     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-
-    timer_start(timer_exec, 1000);
+    timer_start(timer_exec,1000);
 
 //*--- Define the rest of the signal handlers, basically as termination exceptions
 
