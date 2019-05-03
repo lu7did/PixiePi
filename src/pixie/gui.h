@@ -28,7 +28,6 @@ void showGUI() {
    lcd.write(5);
 
 }
-
 //*--------------------------------------------------------------------------------------------
 //* showPanel
 //* show frequency or menu information at the display
@@ -75,7 +74,7 @@ void showPanel() {
       sprintf(gui,"<%s>",menuRoot.getText(menuRoot.get()));
       lcd.print(gui);
       lcd.setCursor(0,1);
-      sprintf(gui,"> %s",z->getCurrentText());
+      sprintf(gui,">%s",z->getCurrentText());
       lcd.print(gui);
       return;
    }
@@ -105,5 +104,56 @@ void menuFSM() {
      showPanel();
      return;
    
+}
+
+//*----------------------------------------[LCD_FSM]---------------------------------------------------
+//* Manages the command and VFO handling FSM
+//*--------------------------------------------------------------------------------------------------
+void CMD_FSM() {
+
+//*-------------------------------------------------------------------------------
+//* PTT==true (RX) and CMD==false (VFO)
+//*-------------------------------------------------------------------------------
+   if (getWord(MSW,CMD)==false) {      //S=0 VFO Mode   
+
+      
+//*--------------------------------------------------------------------------------------
+//*---- Process rotation of VFO encoder   (VFO Mode)
+//*--------------------------------------------------------------------------------------
+      return;
+
+   }
+//******************************************************************************************
+//* Process menu commands
+//******************************************************************************************
+//*---- If here is in getWord(MSW,CMD)=true so in command mode
+
+   if (getWord(MSW,GUI)==false) {   //S=1 pure command mode
+
+//*--- Process S=1 transitions
+      
+      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+         menuFSM();
+         setWord(&USW,BCW,false);
+         setWord(&USW,BCCW,false);
+      }
+      return;
+   }
+
+//*---- Command mode and GUI activated to change a parameter
+
+   if (getWord(MSW,GUI)==true) {
+
+      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+         menuFSM();
+         setWord(&USW,BCW,false);
+         setWord(&USW,BCCW,false);
+         return;             
+      }
+   }
+       
+   setWord(&USW,BCW,false);
+   setWord(&USW,BCCW,false);             
+
 }
 

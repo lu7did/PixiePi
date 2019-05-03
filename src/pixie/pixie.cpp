@@ -60,6 +60,13 @@
 #include "/home/pi/librpitx/src/librpitx.h"
 #include <cstring>
 
+
+
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <functional>
+
 //*---- Program specific includes
 
 #include "pixie.h"
@@ -221,8 +228,9 @@ bool running=true;
 byte MSW = 0;
 byte TSW = 0;
 byte USW = 0;
-byte JSW = 0;
+byte JSW  = 0;
 
+int  TVFO = 0;
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -262,6 +270,41 @@ PROGRAMID);
 
 }
 
+//*------------------------------------------------------------------------
+//* Timer thread
+//*------------------------------------------------------------------------
+void timer_start(std::function<void(void)> func, unsigned int interval)
+{
+  std::thread([func, interval]()
+  { 
+    while (true)
+    { 
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+      func();
+      std::this_thread::sleep_until(x);
+    }
+  }).detach();
+}
+//*---------------------------------------------------------------------------
+//* Timer callback function
+//*---------------------------------------------------------------------------
+void timer_exec()
+{
+  std::cout << "I am doing something" << std::endl;
+
+  if (TVFO>0){
+     TVFO--;
+     if (TVFO==0){
+        setWord(&TSW,FTU,false);
+        setWord(&TSW,FTD,false);
+        setWord(&TSW,FTC,true);
+     }
+  }
+
+  
+
+
+}
 
 //*=======================================================================================================================================================
 //* Implementarion of Menu Handlers
@@ -333,9 +376,6 @@ static void terminate(int num)
 //*---------------------------------------------------
 void sigalarm_handler(int sig)
 {
-    setWord(&TSW,FTU,false);
-    setWord(&TSW,FTD,false);
-    setWord(&TSW,FTC,true);
 
 }
 
@@ -621,6 +661,8 @@ int main(int argc, char* argv[])
 
     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
 
+    timer_start(timer_exec, 1000);
+
 //*--- Define the rest of the signal handlers, basically as termination exceptions
 
     for (int i = 0; i < 64; i++) {
@@ -659,23 +701,25 @@ int main(int argc, char* argv[])
       {
 
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
-
          if (getWord(MSW,CMD)==false) {
+
             processVFO();
             if (SetFrequency != vx.get(vx.vfoAB)) {
+
                int fVFO=vx.get(vx.vfoAB)/1000;
 	       int fPLL=int(SetFrequency/1000);
                printf("PLL=%d VFO=%d\n",fPLL,fVFO);
+
+//*--- A frequency change has been detected, alter the PLL with it
+
                SetFrequency = vx.get(vx.vfoAB) * 1.0;
                clk->SetCenterFrequency(SetFrequency,10);
                clk->SetFrequency(000);
                clk->enableclk(4);
             }
 
-            //showPanel();
-
          } else {
-            // future GUI management
+            CMD_FSM();
 
          }
 
