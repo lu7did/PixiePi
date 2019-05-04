@@ -158,12 +158,14 @@ VFOSystem vx(showFreq,NULL,NULL,NULL);
 
 MenuClass menuRoot(NULL);
 
-MenuClass band(BandUpdate);
-MenuClass vfo(vfoUpdate);
+MenuClass vfo(VfoUpdate);
 MenuClass stp(StepUpdate);
 MenuClass shf(ShiftUpdate);
-MenuClass lck(LckUpdate);
-MenuClass mod(ModUpdate);
+MenuClass spl(SplitUpdate);
+MenuClass kyr(KeyerUpdate);
+MenuClass wtd(WatchDogUpdate);
+MenuClass lck(LockUpdate);
+MenuClass bck(BackLightUpdate);
 
 //*--- LCD management object
 
@@ -300,43 +302,19 @@ void timer_exec()
         setWord(&TSW,FVFO,true);
      }
   }
-
-  
-
-
 }
-
-//*=======================================================================================================================================================
-//* Implementarion of Menu Handlers
-//*=======================================================================================================================================================
-void setDDSFreq(){
-    printf("setDDSFreq callback executed");
-
-}
-void BandUpdate() {
-}
-void vfoUpdate() {
-}
-void StepUpdate() {
-}
-void ShiftUpdate() {
-}
-void LckUpdate() {
-}
-void ModUpdate() {
-}
-
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler routine for Rotary Encoder Push button
 //*--------------------------------------------------------------------------------------------------
 void updateSW(int gpio, int level, uint32_t tick)
 {
         if (level != 0) {
+           printf("KEYUP!\n");
            return;
         }
         int pushSW=gpioRead(ENCODER_SW);
         setWord(&USW,BMULTI,true);
-        printf("Switch Pressed\n");
+        printf("Switch KeyDown\n");
 
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
@@ -457,7 +435,7 @@ void processVFO() {
        setWord(&TSW,FTD,true);
        setWord(&TSW,FTU,false);
        setWord(&TSW,FVFO,false);
-       TVFO=0;
+       TVFO=1;
        showFreq();
        //signal(SIGALRM, &sigalarm_handler);  // set a signal handler
        //alarm(1);  // set an alarm for 10 seconds from now
@@ -556,34 +534,42 @@ int main(int argc, char* argv[])
 
 //*--- Setup LCD menues for MENU mode (CLI=true)
 
-    menuRoot.add((char*)"Band",&band);
     menuRoot.add((char*)"VFO",&vfo);
+    menuRoot.add((char*)"Split",&spl);
     menuRoot.add((char*)"Step",&stp);
-    menuRoot.add((char*)"IF Shift",&shf);
+    menuRoot.add((char*)"Shift",&shf);
+    menuRoot.add((char*)"Keyer",&kyr);
+    menuRoot.add((char*)"WatchDog",&wtd);
+    menuRoot.add((char*)"BackLight",&bck);
     menuRoot.add((char*)"Lock",&lck);
-    menuRoot.add((char*)"Mode",&mod);
+
 
 //*--- Setup child LCD menues
-
-    band.add((char*)"Off      ",NULL);
-    band.set(0);
-
-    shf.add((char*)" 0 Hz",NULL);
-    shf.set(0);
 
     vfo.add((char*)" A",NULL);
     vfo.set(0);
 
-//*---- Establish different and default step
+    spl.add((char*)" Off",NULL);
+    spl.set(0);
 
-    stp.add((char*)"  1 KHz",NULL);
-    stp.set(3);
+    stp.add((char*)" 100 Hz",NULL);
+    stp.set(0);
+
+    shf.add((char*)" 600 Hz",NULL);
+    shf.set(0);
+
+    kyr.add((char*)" IambicA",NULL);
+    kyr.set(0);
+
+    wtd.add((char*)"Off",NULL);  
+    wtd.set(0);
+
+    bck.add((char*)"Off",NULL);  
+    bck.set(0);
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);
-  
-    mod.add((char*)"DDS",NULL);
-    mod.set(0);
+
 
 //*---- Initialize Rotary Encoder
 

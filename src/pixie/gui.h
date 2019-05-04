@@ -140,6 +140,15 @@ void CMD_FSM() {
 //******************************************************************************************
 //*---- If here is in getWord(MSW,CMD)=true so in command mode
 
+   if (getWord(USW,BMULTI)==true) {
+      setWord(&USW,BMULTI,false);
+      setWord(&MSW,CMD,false);
+      showPanel();
+      showFreq();
+      return;
+    }
+
+
    if (getWord(MSW,GUI)==false) {   //S=1 pure command mode
 
 //*--- Process S=1 transitions
@@ -166,6 +175,57 @@ void CMD_FSM() {
        
    setWord(&USW,BCW,false);
    setWord(&USW,BCCW,false);             
+
+}
+//*--------------------------------------------------------------------------------------------
+//* VfoUpdate
+//* manages the content of the VFO
+//*--------------------------------------------------------------------------------------------
+void VfoUpdate() {
+
+  if (vfo.mItem < 1 && vfo.CW == true) {
+      vfo.mItem++;
+  }
+  if (vfo.mItem > 0 && vfo.CCW == true) {
+      vfo.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(vfo.mItem) {
+    case 0:                          {s=(char*)"A";break;};                            
+    case 1:                          {s=(char*)"B";break;};
+  }
+  
+  vfo.l.get(0)->mText=s;
+  showPanel();
+  
+  return;
+  
+}
+//*===================================================================================================================================$
+//* Implementarion of Menu Handlers
+//*===================================================================================================================================$
+void StepUpdate() {
+
+}
+void ShiftUpdate() {
+
+}
+void SplitUpdate() {
+
+}
+void KeyerUpdate() {
+
+}
+void WatchDogUpdate() {
+
+}
+void LockUpdate() {
+
+}
+void BackLightUpdate() {
+
+}
+void setDDSFreq() {
 
 }
 

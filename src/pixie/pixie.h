@@ -9,12 +9,16 @@ struct encoder
 //*--- Function prototypes
 void setWord(unsigned char* SysWord,unsigned char  v, bool val);
 bool getWord (unsigned char SysWord, unsigned char v);
-void BandUpdate();
-void ShiftUpdate();
-void vfoUpdate();
+
+void VfoUpdate();
 void StepUpdate();
-void LckUpdate();
-void ModUpdate();
+void ShiftUpdate();
+void SplitUpdate();
+void KeyerUpdate();
+void LockUpdate();
+void WatchDogUpdate();
+void BackLightUpdate();
+void setDDSFreq();
 
 //*-- Added by Lewis Loflin (LCD related)
 
