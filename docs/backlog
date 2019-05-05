@@ -2,6 +2,9 @@ Implementation Backlog
 
 X [Feature] Menu logic (VFO/CMD/GUI)
 X [Bug] Initial frequency display
+
+* [Bug] Remove show meter
+* [Bug] VFO not changing after change has been made
 * [Bug] Debounce push and encoder
 * [Feature] Implement modes CWU CWL USB LSB?
 * [Feature] Implement split VFOA/VFOB
