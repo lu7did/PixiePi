@@ -2,9 +2,15 @@ Implementation Backlog
 
 X [Feature] Menu logic (VFO/CMD/GUI)
 X [Bug] Initial frequency display
+X [Bug] VFO not changing after change has been made
+X [Feature] Backling and energy timeout
+X [Feature] Keepalive indicator
 
+
+* [Bug] Backlight implementation fails to update Timeout
 * [Bug] Remove show meter
-* [Bug] VFO not changing after change has been made
+* [Feature] Optional clock (ntp controlled)
+* [Bug] Wrong alignment in CMD vs. GUI modes (see VFO)
 * [Bug] Debounce push and encoder
 * [Feature] Implement modes CWU CWL USB LSB?
 * [Feature] Implement split VFOA/VFOB
@@ -12,5 +18,5 @@ X [Bug] Initial frequency display
 * [Feature] Keyer logic
 * [Feature] PWM Sidetone
 * [Feature] GUI navigation
-* [Feature] Backling and energy timeout
 * [Feature] Watchdog
+* [Feature] Integrate with HW Pixie
