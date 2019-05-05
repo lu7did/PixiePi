@@ -1,0 +1,13 @@
+Implementation Backlog
+
+X [Feature] Menu logic (VFO/CMD/GUI)
+X [Bug] Initial frequency display
+* [Bug] Debounce push and encoder
+* [Feature] Implement modes CWU CWL USB LSB?
+* [Feature] Implement split VFOA/VFOB
+* [Feature] PTT logic (shift on transmit)
+* [Feature] Keyer logic
+* [Feature] PWM Sidetone
+* [Feature] GUI navigation
+* [Feature] Backling and energy timeout
+* [Feature] Watchdog
