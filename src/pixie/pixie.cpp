@@ -89,9 +89,9 @@ typedef bool boolean;
 
 //*---  VFO initial setup
 
-#define VFO_START 	 14060000
-#define VFO_END          14399999
-#define VFO_BAND_START          4
+#define VFO_START 	  7000000
+#define VFO_END           7299000
+#define VFO_BAND_START          3
 #define ONESEC               1000
 //*----------------------------------------------------------------------------------
 //*  System Status Word
@@ -172,6 +172,14 @@ MenuClass bck(BackLightUpdate);
 LCDLib lcd(NULL);
 int LCD_LIGHT=LCD_ON;  // On
 
+//*--- timer setup
+
+auto startEncoder=std::chrono::system_clock::now();
+auto endEncoder=std::chrono::system_clock::now();
+
+auto startPush=std::chrono::system_clock::now();
+auto endPush=std::chrono::system_clock::now();
+ 
 //*--- LCD custom character definitions
 
 byte TX[8] = {
@@ -208,7 +216,15 @@ byte S[8] = {31,17,23,17,29,17,31};
 byte B1[8]= {24,24,24,24,24,24,24};
 byte B2[8]= {30,30,30,30,30,30,30};
 byte B3[8]= {31,31,31,31,31,31,31};
-
+byte B4[8]= {
+  0b00000,
+  0b10000,
+  0b01000,
+  0b00100,
+  0b00010,
+  0b00001,
+  0b00000,
+};
 
 //*---- Generic memory allocations
 
@@ -224,7 +240,7 @@ float SetFrequency=VFO_START;
 float ppm=1000.0;
 struct sigaction sa;
 bool running=true;
-
+byte keepalive=0;
 //*--- System Status Word initial definitions
 
 byte MSW = 0;
@@ -308,12 +324,28 @@ void timer_exec()
 //*--------------------------------------------------------------------------------------------------
 void updateSW(int gpio, int level, uint32_t tick)
 {
+
         if (level != 0) {
            printf("KEYUP!\n");
+           endPush = std::chrono::system_clock::now();
+           int lapPush=std::chrono::duration_cast<std::chrono::milliseconds>(endPush - startPush).count();
+           std::cout << "Button Pushed " << lapPush << "ms.\n";
+           if (lapPush < 2) {
+              printf("Push pulse too short! ignored!\n");
+           } else {
+             setWord(&USW,BMULTI,true);
+             if (lapPush > 2000) {
+                printf("Push pulse really long, %d ms. KDOWN signal!\n",lapPush);
+                setWord(&USW,KDOWN,true);
+             } else {
+                printf("Push pulse brief, %d ms. KDOWN false!\n",lapPush);
+                setWord(&USW,KDOWN,false);
+             }
            return;
+           }
         }
+        startPush = std::chrono::system_clock::now();
         int pushSW=gpioRead(ENCODER_SW);
-        setWord(&USW,BMULTI,true);
         printf("Switch KeyDown\n");
 
 }
@@ -355,6 +387,18 @@ static void terminate(int num)
 //*---------------------------------------------------
 void sigalarm_handler(int sig)
 {
+
+   keepalive++;
+   keepalive=keepalive & 0x03;
+   lcd.setCursor(15,1);
+   switch(keepalive) {
+    case 0:                          {lcd.print("|");break;}                            
+    case 1:                          {lcd.print("/");break;}                            
+    case 2:                          {lcd.print("-");break;}                            
+    case 3:                          {lcd.write(7);break;}                            
+    default:                         {lcd.print("|");break;}                            
+  }
+  alarm(1);
 
 }
 
@@ -606,7 +650,8 @@ int main(int argc, char* argv[])
     lcd.createChar(4,S);
     lcd.createChar(5,B1);
     lcd.createChar(6,B2);
-    lcd.createChar(7,B3);
+    //lcd.createChar(7,B3);
+    lcd.createChar(7,B4);
 
 //*--- Show banner briefly (1 sec)
 
@@ -639,6 +684,7 @@ int main(int argc, char* argv[])
 
   vx.setVFO(VFOA);
 
+  vx.set(vx.vfoAB,SetFrequency);
   vx.set(vx.vfoAB,SetFrequency);
 
 //*--- After the initializacion clear the LCD and show panel in VFOMode
@@ -682,12 +728,13 @@ int main(int argc, char* argv[])
 //*--- DDS is running at the SetFrequency value (initial)
 
     alarm(1);  // set an alarm for 1 seconds from now to clear all values
-
+    showFreq();
 //*--- Firmware initialization completed
 //*--- Execute an endless loop while runnint is true
                 
     while(running)
       {
+         usleep(1000000);
 
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
          if (getWord(MSW,CMD)==false) {

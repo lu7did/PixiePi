@@ -2,13 +2,23 @@
 #include <cstring>
 using namespace std;
 char gui[80];
+
+//*--- ShowVFO
+void showVFO() {
+   lcd.setCursor(0,0);
+   if (vx.vfoAB==VFOA) {
+      lcd.write(1);
+   } else {
+      lcd.write(2);
+   }
+}
+
 //*----------------------------------------------------------------------------$
 //* Show the standard panel in VFO mode (CLI=false) mode
 //*----------------------------------------------------------------------------$
 void showGUI() {
 
-   lcd.setCursor(0,0);
-   lcd.write(1);
+   showVFO();
 
    lcd.setCursor(2,0);
    lcd.write(0);
@@ -39,7 +49,6 @@ void showPanel() {
       
       lcd.clear();
       lcd.setCursor(0,0);
-      //showVFO();
 
 
 //*--- Device specific GUI builter
@@ -80,6 +89,77 @@ void showPanel() {
    }
 
 }
+//*--------------------------------------------------------------------------------------------
+//* showSave
+//* save legend
+//*--------------------------------------------------------------------------------------------
+void showSave(){
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Saving....");
+}
+//*----
+//* Show Mark
+//*----
+void showMark(){
+      lcd.setCursor(0,1);
+      lcd.print(">"); 
+}
+//*--- Save Menu
+void saveMenu() {
+
+      byte i=menuRoot.get();
+      MenuClass* z=menuRoot.l.get(i)->mChild;
+      byte j=z->mItem;
+      byte k=z->mItemBackup;
+
+      if (vx.vfoAB != vfo.mItem) {   //Switch from VFO A to B or viceversa
+         vx.vfoAB=vfo.mItem;
+         vx.set(vx.vfoAB,vx.get(vx.vfoAB));
+      }
+
+}
+//*--------------------------------------------------------------------------------------------
+//* doSave
+//* show frequency at the display
+//*--------------------------------------------------------------------------------------------
+void doSave() {
+
+      showSave();      
+//      usleep(1000000);
+
+      
+
+//**************************************************
+//* Device specific parameter saving               *
+//**************************************************
+      saveMenu();
+      menuRoot.save();
+
+}
+
+//*----------------------------------------------------------------------------------------------------
+//* backupFSM
+//* come here with CLI==true so it's either one of the two menu levels
+//*----------------------------------------------------------------------------------------------------
+void backupFSM() {
+     
+     byte i=menuRoot.get();
+     MenuClass* z=menuRoot.getChild(i);
+     z->backup();
+
+}
+//*----------------------------------------------------------------------------------------------------
+//* restoreFSM
+//* come here with CLI==true so it's either one of the two menu levels
+//*----------------------------------------------------------------------------------------------------
+void restoreFSM() {
+
+      byte i=menuRoot.get();
+      MenuClass* z=menuRoot.getChild(i);
+      z->restore();  
+}
+
 //*----------------------------------------------------------------------------------------------------
 //* menuFSM
 //* come here with CLI==true so it's either one of the two menu levels
@@ -133,54 +213,93 @@ void CMD_FSM() {
       } else {
          return;
       }
+      return;
 
    }
+
+//******************************************************************************************
+//*--- If here CMD=1 (command mode)
 //******************************************************************************************
 //* Process menu commands
 //******************************************************************************************
-//*---- If here is in getWord(MSW,CMD)=true so in command mode
 
-   if (getWord(USW,BMULTI)==true) {
-      setWord(&USW,BMULTI,false);
-      setWord(&MSW,CMD,false);
-      showPanel();
-      showFreq();
-      return;
-    }
+   if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {    // It is in pure CMD mode
 
+     if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {  //in CMD mode and brief push (return to VFO mode)
+       printf("DEBUG: <CMD> Push Button Briefly-->Go into <VFO> mode back\n");
+       setWord(&USW,BMULTI,false);
+       setWord(&USW,KDOWN,false);
+       setWord(&MSW,CMD,false);
+       showPanel();
+       showFreq();
+       return;
+     }
 
-   if (getWord(MSW,GUI)==false) {   //S=1 pure command mode
+     if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {  //in CMD mode and long push (pass to GUI mode)
+       printf("DEBUG: <CMD> Push Button Lengthly-->Go into <GUI> mode\n");
+       setWord(&USW,BMULTI,false);
+       setWord(&USW,KDOWN,false);
+       setWord(&MSW,GUI,true);
+       showMark();     
+       backupFSM();
+       showPanel();
+       return;
+     }
 
-//*--- Process S=1 transitions
-      
-      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+     if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+         printf("DEBUG: <CMD> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
          menuFSM();
          setWord(&USW,BCW,false);
          setWord(&USW,BCCW,false);
       }
-      return;
+
+     return;
    }
 
-//*---- Command mode and GUI activated to change a parameter
+//*--- It is here if in CMD mode && GUI update enabled
 
-   if (getWord(MSW,GUI)==true) {
+   if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {    // It is in CMD and GUI mode
 
-      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+     if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {    //In GUI mode and brief push then go to CLI mode
+       printf("DEBUG: <GUI> Push button shortly, back to <CMD>\n");
+       setWord(&USW,BMULTI,false);
+       setWord(&USW,KDOWN,false);
+       setWord(&MSW,CMD,true);
+       restoreFSM();
+       setWord(&MSW,GUI,false);
+       menuFSM();
+       return;   
+     }
+
+     if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {    //In GUI mode and long push then save and go to CLI mode
+       printf("DEBUG: <GUI> Push button lengthly, save and back to <CMD>\n");
+       setWord(&USW,BMULTI,false);
+       setWord(&USW,KDOWN,false);
+       setWord(&MSW,CMD,true);
+       doSave();
+       showPanel();
+       setWord(&MSW,GUI,false);
+       menuFSM();
+       return;
+     }
+     
+     if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
+         printf("DEBUG: <GUI> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
+
          menuFSM();
          setWord(&USW,BCW,false);
          setWord(&USW,BCCW,false);
          return;             
-      }
+     }
    }
-       
-   setWord(&USW,BCW,false);
-   setWord(&USW,BCCW,false);             
+
+   return;
+
 
 }
-//*--------------------------------------------------------------------------------------------
-//* VfoUpdate
-//* manages the content of the VFO
-//*--------------------------------------------------------------------------------------------
+//*-------------------------------x------------------------------------------------------------- 
+//* VfoUpdate //* manages the content of the VFO 
+//*-------------------------------------------------------------------------------------------- 
 void VfoUpdate() {
 
   if (vfo.mItem < 1 && vfo.CW == true) {

@@ -1,0 +1,11 @@
+Implementation backlog
+
+* Implement Menu & navigation GUI
+* (BUG) initial frequency display
+* (BUG) solver encoder and pushbutton bouncing
+* Implement Keyer
+* Implement GUI implementation classes / methods
+* Implement backlight and energy saving timeout
+* Implement watchdog
+* Implement PTT
+* Implement sidetone using PWM
