@@ -1,6 +1,6 @@
-#PixiePi
+# PixiePi
 
-##Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
+## Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
 
 The Pixie QRPp (very low power, less than 1W output) transceiver is a very popula DIY project among hams as it is
 very easy to build, test and operate from the electronic standpoint, yet able to perform some actual limited communications
@@ -27,18 +27,18 @@ The following features can be made:
 * Display LCD & Rotary Encoder.
 * Built-in iambic keyer.
 
-#Schematics
+# Schematics
 
   Not yet available
 
-#Requirements
+# Requirements
 
    sudo apt-get install i2c-tools libi2c-dev
    git clone git://git.drogon.net/wiringPi
    git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
 
 
-#Build
+# Build
 
    git clone https://github.com/lu7did/PixiePi
    cd /home/pi/PixiePi/src
@@ -46,7 +46,7 @@ The following features can be made:
    sudo make install
  
 
-#Release notes:
+# Release notes:
 
   * This project requires a board combining:
      - Raspberry Pi
