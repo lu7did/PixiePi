@@ -85,6 +85,7 @@ MenuClass::MenuClass(CALLBACK u) {
 void MenuClass::set(unsigned char i) {
   mItem=i; 
   if (update!=NULL){
+    //printf("DEBUG MenuClass: Method: set parm=%d\n",i);
     update();
   }
   return;
@@ -105,6 +106,7 @@ void MenuClass::add(char* t,MenuClass* m) {
 //* Get the item pointer associated with the menu element
 //*------------------------------------------------------------------------------------------------ 
 unsigned char MenuClass::get() {
+  //printf("DEBUG MenuClass: Method: get parm=%d\n",mItem);
   return mItem;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -117,6 +119,7 @@ unsigned char MenuClass::getBackup() {
 //* Get the text associated with the ith menu element
 //*------------------------------------------------------------------------------------------------ 
 char* MenuClass::getText(unsigned char i) {
+  //printf("DEBUG MenuClass: Method: getText parm=%d returned text:%s\n",i,(char*)l.get(i)->mText);
   return (char*)l.get(i)->mText;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -124,6 +127,8 @@ char* MenuClass::getText(unsigned char i) {
 //*------------------------------------------------------------------------------------------------ 
 void MenuClass::setText(unsigned char i,char* c) {
   
+  //printf("DEBUG MenuClass: Method: setText parm=%d provided:%s\n",i,c);
+
   l.get(i)->mText=c;
   return;
 }
@@ -132,6 +137,8 @@ void MenuClass::setText(unsigned char i,char* c) {
 //* Get the pointer to the menu associated with the ith menu element (optional)
 //*------------------------------------------------------------------------------------------------ 
 MenuClass* MenuClass::getChild(unsigned char i) {
+  //printf("DEBUG MenuClass: Method: getChild parm=%d\n",i);
+
   return l.get(i)->mChild;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -177,6 +184,8 @@ void MenuClass::move(bool cCW,bool cCCW){
 char* MenuClass::getCurrentText(){
 
   if (update!=NULL){
+    //printf("DEBUG MenuClass: Method: getCurrentText parm=(0) returned text:%s\n",(char*)getText(0));
+
     //update();
     return getText(0);
   }

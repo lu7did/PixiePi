@@ -96,7 +96,7 @@ typedef bool boolean;
 
 
 #define VFO_DELAY               1
-#define BACKLIGHT_DELAY        10
+#define BACKLIGHT_DELAY        60
 //*----------------------------------------------------------------------------------
 //*  System Status Word
 //*----------------------------------------------------------------------------------
@@ -139,6 +139,10 @@ typedef bool boolean;
 #define JRIGHT    0B00000010
 #define JUP       0B00000100
 #define JDOWN     0B00001000
+
+
+#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
+#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
 
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
@@ -249,13 +253,18 @@ byte backlight=BACKLIGHT_DELAY;
 
 //*--- System Status Word initial definitions
 
-byte MSW = 0;
-byte TSW = 0;
-byte USW = 0;
+byte MSW  = 0;
+byte TSW  = 0;
+byte USW  = 0;
 byte JSW  = 0;
 
+byte LUSW = 0;
 int  TVFO = 0;
 int  TBCK = backlight;
+
+int  TWIFI = 10;
+
+bool wlan0 = false;
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -326,6 +335,11 @@ void timer_exec()
      }
   }
 
+  TWIFI--;
+  if (TWIFI==0){
+     setWord(&USW,CONX,true);
+  }
+
   if (TBCK>0){
      TBCK--;
      if (TBCK==0){
@@ -346,7 +360,11 @@ void updateSW(int gpio, int level, uint32_t tick)
            endPush = std::chrono::system_clock::now();
            int lapPush=std::chrono::duration_cast<std::chrono::milliseconds>(endPush - startPush).count();
            std::cout << "Button Pushed " << lapPush << "ms.\n";
-           if (lapPush < 2) {
+           if (getWord(USW,BMULTI)==true) {
+              printf("Last push pending processsing, ignore!\n");
+              return;
+           }
+           if (lapPush < 10) {
               printf("Push pulse too short! ignored!\n");
            } else {
              setWord(&USW,BMULTI,true);
@@ -382,16 +400,29 @@ void updateEncoders(int gpio, int level, uint32_t tick)
         int clkState=gpioRead(ENCODER_CLK);
         int dtState= gpioRead(ENCODER_DT);
 
+        TBCK=backlight;
+        lcd.backlight(true);
+
+        endEncoder = std::chrono::system_clock::now();
+        int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
+        std::cout << "Rotary Encoder lap " << lapEncoder << "ms.\n";
+
+        if ( lapEncoder  < 2 )  {
+             printf("Encoder: ignore pulse too close from last\n");
+             return;
+        }
+
         if (dtState != clkState) {
           counter++;
-          setWord(&USW,BCW,true);
+          setWord(&USW,BCCW,true);
         } else {
           counter--;
-          setWord(&USW,BCCW,true);
+          setWord(&USW,BCW,true);
         }
-        clkLastState=clkState;
-        lcd.backlight(true);
-        TBCK=backlight;
+
+        clkLastState=clkState;        
+        startEncoder = std::chrono::system_clock::now();
+
     
 }
 
@@ -400,6 +431,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 //*---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
+    printf("Received SIG Interrupt %d",num);
     running=false;
    
 }
@@ -417,10 +449,50 @@ void sigalarm_handler(int sig)
     case 3:                          {lcd.write(7);break;}                            
     default:                         {lcd.print("|");break;}                            
   }
+  lcd.setCursor(14,1);
+
+  if (wlan0 == true) {
+     lcd.print("*");
+  } else {
+     lcd.print(" ");
+  }
   alarm(1);
 
 }
+//--------------------------------------
+//----- Execute a shell commandATE -----
+//--------------------------------------
 
+string do_console_command_get_result (char* command)
+{
+	FILE* pipe = popen(command, "r");
+	if (!pipe)
+		return "ERROR";
+	
+	char buffer[128];
+	string result = "";
+	while(!feof(pipe))
+	{
+		if(fgets(buffer, 128, pipe) != NULL)
+			result += buffer;
+	}
+	pclose(pipe);
+	return(result);
+}
+//--------------------------------------
+//----- CHECK THE CONNECTION STATE -----
+//--------------------------------------
+void checkLAN() {
+
+	string CommandResult = do_console_command_get_result((char*)"cat /sys/class/net/wlan0/operstate");
+	if (CommandResult.find("up") == 0)		//If first character is '1' then interface is connected (command returns: '1', '0' or a 'not found' error message)
+	{
+           wlan0=true;
+	} else 	{
+           wlan0=false;
+	}
+        return;
+}
 //*--------------------------------------------------------------------------------------------
 //* showFreq
 //* manage the presentation of frequency to the LCD display
@@ -442,11 +514,12 @@ void showFreq() {
 
   if (getWord(TSW,FTU)==true) {
      lcd.setCursor(9,1);
-     lcd.typeChar((char)127);
+     lcd.typeChar((char)126);
   } 
   if (getWord(TSW,FTD)==true) {
      lcd.setCursor(9,1);
-     lcd.typeChar((char)126);
+     lcd.typeChar((char)127);
+
   }
   if (getWord(TSW,FVFO)==true) {
      lcd.setCursor(9,1);
@@ -481,8 +554,6 @@ void processVFO() {
       setWord(&TSW,FTD,false);
       setWord(&TSW,FVFO,false);
       TVFO=1;
-      //signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-      //alarm(1);  // set an alarm for 10 seconds from now
       showFreq();
    }
 
@@ -500,8 +571,6 @@ void processVFO() {
        setWord(&TSW,FVFO,false);
        TVFO=1;
        showFreq();
-       //signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-       //alarm(1);  // set an alarm for 10 seconds from now
 
    }
  
@@ -723,7 +792,7 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < 64; i++) {
 
-        if (i != SIGALRM ) {
+        if (i != SIGALRM && i != 17 ) {
            std::memset(&sa, 0, sizeof(sa));
            sa.sa_handler = terminate;
            sigaction(i, &sa, NULL);
@@ -757,6 +826,11 @@ int main(int argc, char* argv[])
       {
          usleep(1000000);
 
+ 	 if (getWord(USW,CONX) == true) {
+            checkLAN();
+            setWord(&USW,CONX,false);
+	    TWIFI=30;
+         } 
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
          if (getWord(MSW,CMD)==false) {
 

@@ -1,4 +1,4 @@
- #include <string.h>
+#include <string.h>
 #include <cstring>
 using namespace std;
 char gui[80];
@@ -32,10 +32,16 @@ void showGUI() {
    lcd.setCursor(8,0);
    lcd.print("CW");
 
-   lcd.setCursor(13,0);
-   lcd.write(7);
-   lcd.write(6);
-   lcd.write(5);
+   //lcd.setCursor(13,0);
+   //lcd.write(7);
+   //lcd.write(6);
+   //lcd.write(5);
+   lcd.setCursor(14,1);
+   if (wlan0 == true) {
+      lcd.print("*");
+   } else {
+      lcd.print(" ");
+   }
 
 }
 //*--------------------------------------------------------------------------------------------
@@ -62,17 +68,17 @@ void showPanel() {
 //*-----------------------------------------------------------------------------------------------
    byte i=menuRoot.get();
    MenuClass* z=menuRoot.getChild(i);
-    
-      
+   char gui[80];
+  
    if (getWord(MSW,GUI)==false) {
       
       lcd.clear();
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getCurrentText());
-      lcd.print(gui);
+      lcd.print((char*)gui);
       lcd.setCursor(1,1);
-      sprintf(gui," %s",z->getCurrentText());
-      lcd.print(gui);
+      sprintf(gui," %s",(char*)z->getText(0));
+      lcd.print((char*)gui);
 
       return;
       
@@ -80,10 +86,10 @@ void showPanel() {
  
       lcd.clear();
       lcd.setCursor(0,0);
-      sprintf(gui,"<%s>",menuRoot.getText(menuRoot.get()));
+      sprintf(gui,"<%d> %s",i,menuRoot.getText(menuRoot.get()));
       lcd.print(gui);
       lcd.setCursor(0,1);
-      sprintf(gui,">%s",z->getCurrentText());
+      sprintf(gui,"> %s",(char*)z->getText(0));
       lcd.print(gui);
       return;
    }
@@ -96,6 +102,7 @@ void showPanel() {
 void showSave(){
       lcd.clear();
       lcd.setCursor(0,0);
+      usleep(300000);
       lcd.print("Saving....");
 }
 //*----
@@ -105,7 +112,9 @@ void showMark(){
       lcd.setCursor(0,1);
       lcd.print(">"); 
 }
+//*-------------------------------------------------------------------------------------------
 //*--- Save Menu
+//*-------------------------------------------------------------------------------------------
 void saveMenu() {
 
       byte i=menuRoot.get();
@@ -118,6 +127,10 @@ void saveMenu() {
          vx.set(vx.vfoAB,vx.get(vx.vfoAB));
       }
 
+      if (bck.mItem != backlight) {
+         backlight=bck.mItem;
+      }
+
 }
 //*--------------------------------------------------------------------------------------------
 //* doSave
@@ -126,13 +139,6 @@ void saveMenu() {
 void doSave() {
 
       showSave();      
-//      usleep(1000000);
-
-      
-
-//**************************************************
-//* Device specific parameter saving               *
-//**************************************************
       saveMenu();
       menuRoot.save();
 
@@ -226,7 +232,7 @@ void CMD_FSM() {
    if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {    // It is in pure CMD mode
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {  //in CMD mode and brief push (return to VFO mode)
-       printf("DEBUG: <CMD> Push Button Briefly-->Go into <VFO> mode back\n");
+       //printf("DEBUG: <CMD> Push Button Briefly-->Go into <VFO> mode back\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,false);
@@ -236,7 +242,7 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {  //in CMD mode and long push (pass to GUI mode)
-       printf("DEBUG: <CMD> Push Button Lengthly-->Go into <GUI> mode\n");
+       //printf("DEBUG: <CMD> Push Button Lengthly-->Go into <GUI> mode\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,GUI,true);
@@ -247,7 +253,7 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
-         printf("DEBUG: <CMD> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
+         //printf("DEBUG: <CMD> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
          menuFSM();
          setWord(&USW,BCW,false);
          setWord(&USW,BCCW,false);
@@ -261,7 +267,7 @@ void CMD_FSM() {
    if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {    // It is in CMD and GUI mode
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {    //In GUI mode and brief push then go to CLI mode
-       printf("DEBUG: <GUI> Push button shortly, back to <CMD>\n");
+       //printf("DEBUG: <GUI> Push button shortly, back to <CMD>\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,true);
@@ -272,7 +278,7 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {    //In GUI mode and long push then save and go to CLI mode
-       printf("DEBUG: <GUI> Push button lengthly, save and back to <CMD>\n");
+       //printf("DEBUG: <GUI> Push button lengthly, save and back to <CMD>\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,true);
@@ -284,7 +290,7 @@ void CMD_FSM() {
      }
      
      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
-         printf("DEBUG: <GUI> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
+         //printf("DEBUG: <GUI> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
 
          menuFSM();
          setWord(&USW,BCW,false);
@@ -325,17 +331,14 @@ void VfoUpdate() {
 //+-----------------------------------------------------------------------------------------------------
 void BackLightUpdate() {
 
-if (bck.mItem < 60 && bck.CW == true) {
+  if (bck.mItem < 60 && bck.CW == true) {
       bck.mItem++;
   }
   if (bck.mItem > 0 && bck.CCW == true) {
       bck.mItem--;
   }
   sprintf(gui,"%i secs",bck.mItem);
-  bck.l.get(0)->mText=(char*)gui;
-  printf("DEBUG: gui buffer(%s)",gui);
-  printf("DEBUG: bck.mText %s",bck.l.get(0)->mText);
- 
+  bck.setText(0,(char*)gui);
   bck.CW=false;
   bck.CCW=false;
  

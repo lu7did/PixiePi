@@ -5,13 +5,14 @@ X [Bug] Initial frequency display
 X [Bug] VFO not changing after change has been made
 X [Feature] Backling and energy timeout
 X [Feature] Keepalive indicator
+X [Bug] Backlight implementation fails to update Timeout
+X [Feature] Show Wifi connection
+X [Bug] Remove show meter
+X [Bug] Debounce push and encoder
+X [Bug] Wrong alignment in CMD vs. GUI modes (see VFO)
+X [Bug] Correct true sense of CCW and CW (Encoder)
 
-
-* [Bug] Backlight implementation fails to update Timeout
-* [Bug] Remove show meter
 * [Feature] Optional clock (ntp controlled)
-* [Bug] Wrong alignment in CMD vs. GUI modes (see VFO)
-* [Bug] Debounce push and encoder
 * [Feature] Implement modes CWU CWL USB LSB?
 * [Feature] Implement split VFOA/VFOB
 * [Feature] PTT logic (shift on transmit)
