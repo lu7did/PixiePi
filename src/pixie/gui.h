@@ -1,4 +1,4 @@
-#include <string.h>
+ #include <string.h>
 #include <cstring>
 using namespace std;
 char gui[80];
@@ -57,9 +57,9 @@ void showPanel() {
       return;
    }
 
-
+//*-----------------------------------------------------------------------------------------------
 //*--- if here then CMD==true
-
+//*-----------------------------------------------------------------------------------------------
    byte i=menuRoot.get();
    MenuClass* z=menuRoot.getChild(i);
     
@@ -320,6 +320,29 @@ void VfoUpdate() {
   return;
   
 }
+//*-----------------------------------------------------------------------------------------------------
+//*--- Backlight management
+//+-----------------------------------------------------------------------------------------------------
+void BackLightUpdate() {
+
+if (bck.mItem < 60 && bck.CW == true) {
+      bck.mItem++;
+  }
+  if (bck.mItem > 0 && bck.CCW == true) {
+      bck.mItem--;
+  }
+  sprintf(gui,"%i secs",bck.mItem);
+  bck.l.get(0)->mText=(char*)gui;
+  printf("DEBUG: gui buffer(%s)",gui);
+  printf("DEBUG: bck.mText %s",bck.l.get(0)->mText);
+ 
+  bck.CW=false;
+  bck.CCW=false;
+ 
+  return;
+
+}
+
 //*===================================================================================================================================$
 //* Implementarion of Menu Handlers
 //*===================================================================================================================================$
@@ -339,9 +362,6 @@ void WatchDogUpdate() {
 
 }
 void LockUpdate() {
-
-}
-void BackLightUpdate() {
 
 }
 void setDDSFreq() {

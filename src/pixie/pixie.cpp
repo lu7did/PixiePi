@@ -93,6 +93,10 @@ typedef bool boolean;
 #define VFO_END           7299000
 #define VFO_BAND_START          3
 #define ONESEC               1000
+
+
+#define VFO_DELAY               1
+#define BACKLIGHT_DELAY        10
 //*----------------------------------------------------------------------------------
 //*  System Status Word
 //*----------------------------------------------------------------------------------
@@ -241,6 +245,8 @@ float ppm=1000.0;
 struct sigaction sa;
 bool running=true;
 byte keepalive=0;
+byte backlight=BACKLIGHT_DELAY;
+
 //*--- System Status Word initial definitions
 
 byte MSW = 0;
@@ -249,6 +255,7 @@ byte USW = 0;
 byte JSW  = 0;
 
 int  TVFO = 0;
+int  TBCK = backlight;
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -318,6 +325,15 @@ void timer_exec()
         setWord(&TSW,FVFO,true);
      }
   }
+
+  if (TBCK>0){
+     TBCK--;
+     if (TBCK==0){
+        if (backlight !=0) {
+           setWord(&TSW,FBCK,true);
+        }
+     }
+  }
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler routine for Rotary Encoder Push button
@@ -347,7 +363,8 @@ void updateSW(int gpio, int level, uint32_t tick)
         startPush = std::chrono::system_clock::now();
         int pushSW=gpioRead(ENCODER_SW);
         printf("Switch KeyDown\n");
-
+        lcd.backlight(true);
+        TBCK=backlight;;
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler for Rotary Encoder CW and CCW control
@@ -373,6 +390,8 @@ void updateEncoders(int gpio, int level, uint32_t tick)
           setWord(&USW,BCCW,true);
         }
         clkLastState=clkState;
+        lcd.backlight(true);
+        TBCK=backlight;
     
 }
 
@@ -608,8 +627,9 @@ int main(int argc, char* argv[])
     wtd.add((char*)"Off",NULL);  
     wtd.set(0);
 
-    bck.add((char*)"Off",NULL);  
-    bck.set(0);
+    sprintf(gui," %d secs",backlight);
+    bck.add((char*)gui,NULL);  
+    bck.set(backlight);
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);
@@ -652,6 +672,7 @@ int main(int argc, char* argv[])
     lcd.createChar(6,B2);
     //lcd.createChar(7,B3);
     lcd.createChar(7,B4);
+    lcd.backlight(true);
 
 //*--- Show banner briefly (1 sec)
 
@@ -761,10 +782,15 @@ int main(int argc, char* argv[])
          CMD_FSM();
 //*--- Clear the frequency moved marker from the display
 
+         if (getWord(TSW,FBCK)==true && backlight != 0) {
+            lcd.backlight(false);
+            setWord(&TSW,FBCK,false);
+         }
       }
 
 //*--- running become false, the program is terminating
 
+    lcd.backlight(false);
     clk->disableclk(4);
     clk->disableclk(20);
     delete(clk);
