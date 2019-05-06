@@ -2,7 +2,7 @@
 
 ## Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
 
-The Pixie QRPp (very low power, less than 1W output) transceiver is a very popula DIY project among hams as it is
+The Pixie QRPp (very low power, less than 1W output) transceiver is a very popular DIY project among hams as it is
 very easy to build, test and operate from the electronic standpoint, yet able to perform some actual limited communications
 (QSO) over the air.
 
@@ -15,9 +15,12 @@ An explanation of how the transceiver work can be found [here](http://w1sye.org/
 This project starts with a working Pixie transceiver (a cheap kit bought at eBay or other sellers) and to integrate it with
 a Raspberry Pi to provide the signal generation and other functionality.
 
-Instead of a crystal based signal generation the Raspberry Pi itself can be used by meas of the librpitx library acting as a DDS.
+Instead of a crystal based signal generation the Raspberry Pi itself can be used by meas of the librpitx library (by Evariste Courjaud F5OEO
+acting as a DDS, which is thus the technical core of the project. A carrier generation function has been extracted largely form the tune.cpp program
+available at the package also by Evariste Courjaud F5OEO. Some modifications has been introduced to allow the carrier frequency to be varied during the 
+operation.
 
-The following features can be made:
+The rest of the code dealsmostly with the user interface and operating features, among others:
 
 * Receive over an entire ham radio band.
 * Dual VFO setup, split mode.
@@ -53,4 +56,5 @@ The following features can be made:
      - Rotary encoder
      - LCD 16x2 display
      - A Pixie transceiver (or similar)
-  * Work in progress, this code set is not yet functional
+ 
+ * Work in progress, this code set is not yet functional
