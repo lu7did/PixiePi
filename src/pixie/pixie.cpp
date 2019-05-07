@@ -142,8 +142,8 @@ const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019";
-
-
+char *strsignal(int sig);
+extern const char * const sys_siglist[];
 //*-------------------------------------------------------------------------------------------------
 //* Main structures
 //*-------------------------------------------------------------------------------------------------
@@ -417,7 +417,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 //*---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    //printf("Received SIG Interrupt %d",num);
+    printf("\n received signal(%d %s)\n",num,strsignal(num));
     running=false;
    
 }
@@ -866,6 +866,8 @@ int main(int argc, char* argv[])
 //*--- running become false, the program is terminating
 
     lcd.backlight(false);
+    lcd.clear();
+
     clk->disableclk(4);
     clk->disableclk(20);
     delete(clk);
