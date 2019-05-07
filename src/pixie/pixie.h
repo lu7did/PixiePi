@@ -19,6 +19,7 @@ void LockUpdate();
 void WatchDogUpdate();
 void BackLightUpdate();
 void setDDSFreq();
+void ModeUpdate();
 
 //*-- Added by Lewis Loflin (LCD related)
 

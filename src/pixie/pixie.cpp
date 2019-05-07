@@ -166,6 +166,7 @@ VFOSystem vx(showFreq,NULL,NULL,NULL);
 
 MenuClass menuRoot(NULL);
 
+MenuClass mod(ModeUpdate);
 MenuClass vfo(VfoUpdate);
 MenuClass stp(StepUpdate);
 MenuClass shf(ShiftUpdate);
@@ -174,6 +175,7 @@ MenuClass kyr(KeyerUpdate);
 MenuClass wtd(WatchDogUpdate);
 MenuClass lck(LockUpdate);
 MenuClass bck(BackLightUpdate);
+
 
 //*--- LCD management object
 
@@ -250,6 +252,7 @@ struct sigaction sa;
 bool running=true;
 byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
+bool fFirst=false;
 
 //*--- System Status Word initial definitions
 
@@ -439,6 +442,12 @@ static void terminate(int num)
 void sigalarm_handler(int sig)
 {
 
+   if (wtd.mItem == 0) {
+      lcd.setCursor(15,1);
+      lcd.print("-");
+      return;
+   }
+
    keepalive++;
    keepalive=keepalive & 0x03;
    lcd.setCursor(15,1);
@@ -484,6 +493,10 @@ string do_console_command_get_result (char* command)
 //--------------------------------------
 void checkLAN() {
 
+        if (wtd.mItem == 0) {
+           return;
+        }
+
 	string CommandResult = do_console_command_get_result((char*)"cat /sys/class/net/wlan0/operstate");
 	if (CommandResult.find("up") == 0)		//If first character is '1' then interface is connected (command returns: '1', '0' or a 'not found' error message)
 	{
@@ -500,7 +513,7 @@ void checkLAN() {
 void showFreq() {
 
   FSTR v;  
-    
+  char hi[80];  
   long int f=vx.get(vx.vfoAB); 
   vx.computeVFO(f,&v);
 
@@ -666,6 +679,7 @@ int main(int argc, char* argv[])
 
 //*--- Setup LCD menues for MENU mode (CLI=true)
 
+    menuRoot.add((char*)"Mode",&mod);
     menuRoot.add((char*)"VFO",&vfo);
     menuRoot.add((char*)"Split",&spl);
     menuRoot.add((char*)"Step",&stp);
@@ -691,7 +705,7 @@ int main(int argc, char* argv[])
     shf.set(0);
 
     kyr.add((char*)" IambicA",NULL);
-    kyr.set(0);
+    kyr.set(1);
 
     wtd.add((char*)"Off",NULL);  
     wtd.set(0);
@@ -699,6 +713,9 @@ int main(int argc, char* argv[])
     sprintf(gui," %d secs",backlight);
     bck.add((char*)gui,NULL);  
     bck.set(backlight);
+
+    mod.add((char*)"CWU  ",NULL);
+    mod.set(0);
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);
@@ -780,8 +797,6 @@ int main(int argc, char* argv[])
 //*--- After the initializacion clear the LCD and show panel in VFOMode
 
     lcd.clear();
-    showFreq();
-    showPanel();
 
 //*---  Define the handler for the SIGALRM signal (timer)
 
@@ -818,6 +833,8 @@ int main(int argc, char* argv[])
 //*--- DDS is running at the SetFrequency value (initial)
 
     alarm(1);  // set an alarm for 1 seconds from now to clear all values
+
+    showPanel();
     showFreq();
 //*--- Firmware initialization completed
 //*--- Execute an endless loop while runnint is true
@@ -850,11 +867,11 @@ int main(int argc, char* argv[])
             }
 
          } else {
-            //CMD_FSM();
 
          }
          CMD_FSM();
-//*--- Clear the frequency moved marker from the display
+
+//*--- Clear the frequency moved marker from the display once the delay expires
 
          if (getWord(TSW,FBCK)==true && backlight != 0) {
             lcd.backlight(false);
@@ -869,6 +886,7 @@ int main(int argc, char* argv[])
     clk->disableclk(20);
     delete(clk);
 
+    usleep(100000);
     printf("\nProgram terminated....\n");
     exit(0);
 }

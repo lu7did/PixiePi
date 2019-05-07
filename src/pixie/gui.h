@@ -24,23 +24,38 @@ void showGUI() {
    lcd.write(0);
 
    lcd.setCursor(4,0);
-   lcd.write(3);
+   if (kyr.mItem == 0) {
+      lcd.print("S");
+   } else {
+      lcd.write(3);
+   }
 
    lcd.setCursor(6,0);
-   lcd.write(4);
+   if (spl.mItem == 0) {
+     lcd.print(" ");
+   } else {
+     lcd.write(4);
+   }
 
    lcd.setCursor(8,0);
-   lcd.print("CW");
+   int i=mod.get();
+   printf("DEBUG: showGUI mode mod.get()=%d mod.mItem=%d \n",i,mod.mItem);
+   if (fFirst==true) {
+      printf("DEBUG: showGUI mod.getText(0)=%s\n",mod.getText(0));
+      lcd.print((char*)mod.getText(0)); 
+  } else {
+      printf("DEBUG: showGUI fFirst=false\n");
+   }
 
-   //lcd.setCursor(13,0);
-   //lcd.write(7);
-   //lcd.write(6);
-   //lcd.write(5);
    lcd.setCursor(14,1);
-   if (wlan0 == true) {
-      lcd.print("*");
+   if (wtd.mItem != 0) {
+      if (wlan0 == true) {
+         lcd.print("*");
+      } else {
+         lcd.print(" ");
+      }
    } else {
-      lcd.print(" ");
+     lcd.print("-");
    }
 
 }
@@ -303,6 +318,94 @@ void CMD_FSM() {
 
 
 }
+void KeyerUpdate() {
+  if (kyr.mItem < 1 && kyr.CW == true) {
+      kyr.mItem++;
+  }
+  if (kyr.mItem > 0 && kyr.CCW == true) {
+      kyr.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(kyr.mItem) {
+    case 0:                          {s=(char*)"Straight";break;};                            
+    case 1:                          {s=(char*)"Iambic";break;};
+  }
+  
+  kyr.l.get(0)->mText=s;
+  showPanel();
+  
+  return;
+
+}
+
+void SplitUpdate() {
+  if (spl.mItem < 1 && spl.CW == true) {
+      spl.mItem++;
+  }
+  if (spl.mItem > 0 && spl.CCW == true) {
+      spl.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(spl.mItem) {
+    case 0:                          {s=(char*)"Off";break;};                            
+    case 1:                          {s=(char*)"On";break;};
+  }
+  
+  spl.l.get(0)->mText=s;
+  showPanel();
+  
+  return;
+
+}
+void ModeUpdate() {
+  if (mod.mItem < 6 && mod.CW == true) {
+      mod.mItem++;
+  }
+  if (mod.mItem > 0 && mod.CCW == true) {
+      mod.mItem--;
+  }
+
+  char* s=(char*)"                  "; 
+  switch(mod.mItem) {
+    case 0:                          {s=(char*)"CWL";break;};
+    case 1:                          {s=(char*)"CWU";break;};
+    case 2:                          {s=(char*)"USB";break;};
+    case 3:                          {s=(char*)"LSB";break;};
+    case 4:                          {s=(char*)"WSP";break;};
+    case 5:                          {s=(char*)"FT8";break;};
+    case 6:                          {s=(char*)"PSK";break;};
+  }
+  printf("DEBUG: ModeUpdate s(%s)\n",s);
+  mod.setText(0,s);
+  printf("DEBUG: ModeUpdate mod.mItem(%d) getText(0)=%s\n",mod.mItem,mod.getText(0));
+  fFirst=true;
+  showPanel();
+  
+  return;
+
+
+}
+void WatchDogUpdate() {
+
+  if (wtd.mItem < 1 && wtd.CW == true) {
+      wtd.mItem++;
+  }
+  if (wtd.mItem > 0 && wtd.CCW == true) {
+      wtd.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(wtd.mItem) {
+    case 0:                          {s=(char*)"Off";break;};                            
+    case 1:                          {s=(char*)"On";break;};
+  }
+  
+  wtd.l.get(0)->mText=s;
+  showPanel();
+  
+  return;
+    
+}
+
 //*-------------------------------x------------------------------------------------------------- 
 //* VfoUpdate //* manages the content of the VFO 
 //*-------------------------------------------------------------------------------------------- 
@@ -331,14 +434,24 @@ void VfoUpdate() {
 //+-----------------------------------------------------------------------------------------------------
 void BackLightUpdate() {
 
-  if (bck.mItem < 60 && bck.CW == true) {
-      bck.mItem++;
+  if (bck.CW == true) {
+     if (bck.mItem < 60) {
+        bck.mItem++;
+     } else {
+        bck.mItem = 0;
+     }
   }
-  if (bck.mItem > 0 && bck.CCW == true) {
-      bck.mItem--;
+  if (bck.CCW == true) {
+     if (bck.mItem > 0) {
+        bck.mItem--;
+     } else {
+        bck.mItem = 60;
+     }
   }
+   
   sprintf(gui,"%i secs",bck.mItem);
   bck.setText(0,(char*)gui);
+
   bck.CW=false;
   bck.CCW=false;
  
@@ -353,15 +466,6 @@ void StepUpdate() {
 
 }
 void ShiftUpdate() {
-
-}
-void SplitUpdate() {
-
-}
-void KeyerUpdate() {
-
-}
-void WatchDogUpdate() {
 
 }
 void LockUpdate() {
