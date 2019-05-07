@@ -37,15 +37,20 @@ The rest of the code dealsmostly with the user interface and operating features,
 # Requirements
 
    sudo apt-get install i2c-tools libi2c-dev
+
    git clone git://git.drogon.net/wiringPi
+
    git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
 
 
 # Build
 
    git clone https://github.com/lu7did/PixiePi
+
    cd /home/pi/PixiePi/src
+
    make
+
    sudo make install
  
 
@@ -56,5 +61,6 @@ The rest of the code dealsmostly with the user interface and operating features,
      - Rotary encoder
      - LCD 16x2 display
      - A Pixie transceiver (or similar)
+     - USB soundcard (optional)
  
  * Work in progress, this code set is not yet functional
