@@ -1,9 +1,11 @@
 #include <string.h>
 #include <cstring>
 using namespace std;
-char gui[80];
 
-//*--- ShowVFO
+char gui[80];
+//*----------------------------------------------------------------------------$
+//* Show the VFO being used (A or B)
+//*----------------------------------------------------------------------------$
 void showVFO() {
    lcd.setCursor(0,0);
    if (vx.vfoAB==VFOA) {
@@ -12,16 +14,20 @@ void showVFO() {
       lcd.write(2);
    }
 }
-
 //*----------------------------------------------------------------------------$
-//* Show the standard panel in VFO mode (CLI=false) mode
+//* Show the PTT status
 //*----------------------------------------------------------------------------$
-void showGUI() {
 
-   showVFO();
-
+void showPTT() { 
    lcd.setCursor(2,0);
    lcd.write(0);
+
+}
+//*----------------------------------------------------------------------------$
+//* Show the keyer status
+//*----------------------------------------------------------------------------$
+
+void showKeyer() {
 
    lcd.setCursor(4,0);
    if (kyr.mItem == 0) {
@@ -30,6 +36,13 @@ void showGUI() {
       lcd.write(3);
    }
 
+}
+//*----------------------------------------------------------------------------$
+//* Show the split status
+//*----------------------------------------------------------------------------$
+
+void showSplit() {
+
    lcd.setCursor(6,0);
    if (spl.mItem == 0) {
      lcd.print(" ");
@@ -37,15 +50,24 @@ void showGUI() {
      lcd.write(4);
    }
 
+}
+//*----------------------------------------------------------------------------$
+//* Show the current mode
+//*----------------------------------------------------------------------------$
+void showMode(){
+
    lcd.setCursor(8,0);
    int i=mod.get();
-   printf("DEBUG: showGUI mode mod.get()=%d mod.mItem=%d \n",i,mod.mItem);
-   if (fFirst==true) {
-      printf("DEBUG: showGUI mod.getText(0)=%s\n",mod.getText(0));
+   if (mod.init==true) {
       lcd.print((char*)mod.getText(0)); 
-  } else {
-      printf("DEBUG: showGUI fFirst=false\n");
+   } else {
    }
+
+}
+//*----------------------------------------------------------------------------$
+//* Show the Wifi connection status
+//*----------------------------------------------------------------------------$
+void showWlan0() {
 
    lcd.setCursor(14,1);
    if (wtd.mItem != 0) {
@@ -59,6 +81,19 @@ void showGUI() {
    }
 
 }
+//*----------------------------------------------------------------------------$
+//* Show the standard panel in VFO mode (CLI=false)
+//*----------------------------------------------------------------------------$
+void showGUI() {
+
+   showVFO();
+   showPTT();
+   showSplit();
+   showKeyer();
+   showMode();
+   showWlan0();
+   
+}
 //*--------------------------------------------------------------------------------------------
 //* showPanel
 //* show frequency or menu information at the display
@@ -66,27 +101,24 @@ void showGUI() {
 void showPanel() {
 
    
+//*---- Panel when in VFO mode (CMD=false)
+
    if (getWord(MSW,CMD)==false) {
-      
       lcd.clear();
       lcd.setCursor(0,0);
-
-
-//*--- Device specific GUI builter
       showGUI();
-//*----           
       return;
    }
 
-//*-----------------------------------------------------------------------------------------------
-//*--- if here then CMD==true
-//*-----------------------------------------------------------------------------------------------
+//*--- Panel in CMD mode (CMD=true)
+
    byte i=menuRoot.get();
    MenuClass* z=menuRoot.getChild(i);
    char gui[80];
-  
+
+//*--- GUI=false (meaning parameter read and navigation)
+
    if (getWord(MSW,GUI)==false) {
-      
       lcd.clear();
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getCurrentText());
@@ -94,11 +126,11 @@ void showPanel() {
       lcd.setCursor(1,1);
       sprintf(gui," %s",(char*)z->getText(0));
       lcd.print((char*)gui);
-
       return;
-      
    } else {
- 
+
+//*---- GUI=true (means parameter being changed)
+
       lcd.clear();
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getText(menuRoot.get()));
@@ -112,7 +144,7 @@ void showPanel() {
 }
 //*--------------------------------------------------------------------------------------------
 //* showSave
-//* save legend
+//* show very briefly the save legend
 //*--------------------------------------------------------------------------------------------
 void showSave(){
       lcd.clear();
@@ -120,15 +152,15 @@ void showSave(){
       usleep(300000);
       lcd.print("Saving....");
 }
-//*----
-//* Show Mark
-//*----
+//*-------------------------------------------------------------------------------------------
+//* Show the parameter being updated mark 
+//*-------------------------------------------------------------------------------------------
 void showMark(){
       lcd.setCursor(0,1);
       lcd.print(">"); 
 }
 //*-------------------------------------------------------------------------------------------
-//*--- Save Menu
+//*--- Perform when a change has been made on parameters
 //*-------------------------------------------------------------------------------------------
 void saveMenu() {
 
@@ -142,15 +174,15 @@ void saveMenu() {
          vx.set(vx.vfoAB,vx.get(vx.vfoAB));
       }
 
-      if (bck.mItem != backlight) {
+      if (bck.mItem != backlight) { //Change in backlight condition
          backlight=bck.mItem;
       }
 
 }
-//*--------------------------------------------------------------------------------------------
-//* doSave
-//* show frequency at the display
-//*--------------------------------------------------------------------------------------------
+//*-------------------------------------------------------------------------------------------
+//*--- Exit the GUI mode saving the changes
+//*-------------------------------------------------------------------------------------------
+
 void doSave() {
 
       showSave();      
@@ -161,7 +193,7 @@ void doSave() {
 
 //*----------------------------------------------------------------------------------------------------
 //* backupFSM
-//* come here with CLI==true so it's either one of the two menu levels
+//* come here when CMD=true and GUI became true to save the contents of the object
 //*----------------------------------------------------------------------------------------------------
 void backupFSM() {
      
@@ -172,7 +204,7 @@ void backupFSM() {
 }
 //*----------------------------------------------------------------------------------------------------
 //* restoreFSM
-//* come here with CLI==true so it's either one of the two menu levels
+//* come here with CMD=true and GUI transitioning from true to false when  saving is not required
 //*----------------------------------------------------------------------------------------------------
 void restoreFSM() {
 
@@ -183,22 +215,21 @@ void restoreFSM() {
 
 //*----------------------------------------------------------------------------------------------------
 //* menuFSM
-//* come here with CLI==true so it's either one of the two menu levels
+//* handle the menu navigation at high level
 //*----------------------------------------------------------------------------------------------------
 void menuFSM() {
 
    if (getWord(MSW,CMD)==false) {   //* VFO mode, no business here!
-
       return;
    }
 
-   if (getWord(MSW,GUI)==false) {  //It's the first level     
+   if (getWord(MSW,GUI)==false) {  //It's the first level of command navigation, CMD=true && GUI=false
       menuRoot.move(getWord(USW,BCW),getWord(USW,BCCW));
       showPanel();
       return;
    }
 
-//*---- Here CMD==true and GUI==true so it's a second level menu
+//*---- Here CMD==true and GUI==true so it's a second level menu meant to update the parameter
 
      byte i=menuRoot.get();
      MenuClass* z=menuRoot.getChild(i);
@@ -213,19 +244,18 @@ void menuFSM() {
 //*--------------------------------------------------------------------------------------------------
 void CMD_FSM() {
 
-//*-------------------------------------------------------------------------------
-//* PTT==true (RX) and CMD==false (VFO)
-//*-------------------------------------------------------------------------------
+//*---- CMD=false, so it's VFO mode
+
    if (getWord(MSW,CMD)==false) {      //S=0 VFO Mode   
 
-      
-//*--------------------------------------------------------------------------------------
-//*---- Process rotation of VFO encoder   (VFO Mode)
-//*--------------------------------------------------------------------------------------
+//*--- Handle rotation of the Encoder
+
       if(getWord(TSW,FVFO)==true){
          showFreq();
          setWord(&TSW,FVFO,false);
       }
+
+//*--- Handle the push button of the encoder
 
       if (getWord(USW,BMULTI)==true) {
          setWord(&USW,BMULTI,false);
@@ -247,7 +277,6 @@ void CMD_FSM() {
    if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {    // It is in pure CMD mode
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {  //in CMD mode and brief push (return to VFO mode)
-       //printf("DEBUG: <CMD> Push Button Briefly-->Go into <VFO> mode back\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,false);
@@ -257,7 +286,6 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {  //in CMD mode and long push (pass to GUI mode)
-       //printf("DEBUG: <CMD> Push Button Lengthly-->Go into <GUI> mode\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,GUI,true);
@@ -268,10 +296,9 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
-         //printf("DEBUG: <CMD> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
-         menuFSM();
-         setWord(&USW,BCW,false);
-         setWord(&USW,BCCW,false);
+       menuFSM();
+       setWord(&USW,BCW,false);
+       setWord(&USW,BCCW,false);
       }
 
      return;
@@ -282,7 +309,6 @@ void CMD_FSM() {
    if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {    // It is in CMD and GUI mode
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==false) {    //In GUI mode and brief push then go to CLI mode
-       //printf("DEBUG: <GUI> Push button shortly, back to <CMD>\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,true);
@@ -293,7 +319,6 @@ void CMD_FSM() {
      }
 
      if (getWord(USW,BMULTI)==true && getWord(USW,KDOWN)==true) {    //In GUI mode and long push then save and go to CLI mode
-       //printf("DEBUG: <GUI> Push button lengthly, save and back to <CMD>\n");
        setWord(&USW,BMULTI,false);
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,true);
@@ -305,8 +330,6 @@ void CMD_FSM() {
      }
      
      if (getWord(USW,BCW)== true || getWord(USW,BCCW)== true) { //S=1 operates Menu at first level and clear signals
-         //printf("DEBUG: <GUI> Rotate encoder CW(%d) CCW(%d)\n", getWord(USW,BCW), getWord(USW,BCCW));
-
          menuFSM();
          setWord(&USW,BCW,false);
          setWord(&USW,BCCW,false);
@@ -318,6 +341,11 @@ void CMD_FSM() {
 
 
 }
+//*-----------------------------------------------------------------------------------------------------------------
+//* Callback for menu objects
+//* Called from the MenuClass objects when a callback is defined to manage content
+//*-----------------------------------------------------------------------------------------------------------------
+//*--- Keyer content
 void KeyerUpdate() {
   if (kyr.mItem < 1 && kyr.CW == true) {
       kyr.mItem++;
@@ -338,6 +366,8 @@ void KeyerUpdate() {
 
 }
 
+//*---- Split options
+
 void SplitUpdate() {
   if (spl.mItem < 1 && spl.CW == true) {
       spl.mItem++;
@@ -357,6 +387,9 @@ void SplitUpdate() {
   return;
 
 }
+
+//*---- Mode update
+
 void ModeUpdate() {
   if (mod.mItem < 6 && mod.CW == true) {
       mod.mItem++;
@@ -375,16 +408,15 @@ void ModeUpdate() {
     case 5:                          {s=(char*)"FT8";break;};
     case 6:                          {s=(char*)"PSK";break;};
   }
-  printf("DEBUG: ModeUpdate s(%s)\n",s);
   mod.setText(0,s);
-  printf("DEBUG: ModeUpdate mod.mItem(%d) getText(0)=%s\n",mod.mItem,mod.getText(0));
-  fFirst=true;
   showPanel();
   
   return;
 
-
 }
+
+//*---- Watchdog enable/disable content
+
 void WatchDogUpdate() {
 
   if (wtd.mItem < 1 && wtd.CW == true) {
@@ -405,10 +437,8 @@ void WatchDogUpdate() {
   return;
     
 }
+//*---- VFO update
 
-//*-------------------------------x------------------------------------------------------------- 
-//* VfoUpdate //* manages the content of the VFO 
-//*-------------------------------------------------------------------------------------------- 
 void VfoUpdate() {
 
   if (vfo.mItem < 1 && vfo.CW == true) {
@@ -422,16 +452,14 @@ void VfoUpdate() {
     case 0:                          {s=(char*)"A";break;};                            
     case 1:                          {s=(char*)"B";break;};
   }
-  
+
   vfo.l.get(0)->mText=s;
   showPanel();
-  
+ 
   return;
-  
+ 
 }
-//*-----------------------------------------------------------------------------------------------------
-//*--- Backlight management
-//+-----------------------------------------------------------------------------------------------------
+//*--- BackLight mode management
 void BackLightUpdate() {
 
   if (bck.CW == true) {
@@ -458,10 +486,8 @@ void BackLightUpdate() {
   return;
 
 }
-
-//*===================================================================================================================================$
-//* Implementarion of Menu Handlers
-//*===================================================================================================================================$
+//*---- NOT IMPLEMENTED YET
+//*---- Step content management
 void StepUpdate() {
 
 }

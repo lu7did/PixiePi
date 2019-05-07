@@ -1,4 +1,5 @@
 
+
 //*--------------------------------------------------------------------------------------------------
 //* ClassMenu Class   (HEADER CLASS)
 //*--------------------------------------------------------------------------------------------------
@@ -29,6 +30,7 @@ class MenuClass
       
       bool CW;
       bool CCW;
+      bool init;
       List x;
       LinkedList<List*> l = LinkedList<List*>();      
 
@@ -75,6 +77,7 @@ MenuClass::MenuClass(CALLBACK u) {
    mItemBackup=0;
    CW=false;
    CCW=false;
+   init=false;
    
    return;
 }
@@ -85,7 +88,6 @@ MenuClass::MenuClass(CALLBACK u) {
 void MenuClass::set(unsigned char i) {
   mItem=i; 
   if (update!=NULL){
-    //printf("DEBUG MenuClass: Method: set parm=%d\n",i);
     update();
   }
   return;
@@ -96,17 +98,14 @@ void MenuClass::set(unsigned char i) {
 void MenuClass::add(char* t,MenuClass* m) {
 
      List* x = (List*)malloc(sizeof(List));
-     
      x->mText=t;
      x->mChild=m;
-     
      l.add(x);
 }
 //*-------------------------------------------------------------------------------------------------
 //* Get the item pointer associated with the menu element
 //*------------------------------------------------------------------------------------------------ 
 unsigned char MenuClass::get() {
-  //printf("DEBUG MenuClass: Method: get parm=%d\n",mItem);
   return mItem;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -119,16 +118,12 @@ unsigned char MenuClass::getBackup() {
 //* Get the text associated with the ith menu element
 //*------------------------------------------------------------------------------------------------ 
 char* MenuClass::getText(unsigned char i) {
-  //printf("DEBUG MenuClass: Method: getText parm=%d returned text:%s\n",i,(char*)l.get(i)->mText);
   return (char*)l.get(i)->mText;
 }
 //*-------------------------------------------------------------------------------------------------
 //* Get the text associated with the ith menu element
 //*------------------------------------------------------------------------------------------------ 
 void MenuClass::setText(unsigned char i,char* c) {
-  
-  //printf("DEBUG MenuClass: Method: setText parm=%d provided:%s\n",i,c);
-
   l.get(i)->mText=c;
   return;
 }
@@ -137,8 +132,6 @@ void MenuClass::setText(unsigned char i,char* c) {
 //* Get the pointer to the menu associated with the ith menu element (optional)
 //*------------------------------------------------------------------------------------------------ 
 MenuClass* MenuClass::getChild(unsigned char i) {
-  //printf("DEBUG MenuClass: Method: getChild parm=%d\n",i);
-
   return l.get(i)->mChild;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -152,27 +145,23 @@ void MenuClass::move(bool cCW,bool cCCW){
   if (l.size() == 0) {return; }  //Is list empty? Return
   if (update!=NULL) {      
       update();
-      //if (display!=NULL) {display();}
+      init=true;
       return;
   }
   if (mItem < l.size()-1 && CW==true) {
      mItem++;
-     //if (display!=NULL) {display();}
      return;
   }
   if (mItem>0 && CCW==true) {
-     //if (display!=NULL) {display();}
      mItem--;
      return;
   }
 
   if (mItem ==l.size()-1 && CW==true) {
-     //if (display!=NULL) {display();}
      mItem=0;
      return;
   }
   if (mItem==0 && CCW==true) {
-     //if (display!=NULL) {display();}   
      mItem=l.size()-1;
      return;
   }
@@ -184,9 +173,6 @@ void MenuClass::move(bool cCW,bool cCCW){
 char* MenuClass::getCurrentText(){
 
   if (update!=NULL){
-    //printf("DEBUG MenuClass: Method: getCurrentText parm=(0) returned text:%s\n",(char*)getText(0));
-
-    //update();
     return getText(0);
   }
   return getText(mItem);

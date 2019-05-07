@@ -6,6 +6,16 @@ struct encoder
     volatile long value;
     volatile int lastEncoded;
 };
+
+//*----------------------------------------------------------------------------
+//* Special macro definitions to adapt for previous code on the Arduino board
+//*----------------------------------------------------------------------------
+typedef unsigned char byte;
+typedef bool boolean;
+
+
+
+
 //*--- Function prototypes
 void setWord(unsigned char* SysWord,unsigned char  v, bool val);
 bool getWord (unsigned char SysWord, unsigned char v);
@@ -23,15 +33,6 @@ void ModeUpdate();
 
 //*-- Added by Lewis Loflin (LCD related)
 
-//void lcd_init(void);
-//void lcd_byte(int bits, int mode);
-//void lcd_toggle_enable(int bits);
-//void typeInt(int i);
-//void typeFloat(float myFloat);
-//void lcdLoc(int line);             //move cursor
-//void ClrLcd(void);                 // clr LCD return home
-//void typeln(const char *s);
-//void typeChar(char val);
 void showFreq();                       //Prototype fur display used on callback
 void setDDSFrequency();
 

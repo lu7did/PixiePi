@@ -59,9 +59,6 @@
 #include <unistd.h>
 #include "/home/pi/librpitx/src/librpitx.h"
 #include <cstring>
-
-
-
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -73,13 +70,6 @@
 #include "ClassMenu.h"
 #include "VFOSystem.h"
 #include "LCDLib.h"
-
-//*----------------------------------------------------------------------------
-//* Special macro definitions to adapt for previous code on the Arduino board
-//*----------------------------------------------------------------------------
-typedef unsigned char byte;
-typedef bool boolean;
-
 
 //*--- Encoder pin definition
 
@@ -141,8 +131,8 @@ typedef bool boolean;
 #define JDOWN     0B00001000
 
 
-#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
-#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
+//#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
+//#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
 
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
@@ -159,11 +149,9 @@ const char   *COPYRIGHT="(c) LU7DID 2019";
 //*-------------------------------------------------------------------------------------------------
 
 //*--- VFO object
-
 VFOSystem vx(showFreq,NULL,NULL,NULL);
 
 //*--- Strutctures to hold menu definitions
-
 MenuClass menuRoot(NULL);
 
 MenuClass mod(ModeUpdate);
@@ -180,10 +168,10 @@ MenuClass bck(BackLightUpdate);
 //*--- LCD management object
 
 LCDLib lcd(NULL);
+
 int LCD_LIGHT=LCD_ON;  // On
 
-//*--- timer setup
-
+//*--- debouncing logic setup
 auto startEncoder=std::chrono::system_clock::now();
 auto endEncoder=std::chrono::system_clock::now();
 
@@ -191,7 +179,6 @@ auto startPush=std::chrono::system_clock::now();
 auto endPush=std::chrono::system_clock::now();
  
 //*--- LCD custom character definitions
-
 byte TX[8] = {
   0B11111,
   0B10001,
@@ -252,7 +239,6 @@ struct sigaction sa;
 bool running=true;
 byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
-bool fFirst=false;
 
 //*--- System Status Word initial definitions
 
@@ -268,6 +254,7 @@ int  TBCK = backlight;
 int  TWIFI = 10;
 
 bool wlan0 = false;
+
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -359,10 +346,8 @@ void updateSW(int gpio, int level, uint32_t tick)
 {
 
         if (level != 0) {
-           printf("KEYUP!\n");
            endPush = std::chrono::system_clock::now();
            int lapPush=std::chrono::duration_cast<std::chrono::milliseconds>(endPush - startPush).count();
-           std::cout << "Button Pushed " << lapPush << "ms.\n";
            if (getWord(USW,BMULTI)==true) {
               printf("Last push pending processsing, ignore!\n");
               return;
@@ -383,7 +368,6 @@ void updateSW(int gpio, int level, uint32_t tick)
         }
         startPush = std::chrono::system_clock::now();
         int pushSW=gpioRead(ENCODER_SW);
-        printf("Switch KeyDown\n");
         lcd.backlight(true);
         TBCK=backlight;;
 }
@@ -392,11 +376,11 @@ void updateSW(int gpio, int level, uint32_t tick)
 //*--------------------------------------------------------------------------------------------------
 void updateEncoders(int gpio, int level, uint32_t tick)
 {
-        if (level != 0) {
+        if (level != 0) {  //ignore non falling part of the interruption
            return;
         }
 
-       if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) {
+       if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) { //exit if pending to service a previous one
           return;
        } 
 
@@ -426,7 +410,6 @@ void updateEncoders(int gpio, int level, uint32_t tick)
         clkLastState=clkState;        
         startEncoder = std::chrono::system_clock::now();
 
-    
 }
 
 //*---------------------------------------------------------------------------------------------
@@ -434,7 +417,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 //*---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    printf("Received SIG Interrupt %d",num);
+    //printf("Received SIG Interrupt %d",num);
     running=false;
    
 }
@@ -442,7 +425,8 @@ static void terminate(int num)
 void sigalarm_handler(int sig)
 {
 
-   if (wtd.mItem == 0) {
+
+   if (wtd.mItem == 0) { // Exit if watchdog not enabled
       lcd.setCursor(15,1);
       lcd.print("-");
       return;
@@ -458,7 +442,8 @@ void sigalarm_handler(int sig)
     case 3:                          {lcd.write(7);break;}                            
     default:                         {lcd.print("|");break;}                            
   }
-  lcd.setCursor(14,1);
+
+  lcd.setCursor(14,1);  //Process check of wlan0 interface to verify Wifi availability
 
   if (wlan0 == true) {
      lcd.print("*");
@@ -468,10 +453,9 @@ void sigalarm_handler(int sig)
   alarm(1);
 
 }
-//--------------------------------------
-//----- Execute a shell commandATE -----
-//--------------------------------------
-
+//*-----------------------------------------------------------------------------
+//* Execute a shell command
+//*-----------------------------------------------------------------------------
 string do_console_command_get_result (char* command)
 {
 	FILE* pipe = popen(command, "r");
@@ -488,9 +472,9 @@ string do_console_command_get_result (char* command)
 	pclose(pipe);
 	return(result);
 }
-//--------------------------------------
-//----- CHECK THE CONNECTION STATE -----
-//--------------------------------------
+//*---------------------------------------------------------------------
+//* Check Wifi connection status
+//*---------------------------------------------------------------------
 void checkLAN() {
 
         if (wtd.mItem == 0) {
@@ -677,7 +661,7 @@ int main(int argc, char* argv[])
     setWord(&JSW,JDOWN,false);
 
 
-//*--- Setup LCD menues for MENU mode (CLI=true)
+//*--- Setup LCD menues for MENU mode (to be shown when CMD=true), a MenuClass object needs to be created first for each
 
     menuRoot.add((char*)"Mode",&mod);
     menuRoot.add((char*)"VFO",&vfo);
@@ -688,7 +672,6 @@ int main(int argc, char* argv[])
     menuRoot.add((char*)"WatchDog",&wtd);
     menuRoot.add((char*)"BackLight",&bck);
     menuRoot.add((char*)"Lock",&lck);
-
 
 //*--- Setup child LCD menues
 
@@ -756,7 +739,7 @@ int main(int argc, char* argv[])
     lcd.createChar(4,S);
     lcd.createChar(5,B1);
     lcd.createChar(6,B2);
-    //lcd.createChar(7,B3);
+    //*---- lcd.createChar(7,B3);
     lcd.createChar(7,B4);
     lcd.backlight(true);
 
@@ -833,10 +816,11 @@ int main(int argc, char* argv[])
 //*--- DDS is running at the SetFrequency value (initial)
 
     alarm(1);  // set an alarm for 1 seconds from now to clear all values
-
     showPanel();
     showFreq();
+
 //*--- Firmware initialization completed
+
 //*--- Execute an endless loop while runnint is true
                 
     while(running)
