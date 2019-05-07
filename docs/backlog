@@ -20,4 +20,10 @@ X [Bug] Correct true sense of CCW and CW (Encoder)
 * [Feature] PWM Sidetone
 * [Feature] GUI navigation
 * [Feature] Watchdog
-* [Feature] Integrate with HW Pixie
+* [Feature] Beacon mode
+* [Feature] Integrate with Pixie board (HW)
+* [Feature] USB mode
+* [Feature] FSK (RTTY) mode
+* [Feature] PSK (PSK31) mode
+* [Feature] WSPR mode
+* [Feature] FT8 mode
