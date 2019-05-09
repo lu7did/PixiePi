@@ -17,13 +17,14 @@ X [Bug] Debounce push and encoder
 X [Bug] Wrong alignment in CMD vs. GUI modes (see VFO)
 X [Bug] Correct true sense of CCW and CW (Encoder)
 
++ [Feature] GUI navigation
+
 * [Feature] Optional clock (ntp controlled)
 * [Feature] Implement modes CWU CWL USB LSB?
 * [Feature] Implement split VFOA/VFOB
 * [Feature] PTT logic (shift on transmit)
 * [Feature] Keyer logic
 * [Feature] PWM Sidetone
-* [Feature] GUI navigation
 * [Feature] Watchdog
 * [Feature] Beacon mode
 * [Feature] Integrate with Pixie board (HW)
