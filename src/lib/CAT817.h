@@ -47,15 +47,15 @@ typedef void (*CALLBACK)();
 #define SPLIT 0B00000010
 #define VFO   0B00000001
 
-#define LSB   0x00
-#define USB   0x01
-#define CW    0x02
-#define CWR   0x03
-#define AM    0x04
-#define WFM   0x06
-#define FM    0x08
-#define DIG   0x0A
-#define PKT   0x0C
+#define MLSB   0x00
+#define MUSB   0x01
+#define MCW    0x02
+#define MCWR   0x03
+#define MAM    0x04
+#define MWFM   0x06
+#define MFM    0x08
+#define MDIG   0x0A
+#define MPKT   0x0C
 
 //*---------------------------------------------------------------------------------------------------
 //* VFOSystem CLASS
@@ -87,7 +87,7 @@ class CAT817
       int  RITOFS=0x00;
       byte MODEWORD=0xff;
       byte FT817;
-      byte MODE=USB;
+      byte MODE=MUSB;
       byte TRACE=0x00;
       byte RX=0x00;
       byte TX=0x00;
@@ -121,7 +121,7 @@ CAT817::CAT817(CALLBACK f,CALLBACK s,CALLBACK m, CALLBACK r, CALLBACK t)
   if (t!=NULL) {getTX=t;}        //* Callback for TX Status
  
   FT817=0;
-  MODE=USB;
+  MODE=MUSB;
 }
 //#*---------------------------------------------------------------------------
 //#* bcdToDec
@@ -295,7 +295,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        return;}
       case 0x07: {      //* Transceiver mode change
        byte mode=rxBuffer[0] & MODEWORD;       //* Prevent invalid values to be set
-       if (mode != LSB && mode != USB && mode != CW && mode != CWR && mode != AM && mode != WFM && mode != FM && mode != DIG && mode != PKT) {
+       if (mode != MLSB && mode != MUSB && mode != MCW && mode != MCWR && mode != MAM && mode != MWFM && mode != MFM && mode != MDIG && mode != MPKT) {
           hex2str(&buffer[0],&rxBuffer[0],1);
           sprintf(msg,"Command 0x07 Invalid mode (%s)",buffer);
           return;
@@ -401,7 +401,25 @@ void CAT817::processCAT(byte* rxBuffer) {
           getRX();
        }
 
-       BCDBuf[0]=RX;
+//*----- S-Meter signal coded for command 0xE7
+//*----- xxxx0000 S0
+//*----- xxxx0001 S1
+//*----- xxxx0010 S2
+//*----- xxxx0011 S3
+//*----- xxxx0100 S4
+//*----- xxxx0101 S5
+//*----- xxxx0110 S6
+//*----- xxxx0111 S7
+//*----- xxxx1000 S8
+//*----- xxxx1001 S9
+//*----- xxxx1010 S9+10dB
+//*----- xxxx1011 S9+20dB
+//*----- xxxx1100 S9+30dB
+//*----- xxxx1101 S9+40dB
+//*----- xxxx1110 S9+50dB
+//*----- xxxx1111 S9+60dB
+
+       BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
        sendSerial(&BCDBuf[0],1);
        return;}
       case 0xF7:  {     //* Transmitter status
@@ -418,6 +436,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        BCDBuf[0]=TX;
        sendSerial(&BCDBuf[0],1);
        return;}
+
       case 0xBD:  {   //* TX Metering
        if (getWord(FT817,PTT)==false) {
           BCDBuf[0]=0x00;
@@ -428,6 +447,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        BCDBuf[1]=0x99;
        sendSerial(&BCDBuf[0],1);
        return; }
+
       default:    {
        hex2str(&buffer[0],&rxBuffer[4],1);
        sprintf(msg,"Invalid or unknown code %s",&buffer[0]);

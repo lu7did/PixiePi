@@ -70,6 +70,8 @@
 #include "../lib/ClassMenu.h"
 #include "../lib/VFOSystem.h"
 #include "../lib/LCDLib.h"
+#include "../lib/CAT817.h"
+#include "../lib/DDS.h"
 
 //*--- Encoder pin definition
 
@@ -119,7 +121,7 @@
 #define BCCW      0B00001000
 #define SQ        0B00010000
 #define MIC       0B00100000
-#define KDOWN     0B01000000 
+#define KDOWN     0B01000000
 #define BUSY      0B10000000       //Used for Squelch Open in picoFM and for connected to DDS on sinpleA
 #define CONX      0B10000000
 
@@ -133,6 +135,7 @@
 
 //#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
 //#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
+void changeFreq();
 
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
@@ -151,7 +154,11 @@ extern const char * const sys_siglist[];
 //*--- VFO object
 VFOSystem vx(showFreq,NULL,NULL,NULL);
 
+//*--- DDS object
+DDS dds(changeFreq);
+
 //*--- Strutctures to hold menu definitions
+
 MenuClass menuRoot(NULL);
 
 MenuClass mod(ModeUpdate);
@@ -258,6 +265,10 @@ bool wlan0 = false;
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+void changeFreq() {
+
+
+}
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getSSW Return status according with the setting of the argument bit onto the SW
 //*--------------------------------------------------------------------------------------------------
@@ -436,11 +447,11 @@ void sigalarm_handler(int sig)
    keepalive=keepalive & 0x03;
    lcd.setCursor(15,1);
    switch(keepalive) {
-    case 0:                          {lcd.print("|");break;}                            
-    case 1:                          {lcd.print("/");break;}                            
-    case 2:                          {lcd.print("-");break;}                            
-    case 3:                          {lcd.write(7);break;}                            
-    default:                         {lcd.print("|");break;}                            
+    case 0:                          {lcd.print("|");break;}
+    case 1:                          {lcd.print("/");break;}
+    case 2:                          {lcd.print("-");break;}
+    case 3:                          {lcd.write(7);break;}
+    default:                         {lcd.print("|");break;}
   }
 
   lcd.setCursor(14,1);  //Process check of wlan0 interface to verify Wifi availability
@@ -590,7 +601,7 @@ int main(int argc, char* argv[])
        while(1)
         {
                 a = getopt(argc, argv, "f:ehp:");
-        
+
                 if(a == -1) 
                 {
                         if(anyargs) {
@@ -653,7 +664,6 @@ int main(int argc, char* argv[])
     setWord(&USW,SQ,false);
     setWord(&USW,MIC,false);
     setWord(&USW,KDOWN,false);
-
   
     setWord(&JSW,JLEFT,false);
     setWord(&JSW,JRIGHT,false);
@@ -798,20 +808,23 @@ int main(int argc, char* argv[])
     }
 
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
-    generalgpio gengpio;
-    gengpio.setpulloff(4);
-    padgpio     pad;
-    pad.setlevel(7);
-    clkgpio     *clk=new clkgpio;
-    clk->SetAdvancedPllMode(true);
+    dds.ppm=ppm;
+    dds.open(SetFrequency);
 
-    if(ppm!=1000) {   //ppm is set else use ntp
-      clk->Setppm(ppm);
-    }
+//    generalgpio gengpio;
+//    gengpio.setpulloff(4);
+//    padgpio     pad;
+//    pad.setlevel(7);
+//    clkgpio     *clk=new clkgpio;
+//    clk->SetAdvancedPllMode(true);
 
-    clk->SetCenterFrequency(SetFrequency,10);
-    clk->SetFrequency(000);
-    clk->enableclk(4);
+//    if(ppm!=1000) {   //ppm is set else use ntp
+//      clk->Setppm(ppm);
+//    }
+
+//    clk->SetCenterFrequency(SetFrequency,10);
+//    clk->SetFrequency(000);
+//    clk->enableclk(4);
 
 //*--- DDS is running at the SetFrequency value (initial)
 
@@ -822,7 +835,7 @@ int main(int argc, char* argv[])
 //*--- Firmware initialization completed
 
 //*--- Execute an endless loop while runnint is true
-                
+
     while(running)
       {
          usleep(1000000);
@@ -845,9 +858,11 @@ int main(int argc, char* argv[])
 //*--- A frequency change has been detected, alter the PLL with it
 
                SetFrequency = vx.get(vx.vfoAB) * 1.0;
-               clk->SetCenterFrequency(SetFrequency,10);
-               clk->SetFrequency(000);
-               clk->enableclk(4);
+               dds.set(SetFrequency);
+
+               //clk->SetCenterFrequency(SetFrequency,10);
+               //clk->SetFrequency(000);
+               //clk->enableclk(4);
             }
 
          } else {
@@ -868,11 +883,13 @@ int main(int argc, char* argv[])
     lcd.backlight(false);
     lcd.clear();
 
-    clk->disableclk(4);
-    clk->disableclk(20);
-    delete(clk);
+    dds.close();
 
-    usleep(100000);
+    //clk->disableclk(4);
+    //clk->disableclk(20);
+    //delete(clk);
+    //usleep(100000);
+
     printf("\nProgram terminated....\n");
     exit(0);
 }
