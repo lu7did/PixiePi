@@ -20,14 +20,20 @@ acting as a DDS, which is thus the technical core of the project. A carrier gene
 available at the package also by Evariste Courjaud F5OEO. Some modifications has been introduced to allow the carrier frequency to be varied during the 
 operation.
 
-The rest of the code dealsmostly with the user interface and operating features, among others:
+The rest of the code deals mostly with the user interface and operating features, among others:
 
 * Receive over an entire ham radio band.
+
 * Dual VFO setup, split mode.
+
 * Frequency can be shift during transmission.
+
 * Sidetone generation.
+
 * Transmission controlled by processor.
+
 * Display LCD & Rotary Encoder.
+
 * Built-in iambic keyer.
 
 # Schematics
@@ -37,6 +43,7 @@ The rest of the code dealsmostly with the user interface and operating features,
 # Requirements
 
    sudo apt-get install i2c-tools libi2c-dev
+   sudo apt-get install socat
 
    git clone git://git.drogon.net/wiringPi
 
@@ -57,6 +64,7 @@ The rest of the code dealsmostly with the user interface and operating features,
 # Release notes:
 
   * This project requires a board combining:
+
      - Raspberry Pi
      - Rotary encoder
      - LCD 16x2 display
