@@ -11,10 +11,10 @@ CCP = c++
 CC = cc
 
 
-../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a pixie/LCDLib.h pixie/VFOSystem.h pixie/ClassMenu.h pixie/pixie.h pixie/gui.h
+../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/VFOSystem.h lib/ClassMenu.h pixie/pixie.h lib/gui.h
 	$(CCP) $(CXXFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
 
-../DDSPi : DDSPi/DDSPi.cpp /home/pi/librpitx/src/librpitx.a DDSPi/DDSPi.h DDSPi/CAT817.h DDSPi/DDS.h
+../DDSPi : DDSPi/DDSPi.cpp /home/pi/librpitx/src/librpitx.a DDSPi/DDSPi.h lib/CAT817.h lib/DDS.h
 	$(CCP) $(CXXFLAGS) -o ../DDSPi ./DDSPi/DDSPi.cpp  $(LIBRPITX)
 
     

@@ -67,9 +67,9 @@
 //*---- Program specific includes
 
 #include "pixie.h"
-#include "ClassMenu.h"
-#include "VFOSystem.h"
-#include "LCDLib.h"
+#include "../lib/ClassMenu.h"
+#include "../lib/VFOSystem.h"
+#include "../lib/LCDLib.h"
 
 //*--- Encoder pin definition
 
@@ -572,7 +572,7 @@ void processVFO() {
    }
  
 }
-#include "gui.h"
+#include "../lib/gui.h"
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------

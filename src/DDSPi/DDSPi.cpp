@@ -65,8 +65,8 @@
 //*---- Program specific includes
 
 #include "DDSPi.h"
-#include "CAT817.h"
-#include "DDS.h"
+#include "../lib/CAT817.h"
+#include "../lib/DDS.h"
 
 //*---  VFO initial setup
 typedef unsigned char byte;
