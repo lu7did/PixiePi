@@ -63,6 +63,9 @@
 #include <chrono>
 #include <thread>
 #include <functional>
+#include <wiringSerial.h>
+#include <sstream>
+#include <iomanip>
 
 //*---- Program specific includes
 
@@ -136,7 +139,11 @@
 //#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
 //#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
 void changeFreq();
-
+void CATchangeMode();
+void CATchangeFreq();
+void CATchangeStatus();
+void CATgetRX();
+void CATgetTX();
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
 //*----------------------------------------------------------------------------
@@ -157,6 +164,8 @@ VFOSystem vx(showFreq,NULL,NULL,NULL);
 //*--- DDS object
 DDS dds(changeFreq);
 
+//*--- CAT object
+CAT817 cat(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
 //*--- Strutctures to hold menu definitions
 
 MenuClass menuRoot(NULL);
@@ -246,6 +255,7 @@ struct sigaction sa;
 bool running=true;
 byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
+char port[80];
 
 //*--- System Status Word initial definitions
 
@@ -269,6 +279,18 @@ void changeFreq() {
 
 
 }
+
+void CATchangeFreq() {
+}
+void CATchangeMode() {
+}
+void CATchangeStatus() {
+}
+void CATgetRX() {
+}
+void CATgetTX() {
+}
+
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getSSW Return status according with the setting of the argument bit onto the SW
 //*--------------------------------------------------------------------------------------------------
@@ -596,11 +618,13 @@ int main(int argc, char* argv[])
     printf(hi);
     dbg_setlevel(1);
 
+    sprintf(port,"/tmp/ttyv1");
+
 //*--- Process arguments (mostly an excerpt from tune.cpp
 
        while(1)
         {
-                a = getopt(argc, argv, "f:ehp:");
+                a = getopt(argc, argv, "f:es:hp:");
 
                 if(a == -1) 
                 {
@@ -624,6 +648,10 @@ int main(int argc, char* argv[])
                         print_usage();
                         exit(1);
                         break;
+                case 's': //serial port
+                        sprintf(port,optarg);
+                        fprintf(stderr, "serial port:%s\n", optarg);
+                        break;
                 case -1:
                 break;
                 case '?':
@@ -638,7 +666,7 @@ int main(int argc, char* argv[])
                         print_usage();
 
                         exit(1);
-                        break;                  
+                        break;
                 default:
                         print_usage();
                         exit(1);
@@ -800,12 +828,16 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < 64; i++) {
 
-        if (i != SIGALRM && i != 17 ) {
+        if (i != SIGALRM && i != 17 && i != 28) {
            std::memset(&sa, 0, sizeof(sa));
            sa.sa_handler = terminate;
            sigaction(i, &sa, NULL);
         }
     }
+
+//*--- Initialize CAT
+    cat.open(port,4800);
+    cat.SetFrequency=SetFrequency;
 
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
     dds.ppm=ppm;
@@ -838,10 +870,10 @@ int main(int argc, char* argv[])
 
     while(running)
       {
-         usleep(1000000);
-
+         usleep(10000);
+         cat.get();
  	 if (getWord(USW,CONX) == true) {
-            checkLAN();
+            //checkLAN();
             setWord(&USW,CONX,false);
 	    TWIFI=30;
          } 

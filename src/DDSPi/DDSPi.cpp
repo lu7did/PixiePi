@@ -192,6 +192,7 @@ fprintf(stderr,"\nDDSPi -%s\n\
 Usage:\ntune  [-f Frequency] [-h] \n\
 -f floatfrequency carrier Hz(50 kHz to 1500 MHz),\n\
 -p set clock ppm instead of ntp adjust\n\
+-d set DEBUG mode\n\
 -s set serial CAT port\n\
 -h            help (this help).\n\
 \n",\
@@ -251,7 +252,7 @@ int main(int argc, char* argv[])
 
     while(1)
         {
-                a = getopt(argc, argv, "f:ehs:p:");
+                a = getopt(argc, argv, "f:edhs:p:");
         
                 if(a == -1) 
                 {
@@ -274,6 +275,10 @@ int main(int argc, char* argv[])
                 case 'h': // help
                         print_usage();
                         exit(1);
+                        break;
+                case 'd': //
+                        cat.TRACE=0x01;
+			fprintf(stderr,"DEBUG mode enabled\n");
                         break;
                 case 's': //serial port
                         sprintf(port,optarg);
@@ -319,7 +324,7 @@ int main(int argc, char* argv[])
 
     for (int i = 0; i < 64; i++) {
 
-        if (i != SIGALRM && i != 17 ) {
+        if (i != SIGALRM && i != 17 && i != 28 ) {
            std::memset(&sa, 0, sizeof(sa));
            sa.sa_handler = terminate;
            sigaction(i, &sa, NULL);
@@ -343,7 +348,7 @@ int main(int argc, char* argv[])
        cat.get();
        usleep(10000);
       }
-
+    dds.close();
     usleep(100000);
     printf("\nProgram terminated....\n");
     exit(0);

@@ -49,6 +49,7 @@ The rest of the code deals mostly with the user interface and operating features
 
    git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
 
+   Enable I2C and SPI with sudo raspi-config
 
 # Build
 

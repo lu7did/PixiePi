@@ -83,6 +83,7 @@ class CAT817
       void open(char* port, int speed);
       void sendStatus();
       void sendMode();
+      void printDEBUG(byte t,char* m);
 
       int  RITOFS=0x00;
       byte MODEWORD=0xff;
@@ -122,6 +123,19 @@ CAT817::CAT817(CALLBACK f,CALLBACK s,CALLBACK m, CALLBACK r, CALLBACK t)
  
   FT817=0;
   MODE=MUSB;
+}
+//#*---------------------------------------------------------------------------
+//#* printDEBUG
+//#* Print DEBUG
+//#*---------------------------------------------------------------------------
+void CAT817::printDEBUG(byte t,char* m) {
+
+  if (t>TRACE) {
+     return;
+  }
+
+  printf(m);
+
 }
 //#*---------------------------------------------------------------------------
 //#* bcdToDec
@@ -238,13 +252,15 @@ void CAT817::processCAT(byte* rxBuffer) {
       case 0x01:  {       //* Set Frequency
        int f=BCD2Dec(&rxBuffer[0]);
        SetFrequency=f;
-
+       BCDBuf[4]=0x01;
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0x01 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        if (changeFreq != NULL) {
           changeFreq();
        }
-       BCDBuf[4]=0x01;
-       hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x01 Resp(%s)",buffer);
+       BCDBuf[0]=0x00;
+       sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
       case 0x03:  {        //* Get Frequency and Mode
@@ -252,7 +268,8 @@ void CAT817::processCAT(byte* rxBuffer) {
        dec2BCD(&BCDBuf[0],f);
        BCDBuf[4]=MODE;
        hex2str(&buffer[0],&BCDBuf[0],5);
-       sprintf(msg,"Command 0x03 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x03 Resp(%s)\n",buffer);
+       printDEBUG(0x02,msg);
        sendSerial(&BCDBuf[0],5);
        return;}
       case 0x00: {   //* LOCK status flip
@@ -263,7 +280,8 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,LOCK,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x00 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x00 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -276,7 +294,7 @@ void CAT817::processCAT(byte* rxBuffer) {
          BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x02 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x02 Resp(%s)\n",buffer);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -289,7 +307,9 @@ void CAT817::processCAT(byte* rxBuffer) {
          BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x05 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x05 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -297,10 +317,15 @@ void CAT817::processCAT(byte* rxBuffer) {
        byte mode=rxBuffer[0] & MODEWORD;       //* Prevent invalid values to be set
        if (mode != MLSB && mode != MUSB && mode != MCW && mode != MCWR && mode != MAM && mode != MWFM && mode != MFM && mode != MDIG && mode != MPKT) {
           hex2str(&buffer[0],&rxBuffer[0],1);
-          sprintf(msg,"Command 0x07 Invalid mode (%s)",buffer);
+          sprintf(msg,"Command 0x07 Invalid mode (%s)\n",buffer);
           return;
        }
        MODE=mode;
+       BCDBuf[0]=0x00;
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0x07 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+       sendSerial(&BCDBuf[0],1);
        sendMode();
        return;}
       case 0x08: {     //* Undocummented feature returns 0x00 if transceiver unkeyed 0xF0 if keyed
@@ -310,7 +335,9 @@ void CAT817::processCAT(byte* rxBuffer) {
          BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x08 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x08 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -322,7 +349,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,LOCK,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x80 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x80 Resp(%s)\n",buffer);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -333,6 +360,11 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
           setWord(&FT817,VFO,false);
        }
+       BCDBuf[0]=0x00;
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0x81 Resp(%s)\n",buffer);
+       printDEBUG(0x02,msg);
+       sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
       case 0x82: {      //* Turn the SPLIT off
@@ -343,7 +375,8 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,SPLIT,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x81 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x82 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -355,7 +388,8 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,RIT,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x05 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x05 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -367,18 +401,40 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,PTT,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       sprintf(msg,"Command 0x08 Resp(%s)",buffer);
+       sprintf(msg,"Command 0x08 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
       case 0xBB:  {     //* falta controlar que sea solo dirección 0x55
-       BCDBuf[0]=0x80;
-       if (getWord(FT817,VFO)==true) {
-          BCDBuf[0]=BCDBuf[0] | 0x01;
+       if (rxBuffer[1]==0x55) {
+          BCDBuf[0]=0x80;
+          BCDBuf[1]=0x00;
+          if (getWord(FT817,VFO)==true) {
+             BCDBuf[0]=BCDBuf[0] | 0x01;
+          }
+          hex2str(&buffer[0],&BCDBuf[0],2);
+          sprintf(msg,"Command 0xBB 0x55 Resp(%s)\n",buffer);
+          printDEBUG(0x02,msg);
+          sendSerial(&BCDBuf[0],2);
+          return;
+       } 
+       if (rxBuffer[1]==0x64) {
+          BCDBuf[0]=0x00;
+          BCDBuf[1]=0x00;
+          hex2str(&buffer[0],&BCDBuf[0],2);
+          sprintf(msg,"Command 0xBB 0x64 Resp(%s)\n",buffer);
+          printDEBUG(0x02,msg);
+          sendSerial(&BCDBuf[0],2);
+          return;
+       } 
+       hex2str(&buffer[0],&rxBuffer[1],1);
+       sprintf(msg,"Command 0xBB undefined or unsupported command(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+       return;
        }
-       BCDBuf[1]=0x00;
-       sendSerial(&BCDBuf[0],2);
-       return;}
+      
       case 0xF5: {      //* Set Clarifier Frequency (not implemented yet)
        byte offsetBuf[5];
        offsetBuf[2]=rxBuffer[2];
@@ -393,6 +449,11 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
           RITOFS=(-1)*f;
        }
+       sprintf(msg,"Command 0xF5 Resp(%d)\n",RITOFS);
+
+       printDEBUG(0x01,msg);
+       BCDBuf[0]=0x00;
+       sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }  
       case 0xE7:  {     //* Receiver Status
@@ -420,6 +481,9 @@ void CAT817::processCAT(byte* rxBuffer) {
 //*----- xxxx1111 S9+60dB
 
        BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0xE7 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        return;}
       case 0xF7:  {     //* Transmitter status
@@ -434,6 +498,9 @@ void CAT817::processCAT(byte* rxBuffer) {
          getTX();
        }
        BCDBuf[0]=TX;
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0xF7 Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        return;}
 
@@ -445,6 +512,10 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        BCDBuf[0]=0x99;
        BCDBuf[1]=0x99;
+       hex2str(&buffer[0],&BCDBuf[0],1);
+       sprintf(msg,"Command 0xBD Resp(%s)\n",buffer);
+       printDEBUG(0x01,msg);
+
        sendSerial(&BCDBuf[0],1);
        return; }
 
@@ -485,10 +556,10 @@ void CAT817::get() {
        n++;
        if (n==5) {
           char buffer[18];
-          if (rxBuffer[4] != 0xBD && rxBuffer[4] != 0xF7 && rxBuffer[4] != 0xBB && rxBuffer[4] != 0xE7 && rxBuffer[4] != 0x03) {
+          //if (rxBuffer[4] != 0xBD && rxBuffer[4] != 0xF7 && rxBuffer[4] != 0xBB && rxBuffer[4] != 0xE7 && rxBuffer[4] != 0x03) {
               hex2str(&buffer[0],&rxBuffer[0],n);
               printf ("Received Serial hex2str (%s)\n",buffer);
-          }
+          //}
           processCAT(&rxBuffer[0]);
           fflush (stdout) ;
           n=0;
