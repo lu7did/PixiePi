@@ -1,4 +1,4 @@
-all: ../pixie ../DDSPi 
+all: ../pixie ../DDSPi ../OT817 
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
@@ -17,11 +17,16 @@ CC = cc
 ../DDSPi : DDSPi/DDSPi.cpp /home/pi/librpitx/src/librpitx.a DDSPi/DDSPi.h lib/CAT817.h lib/DDS.h
 	$(CCP) $(CXXFLAGS) -o ../DDSPi ./DDSPi/DDSPi.cpp  $(LIBRPITX)
 
+../OT817 : OT817/OT817.cpp /home/pi/librpitx/src/librpitx.a OT817/OT817.h lib/CAT817.h lib/DDS.h
+	$(CCP) $(CXXFLAGS) -o ../OT817 ./OT817/OT817.cpp  $(LIBRPITX)
+
     
 clean:
 	rm -r  ../pixie
 	rm -r  ../DDSPi
+	rm -r  ../OT817
 
 install: all
 	install -m 0755 ../pixie /usr/bin
 	install -m 0755 ../DDSPi /usr/bin
+	install -m 0755 ../OT817 /usr/bin

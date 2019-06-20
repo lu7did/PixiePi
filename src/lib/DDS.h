@@ -35,6 +35,9 @@
 #include <sstream>
 #include <iomanip>
 
+#define GPIO04   4
+#define GPIO20  20 
+#define MAXLEVEL 7
 
 typedef unsigned char byte;
 typedef bool boolean;
@@ -61,8 +64,9 @@ class DDS
       clkgpio     *clk=new clkgpio;
       generalgpio gengpio;
       padgpio     pad;
+      byte        gpio=GPIO04;
       float       ppm=1000.0;
-
+      byte        power=MAXLEVEL;
 
   private:
 
@@ -82,9 +86,11 @@ DDS::DDS(CALLBACK c)
 
   if (c!=NULL) {changeFreq=c;}   //* Callback of change VFO frequency
 
-  gengpio.setpulloff(4);
-  pad.setlevel(7);
+//  gengpio.setpulloff(4);
+  gpio=GPIO04;
 
+  gengpio.setpulloff(gpio);
+  pad.setlevel(power);
   clk->SetAdvancedPllMode(true);
 
 
@@ -108,10 +114,12 @@ void DDS::set(float f) {
    if (changeFreq!=NULL) {
       changeFreq();
    }
+   gengpio.setpulloff(gpio);
+   pad.setlevel(power);
 
    clk->SetCenterFrequency(SetFrequency,10);
    clk->SetFrequency(000);
-   clk->enableclk(4);
+   clk->enableclk(gpio);
 
 }
 //*------------------------------------------------------------------------
@@ -132,8 +140,7 @@ void DDS::open(float f) {
 //*-----------------------------------------------------------------------
 void DDS::close() {
 
-    clk->disableclk(4);
-    clk->disableclk(20);
+    clk->disableclk(gpio);
     delete(clk);
 
     usleep(100000);

@@ -92,6 +92,9 @@
 
 #define VFO_DELAY               1
 #define BACKLIGHT_DELAY        60
+
+#define GPIO04 			4
+#define GPIO20	   	       20
 //*----------------------------------------------------------------------------------
 //*  System Status Word
 //*----------------------------------------------------------------------------------
@@ -256,7 +259,7 @@ bool running=true;
 byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
 char port[80];
-
+byte gpio=GPIO04;
 //*--- System Status Word initial definitions
 
 byte MSW  = 0;
@@ -320,6 +323,7 @@ void print_usage(void)
 fprintf(stderr,"\ntune -%s\n\
 Usage:\ntune  [-f Frequency] [-h] \n\
 -f floatfrequency carrier Hz(50 kHz to 1500 MHz),\n\
+-g GPIO port to use (4 or 20)\n\
 -p set clock ppm instead of ntp adjust\n\
 -h            help (this help).\n\
 \n",\
@@ -624,7 +628,7 @@ int main(int argc, char* argv[])
 
        while(1)
         {
-                a = getopt(argc, argv, "f:es:hp:");
+                a = getopt(argc, argv, "f:es:hg:p:");
 
                 if(a == -1) 
                 {
@@ -641,6 +645,13 @@ int main(int argc, char* argv[])
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
                         break;
+		case 'g': // GPIO
+		        gpio=atoi(optarg);
+			if (gpio!=GPIO04 && gpio!=GPIO20) {
+		  	   fprintf(stderr,"Invalid GPIO pin used (%s), default to GPIO04\n",optarg);
+			   gpio=GPIO04;
+			}
+			break;
                 case 'p': //ppm
                         ppm=atof(optarg);
                         break;  
@@ -841,6 +852,7 @@ int main(int argc, char* argv[])
 
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
     dds.ppm=ppm;
+    dds.gpio=gpio;
     dds.open(SetFrequency);
 
 //    generalgpio gengpio;
@@ -914,13 +926,7 @@ int main(int argc, char* argv[])
 
     lcd.backlight(false);
     lcd.clear();
-
     dds.close();
-
-    //clk->disableclk(4);
-    //clk->disableclk(20);
-    //delete(clk);
-    //usleep(100000);
 
     printf("\nProgram terminated....\n");
     exit(0);

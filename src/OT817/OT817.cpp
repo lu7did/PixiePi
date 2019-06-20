@@ -1,6 +1,6 @@
 /**
- * DDSPi.cpp 
- * Raspberry Pi based DDS
+ * OT817.cpp 
+ * Raspberry Pi based Transceiver
  *
  * This program turns the Raspberry pi into a DDS software able
  * to operate as the LO for a double conversion rig or as a direct RF generator
@@ -64,7 +64,7 @@
 #include <iomanip>
 //*---- Program specific includes
 
-#include "DDSPi.h"
+#include "OT817.h"
 #include "../lib/CAT817.h"
 #include "../lib/DDS.h"
 
@@ -76,8 +76,7 @@ typedef bool boolean;
 #define VFO_END           7299000
 #define VFO_BAND_START          3
 #define ONESEC               1000
-#define GPIO04                  4
-#define GPIO20                 20
+
 
 #define VFO_DELAY               1
 
@@ -85,7 +84,7 @@ typedef bool boolean;
 //*  Program parameter definitions
 //*----------------------------------------------------------------------------
 
-const char   *PROGRAMID="DDSPi";
+const char   *PROGRAMID="OT817";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019";
@@ -190,12 +189,12 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 void print_usage(void)
 {
 
-fprintf(stderr,"\nDDSPi -%s\n\
+fprintf(stderr,"\nOT817 -%s\n\
 Usage:\ntune  [-f Frequency] [-h] \n\
 -f floatfrequency carrier Hz(50 kHz to 1500 MHz),\n\
 -p set clock ppm instead of ntp adjust\n\
--d set DEBUG mode\n\
 -g set GPIO port (4 or 20)\n\
+-d set DEBUG mode\n\
 -s set serial CAT port\n\
 -h            help (this help).\n\
 \n",\
@@ -255,7 +254,7 @@ int main(int argc, char* argv[])
 
     while(1)
         {
-                a = getopt(argc, argv, "f:edhs:g:p:");
+                a = getopt(argc, argv, "f:edhs:p:");
         
                 if(a == -1) 
                 {
@@ -272,20 +271,17 @@ int main(int argc, char* argv[])
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
                         break;
-                case 'g': // Frequency
-              
-                        gpio = atoi(optarg);
-    			if (gpio != GPIO04 && gpio != GPIO20) {
-      			   sprintf(port,optarg);
-			   fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
-			   break;
-			}
-                        sprintf(port,optarg);
-                        fprintf(stderr, "GPIO port set to:%s\n", optarg);
-                        break;
                 case 'p': //ppm
                         ppm=atof(optarg);
                         break;  
+		case 'g': //GPIO
+			gpio=atoi(optarg);
+			fprintf(stderr,"GPIO(%s) selected\n",optarg);
+			if (gpio!=GPIO04 && gpio!=GPIO20) {
+			   fprintf(stderr,"GPIO (%s) port invalid, must be 4 or 20\n",optarg);
+			   gpio=GPIO04;
+			}
+			break;
                 case 'h': // help
                         print_usage();
                         exit(1);
@@ -347,8 +343,8 @@ int main(int argc, char* argv[])
 
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
-    dds.gpio=gpio;
     dds.ppm=ppm;
+    dds.gpio=gpio;
     dds.open(SetFrequency);
 
 //*--- Establish parameters for CAT connection
