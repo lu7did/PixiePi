@@ -59,6 +59,7 @@ class DDS
       void set(float f);
       void open(float f);
       void close();
+      void setppm(float ppm);
 
       float       SetFrequency;
       clkgpio     *clk=new clkgpio;
@@ -123,15 +124,20 @@ void DDS::set(float f) {
 
 }
 //*------------------------------------------------------------------------
+//* setppm
+//*------------------------------------------------------------------------
+void DDS::setppm(float ppm) {
+  if(ppm!=1000) {   //ppm is set else use ntp
+    clk->Setppm(ppm);
+  }
+}
+//*------------------------------------------------------------------------
 //* open
 //* start the dds
 //*------------------------------------------------------------------------
 void DDS::open(float f) {
 
-  if(ppm!=1000) {   //ppm is set else use ntp
-    clk->Setppm(ppm);
-  }
-
+  setppm(ppm);
   set(f);
 }
 //*-----------------------------------------------------------------------
