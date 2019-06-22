@@ -1,7 +1,4 @@
-/* Functions for wspr encoding
-
-
-F8CHK   29/03/2011  */
+/* Functions for wspr encoding */
 
 #ifndef __WSPR_H
 #define __WSPR_H
@@ -13,14 +10,5 @@ void Interleave( unsigned char[], unsigned char[]);  // interleave the 162 parit
 void Synchronise(unsigned char[], unsigned char[]);  // synchronize with a pseudo random pattern
 
 void code_wspr(char* wspr_message, unsigned char* wspr_symbol);		// encode the wspr message
-//void go_wspr(void);			// start WSPR beacon mode
-//void go_wspr_tx(void);		// set cube in wspr tx mode
-
-
-//typedef struct tuning_data {
-//  double requested;
-//  unsigned long tuning_word;
-//  double actual;
-//} tuning_data;
 
 #endif

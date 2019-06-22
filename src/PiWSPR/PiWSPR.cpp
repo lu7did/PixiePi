@@ -62,7 +62,6 @@ typedef bool boolean;
 #include "../lib/DDS.h"
 
 #define WSPR_RAND_OFFSET 80
-//#define WSPR_TXF  14095600
 #define VFO_START 14095600
 #define GPIO04     4
 #define GPIO20    20
@@ -75,12 +74,9 @@ const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019";
 
-
-
 //-------------------------------------------------------------------------------------------------
 // Main structures
 //-------------------------------------------------------------------------------------------------
-
 
 //---- Generic memory allocations
 
@@ -109,9 +105,6 @@ char wspr_message[20];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 
-//int i;
-//double centre_freq;
-
 void cbkDDS();
 DDS    dds(cbkDDS);
 WSPR   wspr(NULL);
@@ -133,7 +126,7 @@ void print_usage(void)
 {
 fprintf(stderr,"\n\
 Usage:\n\
-\t-f frequency Hz(50000 Hz to 1500000000 Hz),\n\
+\t-f frequency Hz(50000 Hz to 1500000000 Hz) or band 10m,20m..\n\
 \t-p set clock ppm instead of ntp adjust\n\
 \t-c set callsign (ej LU7DID)\n\
 \t-l set locator (ej GF05)\n\
@@ -168,11 +161,6 @@ int main(int argc, char *argv[])
 
   sprintf(hi,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
   printf(hi);
-
-//  if(argc != 5){
-//    printf("Usage: wspr-pi <callsign> <locator> <power in dBm> <frequency in Hz>\n");
-//    return 1;
-//  }
 
 //--- Parse arguments
 
@@ -250,14 +238,13 @@ int main(int argc, char *argv[])
                 case 'g': // GPIO
               
                         gpio = atoi(optarg);
-			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
                         if (gpio != GPIO04 && gpio != GPIO20) {
                            sprintf(port,optarg);
                            fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
                            break;
                         }
                         sprintf(port,optarg);
-                        fprintf(stderr, "GPIO port set to:%s\n", optarg);
+			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
                         break;
                 case 'p': //ppm
                         ppm=atof(optarg);
@@ -309,13 +296,10 @@ int main(int argc, char *argv[])
 
     dds.gpio=gpio;
     dds.setppm(ppm);
-    //dds.ppm=ppm;
-    //dds.open(SetFrequency);
 
 //--- Generate WSPR message
 
     sprintf(wspr_message, "%s %s %d", callsign,locator,power);
-    printf("Sending |%s|\n", wspr_message);
     wspr.code_wspr(wspr_message, wspr_symbols);
     printf("WSPR Message\n");
     printf("------------\n");
@@ -323,7 +307,6 @@ int main(int argc, char *argv[])
       printf("%d", wspr_symbols[i]);
     }
     printf("\n");
-
 
     bool WSPRwindow=false;
     tm *gmtm;
@@ -348,7 +331,6 @@ int main(int argc, char *argv[])
 //--- Transmit WSPR message
 
     printf("Current time is %s\n",dt);
-    //printf("Hour(%d) Minute(%d) Second(%d)\n",gmtm->tm_hour,gmtm->tm_min,gmtm->tm_sec);
     printf("Starting TX\n");
 
     int j=0;
@@ -362,7 +344,6 @@ int main(int argc, char *argv[])
            float frequency=(SetFrequency + (t * 1.4648));
            frequency+=wspr_offset;
            dds.set(frequency);
-           //printf("Slot(%d) Code(%d) Frequency(%10.0f)\n",j,t,frequency);
         }
        j++;
        usleep(683000); 
