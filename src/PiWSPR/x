@@ -1,0 +1,8 @@
+void WSPR::Code_msg (char usr_message[], unsigned long int *N, unsigned long int *M)
+void WSPR::Pack_msg (unsigned long int N, unsigned long int M, unsigned char c[])
+void WSPR::Generate_parity (unsigned char c[], unsigned char symbols[])
+void WSPR::Interleave (unsigned char symbols[], unsigned char symbols_interleaved[])
+void WSPR::Synchronise (unsigned char symbols_interleaved[],unsigned char symbols_wspr[])
+void WSPR::code_wspr (char* wspr_message, unsigned char* wspr_symbols)
+void WSPR::calculate_tuning_info(tuning_data* tuning_info)
+void WSPR::sym_to_tuning_words(double base_freq, unsigned char* wspr_symbols, unsigned long* tuning_words)

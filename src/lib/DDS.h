@@ -34,6 +34,7 @@
 #include <wiringSerial.h>
 #include <sstream>
 #include <iomanip>
+#include "/home/pi/librpitx/src/librpitx.h"
 
 #define GPIO04   4
 #define GPIO20  20 

@@ -270,6 +270,7 @@ int main(int argc, char *argv[])
 //--- Generate WSPR message
 
     sprintf(wspr_message, "%s %s %d", callsign,locator,power);
+    //sprintf(wspr_message, "%s %s %s", argv[1], argv[2], argv[3]);
     printf("Sending |%s|\n", wspr_message);
     wspr.code_wspr(wspr_message, wspr_symbols);
     printf("WSPR Message\n");
@@ -279,51 +280,40 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-
-    bool WSPRwindow=false;
-    tm *gmtm;
-    char* dt;
-    time_t now;
-    printf("Waiting till next window\n");
-
-    while (WSPRwindow==false) {
-  // current date/time based on current system
-      now = time(0);
-   // convert now to string form
-      dt = ctime(&now);
-   // convert now to tm struct for UTC
-      gmtm = gmtime(&now);
-      dt = asctime(gmtm);
-      byte m=( time( 0 ) % 3600 ) / 60;
-      if ((m%2 ==0) && gmtm->tm_sec == 0) {
-         WSPRwindow = true;
-      }
-    }
-
 //--- Transmit WSPR message
+  // current date/time based on current system
+    time_t now = time(0);
+   
+   // convert now to string form
+    char* dt = ctime(&now);
 
+    //cout << "The local date and time is: " << dt << endl;
+
+   // convert now to tm struct for UTC
+    tm *gmtm = gmtime(&now);
+    dt = asctime(gmtm);
     printf("Current time is %s\n",dt);
-    //printf("Hour(%d) Minute(%d) Second(%d)\n",gmtm->tm_hour,gmtm->tm_min,gmtm->tm_sec);
-    printf("Starting TX\n");
+    printf("Current Hour: %d Minute: %d Second: %d\n",gmtm.
+    //cout << "The UTC date and time is:"<< dt << endl;
 
-    int j=0;
-    while (j<WSPR_LENGTH && running==true){
-    //for (int j=0;j<WSPR_LENGTH;j++) {
+    byte m=( time( 0 ) % 3600 ) / 60;
+    printf("Current minute is %d\n",m);
+
+    for (int j=0;j<WSPR_LENGTH;j++) {
         int t=wspr_symbols[j];
         if ((t >= 0) && (t <= 3) ) {
            float frequency=(WSPR_TXF + (t * 1.4648));
            dds.set(frequency);
-           printf("Slot(%d) Code(%d) Frequency(%10.2f)\n",j,t,frequency);
+           printf("Code(%d) Frequency(%10.2f)\n",t,frequency);
         }
 
        //wsprTXtone( wspr_symbols[j] );
-       j++;
        usleep(683000); 
     }
   dds.close();
   usleep(100000);
 
-  printf("\nEnding Tx\n");
+  printf("\nProgram terminated....\n");
   usleep(10000);
 
   exit(0);

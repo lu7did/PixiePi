@@ -16,15 +16,11 @@ void code_wspr(char* wspr_message, unsigned char* wspr_symbol);		// encode the w
 //void go_wspr(void);			// start WSPR beacon mode
 //void go_wspr_tx(void);		// set cube in wspr tx mode
 
-#define WSPR_OFFSET  1.4648  	//  tone separation
 
-#define POLYNOM_1 0xf2d05351	// polynoms for
-#define POLYNOM_2 0xe4613c47	// parity generator
-
-typedef struct tuning_data {
-  double requested;
-  unsigned long tuning_word;
-  double actual;
-} tuning_data;
+//typedef struct tuning_data {
+//  double requested;
+//  unsigned long tuning_word;
+//  double actual;
+//} tuning_data;
 
 #endif

@@ -10,8 +10,8 @@ LIBRPITX = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiri
 CCP = c++
 CC = cc
 
-../PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h
-	$(CCP) $(CXXFLAGS) -o ../PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h $(LDFLAGS) $(LIBRPITX)
+../PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
+	$(CCP) $(CXXFLAGS) -o ../PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS) $(LIBRPITX)
  
 ../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/VFOSystem.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h
 	$(CCP) $(CXXFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
