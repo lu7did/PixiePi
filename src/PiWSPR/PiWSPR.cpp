@@ -61,7 +61,7 @@ typedef bool boolean;
 #include "../lib/WSPR.h"
 #include "../lib/DDS.h"
 
-#define WSPR_TXF  14095600
+#define WSPR_RAND_OFFSET 80
 #define VFO_START 14095600
 #define GPIO04     4
 #define GPIO20    20
@@ -74,12 +74,9 @@ const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019";
 
-
-
 //-------------------------------------------------------------------------------------------------
 // Main structures
 //-------------------------------------------------------------------------------------------------
-
 
 //---- Generic memory allocations
 
@@ -108,9 +105,6 @@ char wspr_message[20];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 
-//int i;
-//double centre_freq;
-
 void cbkDDS();
 DDS    dds(cbkDDS);
 WSPR   wspr(NULL);
@@ -132,7 +126,7 @@ void print_usage(void)
 {
 fprintf(stderr,"\n\
 Usage:\n\
-\t-f frequency Hz(50000 Hz to 1500000000 Hz),\n\
+\t-f frequency Hz(50000 Hz to 1500000000 Hz) or band 10m,20m..\n\
 \t-p set clock ppm instead of ntp adjust\n\
 \t-c set callsign (ej LU7DID)\n\
 \t-l set locator (ej GF05)\n\
@@ -150,6 +144,11 @@ static void terminate(int num)
 {
     printf("\n received signal(%d %s)\n",num,strsignal(num));
     running=false;
+    dds.clk->disableclk(gpio);
+    dds.close();
+    usleep(100000);
+    printf("\n Program abnormally terminated\n");
+    exit(4);
    
 }
 //---------------------------------------------------------------------------------------------
@@ -162,11 +161,6 @@ int main(int argc, char *argv[])
 
   sprintf(hi,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
   printf(hi);
-
-//  if(argc != 5){
-//    printf("Usage: wspr-pi <callsign> <locator> <power in dBm> <frequency in Hz>\n");
-//    return 1;
-//  }
 
 //--- Parse arguments
 
@@ -187,9 +181,48 @@ int main(int argc, char *argv[])
                 switch(a)
                 {
                 case 'f': // Frequency
+                     if (!strcasecmp(optarg,"LF")) {
+                        SetFrequency=137500.0;
+                     } else if (!strcasecmp(optarg,"LF-15")) {
+                        SetFrequency=137612.5;
+                     } else if (!strcasecmp(optarg,"MF")) {
+                        SetFrequency=475700.0;
+                     } else if (!strcasecmp(optarg,"MF-15")) {
+                        SetFrequency=475812.5;
+                     } else if (!strcasecmp(optarg,"160m")) {
+                        SetFrequency=1838100.0;
+                     } else if (!strcasecmp(optarg,"160m-15")) {
+                        SetFrequency=1838212.5;
+                     } else if (!strcasecmp(optarg,"80m")) {
+                        SetFrequency=3594100.0;
+                     } else if (!strcasecmp(optarg,"60m")) {
+                        SetFrequency=5288700.0;
+                     } else if (!strcasecmp(optarg,"40m")) {
+                       SetFrequency=7040100.0;
+                     } else if (!strcasecmp(optarg,"30m")) {
+                       SetFrequency=10140200.0;
+                     } else if (!strcasecmp(optarg,"20m")) {
+                       SetFrequency=14097100.0;
+                     } else if (!strcasecmp(optarg,"17m")) {
+                       SetFrequency=18106100.0;
+                     } else if (!strcasecmp(optarg,"15m")) {
+                       SetFrequency=21096100.0;
+                     } else if (!strcasecmp(optarg,"12m")) {
+                       SetFrequency=24926100.0;
+                     } else if (!strcasecmp(optarg,"10m")) {
+                       SetFrequency=28126100.0;
+                     } else if (!strcasecmp(optarg,"6m")) {
+                       SetFrequency=50294500.0;
+                     } else if (!strcasecmp(optarg,"4m")) {
+                       SetFrequency=70092500.0;
+                     } else if (!strcasecmp(optarg,"2m")) {
+                       SetFrequency=144490500.0;
+                     } else {
                         SetFrequency = atof(optarg);
-			fprintf(stderr,"Frequency: %10.2f Hz\n",SetFrequency);
-                        break;
+                     }
+                     
+		     fprintf(stderr,"Frequency: %10.0f Hz\n",SetFrequency);
+                     break;
         	case 'd': //power
 			power=atoi(optarg);
 			fprintf(stderr,"Power: %d dBm\n",power);
@@ -205,14 +238,13 @@ int main(int argc, char *argv[])
                 case 'g': // GPIO
               
                         gpio = atoi(optarg);
-			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
                         if (gpio != GPIO04 && gpio != GPIO20) {
                            sprintf(port,optarg);
                            fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
                            break;
                         }
                         sprintf(port,optarg);
-                        fprintf(stderr, "GPIO port set to:%s\n", optarg);
+			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
                         break;
                 case 'p': //ppm
                         ppm=atof(optarg);
@@ -264,21 +296,17 @@ int main(int argc, char *argv[])
 
     dds.gpio=gpio;
     dds.setppm(ppm);
-    //dds.ppm=ppm;
-    //dds.open(SetFrequency);
 
 //--- Generate WSPR message
 
     sprintf(wspr_message, "%s %s %d", callsign,locator,power);
-    printf("Sending |%s|\n", wspr_message);
     wspr.code_wspr(wspr_message, wspr_symbols);
     printf("WSPR Message\n");
     printf("------------\n");
     for (int i = 0; i < WSPR_LENGTH; i++) {
-      printf("%d ", wspr_symbols[i]);
+      printf("%d", wspr_symbols[i]);
     }
     printf("\n");
-
 
     bool WSPRwindow=false;
     tm *gmtm;
@@ -287,11 +315,11 @@ int main(int argc, char *argv[])
     printf("Waiting till next window\n");
 
     while (WSPRwindow==false) {
-  // current date/time based on current system
+ // current date/time based on current system
       now = time(0);
-   // convert now to string form
+ // convert now to string form
       dt = ctime(&now);
-   // convert now to tm struct for UTC
+ // convert now to tm struct for UTC
       gmtm = gmtime(&now);
       dt = asctime(gmtm);
       byte m=( time( 0 ) % 3600 ) / 60;
@@ -303,23 +331,24 @@ int main(int argc, char *argv[])
 //--- Transmit WSPR message
 
     printf("Current time is %s\n",dt);
-    //printf("Hour(%d) Minute(%d) Second(%d)\n",gmtm->tm_hour,gmtm->tm_min,gmtm->tm_sec);
     printf("Starting TX\n");
 
     int j=0;
+    srand(time(0));
+    float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
+    printf("Random frequency offset %10.2f\n",wspr_offset);
+
     while (j<WSPR_LENGTH && running==true){
-    //for (int j=0;j<WSPR_LENGTH;j++) {
         int t=wspr_symbols[j];
         if ((t >= 0) && (t <= 3) ) {
-           float frequency=(WSPR_TXF + (t * 1.4648));
+           float frequency=(SetFrequency + (t * 1.4648));
+           frequency+=wspr_offset;
            dds.set(frequency);
-           printf("Slot(%d) Code(%d) Frequency(%10.2f)\n",j,t,frequency);
         }
-
-       //wsprTXtone( wspr_symbols[j] );
        j++;
        usleep(683000); 
     }
+  dds.clk->disableclk(gpio);
   dds.close();
   usleep(100000);
 

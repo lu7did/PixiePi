@@ -46,7 +46,11 @@ typedef struct tuning_data {
 typedef void (*CALLBACK)();
 
 //---------------------------------------------------------------------------------------------------
-// WSPR CLASS
+// WSPR CLASS (manage WSPR messages) 
+// * Code excerpts from several packages:
+// *     tune.cpp from rpitx package by Evariste Courjaud F5OEO
+// *     wiringPi library (git clone git://git.drogon.net/wiringPi)
+// *     WSPR-beacon by Alexander Fasching OE5TKM
 //---------------------------------------------------------------------------------------------------
 class WSPR
 {
@@ -66,11 +70,6 @@ class WSPR
 
 
       CALLBACK cbk=NULL;
-      //char wspr_message[20];          // user beacon message to encode
-      //unsigned char wspr_symbols[WSPR_LENGTH] = {};
-      //unsigned long tuning_words[WSPR_LENGTH];
-      //int i;
-      //double centre_freq;
 
   private:
 
