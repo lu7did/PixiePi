@@ -36,6 +36,19 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Built-in iambic keyer.
 
+* Fair and educated warning *
+
+Raspberry Pi is a marvel.
+Hamradio is the best thing ever invented.
+¡So don't ruin either by connecting GPIO04 directly to an antenna!
+
+You'll make life of others in your neighboor unsormountable, and even
+could get your Raspberry Pi fried in the process.
+
+Google "raspberry pi rpitx low pass filter" to get some good advice on what to put between your Raspberry and your antenna
+Or go to https://www.dk0tu.de/blog/2016/05/28_Raspberry_Pi_Lowpass_Filters/ for very good and easy to implement ideas
+
+
 # Schematics
 
   Not yet available
@@ -67,9 +80,16 @@ The rest of the code deals mostly with the user interface and operating features
   * This project requires a board combining:
 
      - Raspberry Pi
+     - Pixie Transceiver
+
+  This setup can be used with flrig as the front-end and CAT controller,
+  see:
+	* DDSPi
+	* OT817
+
+  * Optional 
      - Rotary encoder
      - LCD 16x2 display
-     - A Pixie transceiver (or similar)
      - USB soundcard (optional)
  
  * Work in progress, this code set is not yet functional
