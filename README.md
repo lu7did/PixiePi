@@ -36,10 +36,16 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Built-in iambic keyer.
 
-* Fair and educated warning *
+* Capable of operating most digital modes
+
+* Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
+
+# Fair and educated warning
 
 Raspberry Pi is a marvel.
+
 Hamradio is the best thing ever invented.
+
 ¡So don't ruin either by connecting GPIO04 directly to an antenna!
 
 You'll make life of others in your neighboor unsormountable, and even
@@ -48,6 +54,7 @@ could get your Raspberry Pi fried in the process.
 Google "raspberry pi rpitx low pass filter" to get some good advice on what to put between your Raspberry and your antenna
 Or go to https://www.dk0tu.de/blog/2016/05/28_Raspberry_Pi_Lowpass_Filters/ for very good and easy to implement ideas
 
+Remember that most national regulations requires the armonics and other spurious outcome to be -30 dB below the fundamental.
 
 # Schematics
 
@@ -55,24 +62,18 @@ Or go to https://www.dk0tu.de/blog/2016/05/28_Raspberry_Pi_Lowpass_Filters/ for 
 
 # Requirements
 
-   sudo apt-get install i2c-tools libi2c-dev
-   sudo apt-get install socat
-
-   git clone git://git.drogon.net/wiringPi
-
-   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
-
-   Enable I2C and SPI with sudo raspi-config
+*   sudo apt-get install i2c-tools libi2c-dev
+*   sudo apt-get install socat
+*   git clone git://git.drogon.net/wiringPi
+*   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
+*   Enable I2C and SPI with sudo raspi-config
 
 # Build
 
-   git clone https://github.com/lu7did/PixiePi
-
-   cd /home/pi/PixiePi/src
-
-   make
-
-   sudo make install
+*  git clone https://github.com/lu7did/PixiePi
+*  cd /home/pi/PixiePi/src
+*  make
+*  sudo make install
  
 
 # Release notes:
@@ -88,8 +89,8 @@ Or go to https://www.dk0tu.de/blog/2016/05/28_Raspberry_Pi_Lowpass_Filters/ for 
 	* OT817
 
   * Optional 
-     - Rotary encoder
-     - LCD 16x2 display
-     - USB soundcard (optional)
+     ** Rotary encoder
+     ** LCD 16x2 display
+     ** USB soundcard (optional)
  
- * Work in progress, this code set is not yet functional
+#  Work in progress, this code set is not yet functional
