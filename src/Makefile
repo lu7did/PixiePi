@@ -1,8 +1,8 @@
-all: ../pixie ../DDSPi ../OT817 ../PiWSPR
+all: ../pixie ../DDSPi ../OT817 ../PiWSPR ../pirtty
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
-LDFLAGS = -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio  -lpthread
+LDFLAGS = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio  -lpthread
 GCC = gcc
 CFLAGS  = -Wall -g -O2 -Wno-unused-variable
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
@@ -22,15 +22,20 @@ CC = cc
 ../OT817 : OT817/OT817.cpp /home/pi/librpitx/src/librpitx.a OT817/OT817.h lib/CAT817.h lib/DDS.h
 	$(CCP) $(CXXFLAGS) -o ../OT817 ./OT817/OT817.cpp  $(LIBRPITX)
 
+../pirtty : pirtty/pirtty.cpp  /home/pi/librpitx/src/librpitx.a
+	$(CCP) $(CXXFLAGS) -o ../pirtty pirtty/pirtty.cpp  $(LDFLAGS)
+
     
 clean:
 	rm -r  ../pixie
 	rm -r  ../DDSPi
 	rm -r  ../OT817
 	rm -r  ../PiWSPR
+	rm -r  ../pirtty
 
 install: all
 	install -m 0755 ../pixie  /usr/bin
 	install -m 0755 ../DDSPi  /usr/bin
 	install -m 0755 ../OT817  /usr/bin
 	install -m 0755 ../PiWSPR /usr/bin
+	install -m 0755 ../pirtty /usr/bin
