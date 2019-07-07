@@ -1,4 +1,4 @@
-/**
+/*
  * pixie.c
  * Raspberry Pi based transceiver
  *
@@ -12,7 +12,7 @@
  * Code excerpts from several packages:
  *    Adafruit's python code for CharLCDPlate 
  *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
-*     wiringPi library (git clone git://git.drogon.net/wiringPi)
+ *     wiringPi library (git clone git://git.drogon.net/wiringPi)
  *    
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
@@ -33,9 +33,9 @@
  * 
  */
 
-//*----------------------------------------------------------------------------
-//*  includes
-//*----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
+//  includes
+//----------------------------------------------------------------------------
 
 //*---- Generic includes
 
@@ -69,12 +69,23 @@
 
 //*---- Program specific includes
 
+
 #include "pixie.h"
 #include "../lib/ClassMenu.h"
 #include "../lib/VFOSystem.h"
 #include "../lib/LCDLib.h"
 #include "../lib/CAT817.h"
 #include "../lib/DDS.h"
+
+
+//*---- Keyer specific definitions
+
+int i=0;
+extern "C" {
+bool running=true;
+#include "../iambic/iambic.c"
+
+}
 
 //*--- Encoder pin definition
 
@@ -153,7 +164,7 @@ void CATgetTX();
 
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
-const char   *PROG_BUILD="00";
+const char   *PROG_BUILD="01";
 const char   *COPYRIGHT="(c) LU7DID 2019";
 char *strsignal(int sig);
 extern const char * const sys_siglist[];
@@ -255,11 +266,18 @@ int anyargs = 0;
 float SetFrequency=VFO_START;
 float ppm=1000.0;
 struct sigaction sa;
-bool running=true;
 byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
 char port[80];
 byte gpio=GPIO04;
+
+
+//*--- Keyer related memory definitions
+
+
+char snd_dev[64]="hw:0";
+
+
 //*--- System Status Word initial definitions
 
 byte MSW  = 0;
@@ -320,14 +338,20 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 void print_usage(void)
 {
 
-fprintf(stderr,"\ntune -%s\n\
-Usage:\ntune  [-f Frequency] [-h] \n\
--f floatfrequency carrier Hz(50 kHz to 1500 MHz),\n\
--g GPIO port to use (4 or 20)\n\
--p set clock ppm instead of ntp adjust\n\
--h            help (this help).\n\
-\n",\
-PROGRAMID);
+fprintf(stderr,
+"\npixie -%s\n"
+"Usage:\npixie  [-f  float frequency carrier in Hz (50 KHz to 1500 MHz\n"
+"               [-h] this help\n"
+"               [-g  GPIO port to use for RF output(4 or 20)\n"
+"               [-p] set clock ppm instead of ntp adjust\n"
+"               [-a  GPIO active_state (0=LOW, 1=HIGH) default is 0]\n"
+"               [-C  strict_char_spacing (0=off, 1=on)]\n"
+"               [-D  sound device string (default is hw:0)]\n"
+"               [-E  sidetone start/end ramp envelope in ms (default is 5)]\n"
+"               [-F  sidetone_freq_hz]\n"
+"               [-G  sidetone gain in dB]\n"
+"               [-M  mode (0=straight or bug, 1=iambic_a, 2=iambic_b)]\n"
+"               [-S  speed_wpm] [-w weight (33-66)]\n",PROGRAMID);
 
 }
 
@@ -454,8 +478,10 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 //*---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    printf("\n received signal(%d %s)\n",num,strsignal(num));
+    fprintf(stderr,"\n received signal(%d %s)\n",num,strsignal(num));
+    sem_post(&cw_event);
     running=false;
+    fprintf(stderr,"\n terminating program by user interruption\n");
    
 }
 //*---------------------------------------------------
@@ -495,7 +521,9 @@ void sigalarm_handler(int sig)
 //*-----------------------------------------------------------------------------
 string do_console_command_get_result (char* command)
 {
+        fprintf(stderr,"Executing external command: %s\n",command);
 	FILE* pipe = popen(command, "r");
+    
 	if (!pipe)
 		return "ERROR";
 	
@@ -507,8 +535,30 @@ string do_console_command_get_result (char* command)
 			result += buffer;
 	}
 	pclose(pipe);
+        fprintf(stderr,"External command result: %s\n",result);
 	return(result);
 }
+//*---------------------------------------------------------------------
+//* start Keyer services
+//*---------------------------------------------------------------------
+
+void startKeyer() {
+
+	string CommandResult = do_console_command_get_result((char*)"sudo ./keyer start &");
+        return;
+
+}
+//*---------------------------------------------------------------------
+//* stop Keyer services
+//*---------------------------------------------------------------------
+
+void stopKeyer() {
+
+	string CommandResult = do_console_command_get_result((char*)"sudo pkill iambic");
+        return;
+
+}
+
 //*---------------------------------------------------------------------
 //* Check Wifi connection status
 //*---------------------------------------------------------------------
@@ -624,24 +674,64 @@ int main(int argc, char* argv[])
 
     sprintf(port,"/tmp/ttyv1");
 
+
+
 //*--- Process arguments (mostly an excerpt from tune.cpp
 
        while(1)
         {
-                a = getopt(argc, argv, "f:es:hg:p:");
+                a = getopt(argc, argv, "f:es:hg:p:A:C:D:E:F:G:M:S:");
 
                 if(a == -1) 
                 {
                         if(anyargs) {
                            break; 
                         } else {
-                           a='h'; //print usage and exit
+                           a='h'; 
                         }
                 }
                 anyargs = 1;    
 
                 switch(a)
                 {
+
+                case 'A': 
+                        cw_active_state = atoi(optarg);
+                        fprintf(stderr,"A: %d\n",cw_active_state);
+                        break;
+                case 'C':
+                        cw_keyer_spacing = atoi(optarg);
+                        fprintf(stderr,"C: %d\n",cw_keyer_spacing);
+                        break;
+                case 'D':
+                        strcpy(snd_dev, optarg);
+                        fprintf(stderr,"D:%s\n",snd_dev);
+                        break;
+                case 'E': 
+                        cw_keyer_sidetone_envelope = atoi(optarg);
+                        fprintf(stderr,"E: %d\n", cw_keyer_sidetone_envelope);
+                        break;
+
+                case 'F':
+                        cw_keyer_sidetone_frequency = atoi(optarg);
+                        fprintf(stderr,"F: %d\n",cw_keyer_sidetone_frequency);
+                        break;
+                case 'G':     // gain in dB 
+                        cw_keyer_sidetone_gain = atoi(optarg);
+                        fprintf(stderr,"G: %d\n",cw_keyer_sidetone_gain);
+                        break;
+                case 'M':
+                        cw_keyer_mode = atoi(optarg);
+                        fprintf(stderr,"M: %d\n",cw_keyer_mode);
+                        break;
+                case 'S':
+                        cw_keyer_speed = atoi(optarg);
+                        fprintf(stderr,"S: %d\n",cw_keyer_speed);
+                        break;
+                case 'W':
+                        cw_keyer_weight = atoi(optarg);
+                        fprintf(stderr,"W: %d\n",cw_keyer_weight);
+                        break;
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
                         break;
@@ -684,7 +774,6 @@ int main(int argc, char* argv[])
                         break;
                 }
         }
-
 
 //*---- Establish initial values of system variables
 
@@ -752,6 +841,8 @@ int main(int argc, char* argv[])
     lck.add((char*)"Off",NULL);  
     lck.set(0);
 
+
+//*---- Initialize Iambic Keyer
 
 //*---- Initialize Rotary Encoder
 
@@ -850,25 +941,16 @@ int main(int argc, char* argv[])
     cat.open(port,4800);
     cat.SetFrequency=SetFrequency;
 
+
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
     dds.ppm=ppm;
     dds.gpio=gpio;
     dds.open(SetFrequency);
 
-//    generalgpio gengpio;
-//    gengpio.setpulloff(4);
-//    padgpio     pad;
-//    pad.setlevel(7);
-//    clkgpio     *clk=new clkgpio;
-//    clk->SetAdvancedPllMode(true);
 
-//    if(ppm!=1000) {   //ppm is set else use ntp
-//      clk->Setppm(ppm);
-//    }
-
-//    clk->SetCenterFrequency(SetFrequency,10);
-//    clk->SetFrequency(000);
-//    clk->enableclk(4);
+//*---
+    //startKeyer();
+    iambic_init();
 
 //*--- DDS is running at the SetFrequency value (initial)
 
@@ -876,7 +958,9 @@ int main(int argc, char* argv[])
     showPanel();
     showFreq();
 
+//*----------------------------------------------------------------------------
 //*--- Firmware initialization completed
+//*----------------------------------------------------------------------------
 
 //*--- Execute an endless loop while runnint is true
 
@@ -904,25 +988,29 @@ int main(int argc, char* argv[])
                SetFrequency = vx.get(vx.vfoAB) * 1.0;
                dds.set(SetFrequency);
 
-               //clk->SetCenterFrequency(SetFrequency,10);
-               //clk->SetFrequency(000);
-               //clk->enableclk(4);
             }
 
          } else {
 
          }
          CMD_FSM();
+         lcd.backlight(true);
 
 //*--- Clear the frequency moved marker from the display once the delay expires
 
          if (getWord(TSW,FBCK)==true && backlight != 0) {
-            lcd.backlight(false);
+            //* -- Temporary lcd.backlight(false);
             setWord(&TSW,FBCK,false);
          }
       }
 
 //*--- running become false, the program is terminating
+
+//*--- Stop keyer thread
+
+    fprintf(stderr,"Stopping keyer thread and killing semaphore\n");
+    pthread_join(keyer_thread_id, 0);
+    sem_destroy(&cw_event);
 
     lcd.backlight(false);
     lcd.clear();
