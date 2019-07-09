@@ -13,24 +13,19 @@
  *    Adafruit's python code for CharLCDPlate 
  *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
  *     wiringPi library (git clone git://git.drogon.net/wiringPi)
- *    
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- *  
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
  * MA 02110-1301, USA.
- * 
- * 
  */
 
 //----------------------------------------------------------------------------
@@ -198,7 +193,6 @@ MenuClass bck(BackLightUpdate);
 //*--- LCD management object
 
 LCDLib lcd(NULL);
-
 int LCD_LIGHT=LCD_ON;  // On
 
 //*--- debouncing logic setup
@@ -301,7 +295,18 @@ void changeFreq() {
 
 }
 
+//*---------------------------------------------------------------------------
+//* CATchangeFreq()
+//* CAT Callback when frequency changes
+//*---------------------------------------------------------------------------
 void CATchangeFreq() {
+
+  SetFrequency=cat.SetFrequency;
+  long int f=(long int)SetFrequency;
+  printf("changeFreq: Frequency set to f(%d)\n",f);
+  dds.set(SetFrequency);
+  vx.set(vx.vfoAB,f);
+
 }
 void CATchangeMode() {
 }
@@ -541,7 +546,6 @@ string do_console_command_get_result (char* command)
 //*---------------------------------------------------------------------
 //* start Keyer services
 //*---------------------------------------------------------------------
-
 void startKeyer() {
 
 	string CommandResult = do_console_command_get_result((char*)"sudo ./keyer start &");
@@ -551,7 +555,6 @@ void startKeyer() {
 //*---------------------------------------------------------------------
 //* stop Keyer services
 //*---------------------------------------------------------------------
-
 void stopKeyer() {
 
 	string CommandResult = do_console_command_get_result((char*)"sudo pkill iambic");
@@ -680,7 +683,7 @@ int main(int argc, char* argv[])
 
        while(1)
         {
-                a = getopt(argc, argv, "f:es:hg:p:A:C:D:E:F:G:M:S:");
+                a = getopt(argc, argv, "f:eds:hg:p:A:C:D:E:F:G:M:S:");
 
                 if(a == -1) 
                 {
@@ -744,7 +747,11 @@ int main(int argc, char* argv[])
 			break;
                 case 'p': //ppm
                         ppm=atof(optarg);
-                        break;  
+                        break;
+                case 'd': //debug
+                        cat.TRACE=0x01;
+                        fprintf(stderr,"d: DEBUG mode activated\n");
+                        break;
                 case 'h': // help
                         print_usage();
                         exit(1);
@@ -966,8 +973,9 @@ int main(int argc, char* argv[])
 
     while(running)
       {
-         usleep(10000);
+         usleep(100000);
          cat.get();
+
  	 if (getWord(USW,CONX) == true) {
             //checkLAN();
             setWord(&USW,CONX,false);

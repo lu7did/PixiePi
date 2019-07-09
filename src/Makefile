@@ -1,4 +1,4 @@
-all: ../pixie ../DDSPi ../OT817 ../PiWSPR ../pirtty 
+all: ../pixie ../DDSPi ../OT817 ../PiWSPR ../pirtty  
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
@@ -13,7 +13,7 @@ CC = cc
 ../PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
 	$(CCP) $(CXXFLAGS) -o ../PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS) $(LIBRPITX)
  
-../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/VFOSystem.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h
+../pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/VFOSystem.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h iambic/iambic.c
 	$(CCP) $(OSC_CFLAGS) -o ../pixie ./pixie/pixie.cpp  $(LIBRPITX)
 
 ../DDSPi : DDSPi/DDSPi.cpp /home/pi/librpitx/src/librpitx.a DDSPi/DDSPi.h lib/CAT817.h lib/DDS.h

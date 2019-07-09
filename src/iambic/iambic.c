@@ -96,7 +96,7 @@ static pthread_t keyer_thread_id;
 #define KEYER_OUT_GPIO 12
 #define LEFT_PADDLE_GPIO 13
 #define RIGHT_PADDLE_GPIO 15
-#define SPEED_GPIO 19
+//#define SPEED_GPIO 19
 
 #define KEYER_STRAIGHT 0
 #define KEYER_MODE_A 1
@@ -132,7 +132,7 @@ static int cw_keyer_speed = 20;
 static int cw_keyer_weight = 55;
 static int cw_keys_reversed = 0;
 static int cw_keyer_mode = KEYER_MODE_A;
-static int cw_keyer_sidetone_frequency = 700;
+static int cw_keyer_sidetone_frequency = 600;
 static int cw_keyer_sidetone_gain = 10;
 static int cw_keyer_sidetone_envelope = 5;
 static int cw_keyer_spacing = 0;
@@ -178,16 +178,18 @@ void set_keyer_out(int state) {
         keyer_out = state;
 
         if (state) {
+            fprintf(stderr,"Key DOWN, PA Powered\n");
             gpioWrite(KEYER_OUT_GPIO, 1);
-            if (SIDETONE_GPIO)
-                softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
+            //if (SIDETONE_GPIO)
+            softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
             //else
                 //keyed_tone_mute = 2;
         }
         else {
+            fprintf(stderr,"Key UP, Receiver mode\n");
             gpioWrite(KEYER_OUT_GPIO, 0);
-            if (SIDETONE_GPIO)
-                softToneWrite (SIDETONE_GPIO, 0);
+            //if (SIDETONE_GPIO)
+            softToneWrite (SIDETONE_GPIO, 0);
             //else
                 //keyed_tone_mute = 1;
         }
@@ -246,17 +248,16 @@ static void* keyer_thread(void *arg) {
                     kdelay = 0;
                     set_keyer_out(0);
                     key_state = DOTDELAY;        // add inter-character spacing of one dot length
-                    if (gpioRead(SPEED_GPIO)==0){
-                       //fprintf(stderr,"-");
-                       
-       		       cw_keyer_speed=cw_keyer_speed-1;
-    		       if (cw_keyer_speed <= 5) {
-                          cw_keyer_speed=5;
-                       }
-                       keyer_update();
-                       printf("Speed set to %d wpm\n",cw_keyer_speed);
-                    } 
-//                    fprintf(stderr,".");
+                    //if (gpioRead(SPEED_GPIO)==0){
+                        //fprintf(stderr,"-");
+       		        //cw_keyer_speed=cw_keyer_speed-1;
+    		        //if (cw_keyer_speed <= 5) {
+                           //cw_keyer_speed=5;
+                      //  }
+                      //keyer_update();
+                      //printf("Speed set to %d wpm\n",cw_keyer_speed);
+                    //} 
+                    //  fprintf(stderr,".");
                 }
                 else kdelay++;
 
@@ -275,17 +276,16 @@ static void* keyer_thread(void *arg) {
                 if (kdelay == dash_delay) {
                     kdelay = 0;
                     set_keyer_out(0);
-                    if (gpioRead(SPEED_GPIO)==0){
+                    //if (gpioRead(SPEED_GPIO)==0){
                        //fprintf(stderr,"+");
-  	               cw_keyer_speed=cw_keyer_speed+1;
-                       if (cw_keyer_speed >=50) {
-                          cw_keyer_speed=50;
-                       }
-                       keyer_update();
-                       printf("Speed set to %d wpm\n",cw_keyer_speed);
+  	               //cw_keyer_speed=cw_keyer_speed+1;
+                       //if (cw_keyer_speed >=50) {
+                       //   cw_keyer_speed=50;
+                       //}
+                       //keyer_update();
+                       //printf("Speed set to %d wpm\n",cw_keyer_speed);
 
-                    } 
-
+ //                   } 
  //                   fprintf(stderr,"-");
                     key_state = DASHDELAY;       // add inter-character spacing of one dot length
                 }
@@ -412,9 +412,9 @@ int iambic_init()  {
 
     gpioSetAlertFunc(LEFT_PADDLE_GPIO, keyer_event);
 
-    gpioSetMode(SPEED_GPIO, PI_INPUT);
-    gpioSetPullUpDown(SPEED_GPIO,PI_PUD_UP);
-    usleep(100000);
+    //gpioSetMode(SPEED_GPIO, PI_INPUT);
+    //gpioSetPullUpDown(SPEED_GPIO,PI_PUD_UP);
+    //usleep(100000);
 
     gpioSetMode(KEYER_OUT_GPIO, PI_OUTPUT);
     gpioWrite(KEYER_OUT_GPIO, 0);

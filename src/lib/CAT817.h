@@ -556,10 +556,9 @@ void CAT817::get() {
        n++;
        if (n==5) {
           char buffer[18];
-          //if (rxBuffer[4] != 0xBD && rxBuffer[4] != 0xF7 && rxBuffer[4] != 0xBB && rxBuffer[4] != 0xE7 && rxBuffer[4] != 0x03) {
-              hex2str(&buffer[0],&rxBuffer[0],n);
-              printf ("Received Serial hex2str (%s)\n",buffer);
-          //}
+          hex2str(&buffer[0],&rxBuffer[0],n);
+          sprintf (msg,"Received Serial hex2str (%s)\n",buffer);
+          printDEBUG(0x02,msg);
           processCAT(&rxBuffer[0]);
           fflush (stdout) ;
           n=0;

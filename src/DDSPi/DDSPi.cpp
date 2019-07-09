@@ -271,17 +271,18 @@ int main(int argc, char* argv[])
                 {
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
+			fprintf(stderr,"DDSPi: Frequency (%d)\n",(int)SetFrequency);
                         break;
                 case 'g': // Frequency
               
                         gpio = atoi(optarg);
     			if (gpio != GPIO04 && gpio != GPIO20) {
       			   sprintf(port,optarg);
-			   fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
+			   fprintf(stderr,"DDSPi: Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
 			   break;
 			}
                         sprintf(port,optarg);
-                        fprintf(stderr, "GPIO port set to:%s\n", optarg);
+                        fprintf(stderr, "DDSPi: GPIO port set to:%s\n", optarg);
                         break;
                 case 'p': //ppm
                         ppm=atof(optarg);
@@ -292,22 +293,22 @@ int main(int argc, char* argv[])
                         break;
                 case 'd': //
                         cat.TRACE=0x01;
-			fprintf(stderr,"DEBUG mode enabled\n");
+			fprintf(stderr,"DDSPi: DEBUG mode enabled\n");
                         break;
                 case 's': //serial port
                         sprintf(port,optarg);
-                        fprintf(stderr, "serial port:%s\n", optarg);
+                        fprintf(stderr, "DDSPi: serial port:%s\n", optarg);
                         break;
                 case -1:
                 break;
                 case '?':
                         if (isprint(optopt) )
                         {
-                           fprintf(stderr, "pixie: unknown option `-%c'.\n", optopt);
+                           fprintf(stderr, "DDSPi: unknown option `-%c'.\n", optopt);
                         }
                         else
                         {
-                           fprintf(stderr, "pixie: unknown option character `\\x%x'.\n", optopt);
+                           fprintf(stderr, "DDSPi: unknown option character `\\x%x'.\n", optopt);
                         }
                         print_usage();
 
