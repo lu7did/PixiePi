@@ -84,46 +84,11 @@ Boston, MA  02110-1301, USA.
 #include <pigpio.h>
 //#include "../lib/keyed_tone.h"
 
+
+
 static void* keyer_thread(void *arg);
 static pthread_t keyer_thread_id;
-typedef unsigned char byte;
-typedef bool boolean;
-typedef void (*CALLBACK)();
 
-// GPIO pins
-// set to 0 to use the PI's hw:0 audio out for sidetone
-#define SIDETONE_GPIO 19 // this is in wiringPi notation
-
-// Define output GPIO pin
-
-#define KEYER_OUT_GPIO 12
-#define LEFT_PADDLE_GPIO 13
-#define RIGHT_PADDLE_GPIO 15
-
-#define KEY_DOWN 0x01
-#define KEY_UP 0x00
-
-//#define SPEED_GPIO 19
-
-#define KEYER_STRAIGHT 0
-#define KEYER_MODE_A 1
-#define KEYER_MODE_B 2
-
-#define NSEC_PER_SEC (1000000000)
-
-enum {
-    CHECK = 0,
-    PREDOT,
-    PREDASH,
-    SENDDOT,
-    SENDDASH,
-    DOTDELAY,
-    DASHDELAY,
-    DOTHELD,
-    DASHHELD,
-    LETTERSPACE,
-    EXITLOOP
-};
 
 static int dot_memory = 0;
 static int dash_memory = 0;
@@ -149,6 +114,9 @@ static int keyer_out = 0;
        CALLBACK keyChange=NULL; 
        byte keyState=KEY_UP; 
 
+//*-------------------------------------------------------------------------------------------------------
+//* keyer_update
+//*------------------------------------------------------------------------------------------------------
 void keyer_update() {
     dot_delay = 1200 / cw_keyer_speed;
     // will be 3 * dot length at standard weight
@@ -162,7 +130,10 @@ void keyer_update() {
         kdash = &kcwr;
     }
 }
-
+//*-------------------------------------------------------------------------------------------
+//* keyer_event
+//* Detects whether the left or right paddle has been activated
+//*-------------------------------------------------------------------------------------------
 void keyer_event(int gpio, int level, uint32_t tick) {
     int state = (cw_active_state == 0) ? (level == 0) : (level != 0);
 
@@ -176,39 +147,40 @@ void keyer_event(int gpio, int level, uint32_t tick) {
     if (state || cw_keyer_mode == KEYER_STRAIGHT)
         sem_post(&cw_event);
 }
-
+//*---------------------------------------------------------------------------------------------
+//* clear_memory
+//*---------------------------------------------------------------------------------------------
 void clear_memory() {
     dot_memory  = 0;
     dash_memory = 0;
 }
-
+//*---------------------------------------------------------------------------------------------
+//* set_keyer_out
+//* set the PTT or KEYER output depending on the Keyer mode
+//*---------------------------------------------------------------------------------------------
 void set_keyer_out(int state) {
     if (keyer_out != state) {
         keyer_out = state;
 
         if (state) {
-            fprintf(stderr,"Key DOWN, PA Powered\n");
-            gpioWrite(KEYER_OUT_GPIO, 1);
-            keyState=KEY_DOWN;
-            if (keyChange!=NULL) { keyChange(); }
-            //if (SIDETONE_GPIO)
-            softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
-            //else
-                //keyed_tone_mute = 2;
+            keyState=KEY_DOWN;                         //* The keyer has been pressed or the PTT activated
+            if (keyChange!=NULL) { keyChange(); }      //* First execute callback
+            setPTT(true);
         }
         else {
-            fprintf(stderr,"Key UP, Receiver mode\n");
-            gpioWrite(KEYER_OUT_GPIO, 0);
-            keyState=KEY_UP;
-            if (keyChange!=NULL) { keyChange(); }
-            //if (SIDETONE_GPIO)
-            softToneWrite (SIDETONE_GPIO, 0);
-            //else
-                //keyed_tone_mute = 1;
+            keyState=KEY_UP;                           //* The keyer has been released or the PTT deactivated
+            if (keyChange!=NULL) { keyChange(); }      //* First execute callback
+            setPTT(false);
         }
     }
 }
-
+//*------------------------------------------------------------------------------------------------------------
+//* keyer_thread
+//* This thread is waiting for keyer events, when they occur they are just handled,
+//* this is an infinite loop which runs until the main program "running" condition is set to false
+//* However it doesn't alter the program timing as it waist on the semaphore cw_event until there is something
+//* to process
+//*------------------------------------------------------------------------------------------------------------
 static void* keyer_thread(void *arg) {
     int pos;
     struct timespec loop_delay;
@@ -403,8 +375,23 @@ static void* keyer_thread(void *arg) {
     }
     fprintf(stderr,"\n\nSIGINT received, terminating\n");
 }
+//*------------------------------------------------------------------------------------------------
+//* iambic_close
+//* stop the thread and destroy the semaphore, then exit the iambic, called upon termination
+//*------------------------------------------------------------------------------------------------
+void iambic_close() {
 
+    fprintf(stderr,"Stopping keyer thread and killing semaphore\n");
+    pthread_join(keyer_thread_id, 0);
+    sem_destroy(&cw_event);
+    return;
 
+}
+//*------------------------------------------------------------------------------------------------
+//* iambic_init
+//* this is the initialization for the iambic algorithms, the ports are set and the thread launched
+//* it has to be called prior to any usage of the keyer
+//*------------------------------------------------------------------------------------------------
 int iambic_init()  {
 
     fprintf(stderr,"Initializing Keyer thread\n");

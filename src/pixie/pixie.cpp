@@ -73,11 +73,20 @@
 #include "../lib/DDS.h"
 
 
+
+//*--- Define Initialization Values for CAT
+
+byte FT817;
+byte MODE=MCW;
+int  SHIFT=600;
+
 //*---- Keyer specific definitions
 
 int i=0;
 extern "C" {
 bool running=true;
+
+
 #include "../iambic/iambic.c"
 
 }
@@ -175,6 +184,8 @@ DDS dds(changeFreq);
 
 //*--- CAT object
 CAT817 cat(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
+
+
 //*--- Strutctures to hold menu definitions
 
 MenuClass menuRoot(NULL);
@@ -188,7 +199,6 @@ MenuClass kyr(KeyerUpdate);
 MenuClass wtd(WatchDogUpdate);
 MenuClass lck(LockUpdate);
 MenuClass bck(BackLightUpdate);
-
 
 //*--- LCD management object
 
@@ -291,10 +301,62 @@ void showPTT();
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+//*--------------------------[System Word Handler]---------------------------------------------------
+//* getSSW Return status according with the setting of the argument bit onto the SW
+//*--------------------------------------------------------------------------------------------------
+bool getWord (unsigned char SysWord, unsigned char v) {
+
+  return SysWord & v;
+
+}
+//*--------------------------------------------------------------------------------------------------
+//* setSSW Sets a given bit of the system status Word (SSW)
+//*--------------------------------------------------------------------------------------------------
+void setWord(unsigned char* SysWord,unsigned char v, bool val) {
+
+  *SysWord = ~v & *SysWord;
+  if (val == true) {
+    *SysWord = *SysWord | v;
+  }
+
+}
+//*--------------------------------------------------------------------------------------------
+//* set_PTT
+//* Manage the PTT of the transceiver (can be used from the keyer or elsewhere
+//*--------------------------------------------------------------------------------------------
+void setPTT(bool statePTT) {
+    if (statePTT==false) {
+       fprintf(stderr,"PTT <ON>, PA Powered\n");
+       if (MODE==MCW || MODE ==MCWR) {
+          dds.set((float)(vx.get(vx.vfoAB)+vx.vfoshift[vx.vfoAB]));
+          softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
+       }
+       gpioWrite(KEYER_OUT_GPIO, 1);
+       return;
+    }
+    fprintf(stderr,"PTT <OFF>, Receiver mode\n");
+    softToneWrite (SIDETONE_GPIO, 0);
+    if (MODE==MCW || MODE == MCWR) {
+       dds.set((float)(vx.get(vx.vfoAB)));
+    }
+    gpioWrite(KEYER_OUT_GPIO, 0);
+    return;
+
+}
+//*---------------------------------------------------------------------------------------------------
+//* keyChangeEvent
+//* callback from iambic to signal the key has been set up or down
+//*---------------------------------------------------------------------------------------------------
 void keyChangeEvent() {
 
-     byte s=keyState;
-     fprintf(stderr,"Keyer state(%d)\n",s);
+     if (keyState==KEY_DOWN) {
+        setWord(&FT817,PTT,true);
+     } else {
+        setWord(&FT817,PTT,false);
+     }
+
+     cat.FT817=FT817;
+     fprintf(stderr,"Keyer state(%d)\n",getWord(FT817,PTT));
      showPTT();
 
 }
@@ -317,34 +379,69 @@ void CATchangeFreq() {
   vx.set(vx.vfoAB,f);
 
 }
+//*-----------------------------------------------------------------------------------------------------------
+//* CATchangeMode
+//* Validate the new mode is a supported one
+//* At this point only CW,CWR,USB and LSB are supported
+//*-----------------------------------------------------------------------------------------------------------
 void CATchangeMode() {
+
+       if (cat.MODE == MAM || cat.MODE == MWFM || cat.MODE == MFM || cat.MODE == MDIG || cat.MODE == MPKT) {
+          cat.MODE = MODE;
+          return;
+       }
+
+       MODE=cat.MODE;
+       return;
+
 }
+//*------------------------------------------------------------------------------------------------------------
+//* CATchangeStatus
+//* Detect which change has been produced and operate accordingly
+//*------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
+
+//*---------------------
+       if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {        //* PTT Changed
+          setWord(&FT817,PTT,getWord(cat.FT817,PTT));
+          if (getWord(FT817,PTT)==true) {
+             keyState=KEY_DOWN;
+          } else {
+             keyState=KEY_UP;
+          }
+          showPTT();
+          setPTT(getWord(FT817,PTT));
+          return;
+       }
+//*---------------------
+       if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
+
+          return;
+       }
+       if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
+
+          return;
+       }
+       if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
+
+          return;
+       }
+       if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
+
+          return;
+       }
+       if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {      //* PTT Changed
+
+          return;
+       }
+       return;
+
 }
 void CATgetRX() {
 }
 void CATgetTX() {
 }
 
-//*--------------------------[System Word Handler]---------------------------------------------------
-//* getSSW Return status according with the setting of the argument bit onto the SW
-//*--------------------------------------------------------------------------------------------------
-bool getWord (unsigned char SysWord, unsigned char v) {
-
-  return SysWord & v;
-
-}
-//*--------------------------------------------------------------------------------------------------
-//* setSSW Sets a given bit of the system status Word (SSW)
-//*--------------------------------------------------------------------------------------------------
-void setWord(unsigned char* SysWord,unsigned char v, bool val) {
-
-  *SysWord = ~v & *SysWord;
-  if (val == true) {
-    *SysWord = *SysWord | v;
-  }
-
-}
 //*-------------------------------------------------------------------------------------------------
 //* print_usage
 //* help message at program startup
@@ -954,9 +1051,19 @@ int main(int argc, char* argv[])
     }
 
 //*--- Initialize CAT
+
+
     cat.open(port,4800);
     cat.SetFrequency=SetFrequency;
 
+    setWord(&FT817,PTT,false);
+    setWord(&FT817,RIT,false);
+    setWord(&FT817,LOCK,false);
+    setWord(&FT817,SPLIT,false);
+    setWord(&FT817,VFO,false);
+
+    cat.FT817=FT817;
+    cat.MODE=MODE;
 
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
     dds.ppm=ppm;
@@ -1021,19 +1128,20 @@ int main(int argc, char* argv[])
             setWord(&TSW,FBCK,false);
          }
       }
-
+//*-------------------------------------------------------------------------------------------
 //*--- running become false, the program is terminating
-
+//*-------------------------------------------------------------------------------------------
 //*--- Stop keyer thread
 
-    fprintf(stderr,"Stopping keyer thread and killing semaphore\n");
-    pthread_join(keyer_thread_id, 0);
-    sem_destroy(&cw_event);
+    iambic_close();
+//*--- Stop the DDS function
+
+    dds.close();
+
+//*--- turn LCD off
 
     lcd.backlight(false);
     lcd.clear();
-    dds.close();
-
     printf("\nProgram terminated....\n");
     exit(0);
 }

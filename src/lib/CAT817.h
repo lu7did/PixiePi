@@ -334,10 +334,10 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
          BCDBuf[0]=0x00;
        }
+       setWord(&FT817,PTT,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
        sprintf(msg,"Command 0x08 Resp(%s)\n",buffer);
        printDEBUG(0x01,msg);
-
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -548,7 +548,7 @@ void CAT817::get() {
     if (serial_port < 0) {
        return;
     }
-
+    int maxFrame=4;
     while(serialDataAvail(serial_port)) {
        char c = serialGetchar(serial_port);
        byte k=(byte)c;
@@ -562,7 +562,10 @@ void CAT817::get() {
           processCAT(&rxBuffer[0]);
           fflush (stdout) ;
           n=0;
-          return;  //If processed one command don't get stuck here
+          maxFrame--;
+          if (maxFrame==0) { 
+             return;  //If processed one command don't get stuck here
+          }
        }
    }
 }

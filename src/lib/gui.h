@@ -20,7 +20,7 @@ void showVFO() {
 
 void showPTT() {
    lcd.setCursor(2,0);
-   if (keyState==KEY_DOWN) { 
+   if (getWord(FT817,PTT)==true) { 
       lcd.write(0);
    } else {
       lcd.print(" ");
