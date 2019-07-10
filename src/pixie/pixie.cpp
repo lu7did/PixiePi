@@ -448,11 +448,11 @@ void CATchangeStatus() {
        }
 //*---------------------
        if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
-
+          setWord(&FT817,RIT,getWord(cat.FT817,RIT));
           return;
        }
        if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
-
+          setWord(&FT817,LOCK,getWord(cat.FT817,LOCK));
           return;
        }
        if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
