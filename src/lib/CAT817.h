@@ -355,11 +355,14 @@ void CAT817::processCAT(byte* rxBuffer) {
        return; }
       case 0x81:  {
        BCDBuf[0]=0x00;
-       if (getWord(FT817,VFO)==false) {
-          setWord(&FT817,VFO,true);
-       } else {
-          setWord(&FT817,VFO,false);
-       }
+       (getWord(FT817,VFO)==false?setWord(&FT817,VFO,true):setWord(&FT817,VFO,false));
+
+       //if (getWord(FT817,VFO)==false) {
+       //   setWord(&FT817,VFO,true);
+       //} else {
+       //   setWord(&FT817,VFO,false);
+       //}
+
        BCDBuf[0]=0x00;
        hex2str(&buffer[0],&BCDBuf[0],1);
        sprintf(msg,"Command 0x81 Resp(%s)\n",buffer);

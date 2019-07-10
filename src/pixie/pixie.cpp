@@ -1,18 +1,19 @@
 /*
  * pixie.c
- * Raspberry Pi based transceiver
- *
+ * Raspberry Pi based transceiver controller
+ *---------------------------------------------------------------------
  * This program turns the Raspberry pi into a DDS software able
  * to operate as the LO for a double conversion rig, in this case
  * the popular Pixie setup, but can be extended to any other suitable
  * scheme
- *
+ *---------------------------------------------------------------------
  *
  * Created by Pedro E. Colla (lu7did@gmail.com)
  * Code excerpts from several packages:
  *    Adafruit's python code for CharLCDPlate 
  *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
- *     wiringPi library (git clone git://git.drogon.net/wiringPi)
+ *    wiringPi library (git clone git://git.drogon.net/wiringPi)
+ *    iambic-keyer (https://github.com/n1gp/iambic-keyer)
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,7 +65,6 @@
 
 //*---- Program specific includes
 
-
 #include "pixie.h"
 #include "../lib/ClassMenu.h"
 #include "../lib/VFOSystem.h"
@@ -79,6 +79,7 @@
 byte FT817;
 byte MODE=MCW;
 int  SHIFT=600;
+int  RITOFS=0;
 
 //*---- Keyer specific definitions
 
@@ -213,7 +214,7 @@ auto startPush=std::chrono::system_clock::now();
 auto endPush=std::chrono::system_clock::now();
  
 //*--- LCD custom character definitions
-byte TX[8] = {
+byte TX[8] = {  //Inverted T (Transmission mode)
   0B11111,
   0B10001,
   0B11011,
@@ -222,7 +223,7 @@ byte TX[8] = {
   0B11011,
   0B11111,
 };
-byte A[8] = {
+byte A[8] = {   //VFO A
   0b01110,
   0b10001,
   0b11111,
@@ -232,7 +233,7 @@ byte A[8] = {
   0b11111,
 };
 
-byte B[8] = {
+byte B[8] = {   //VFO B
   0b11110,
   0b10001,
   0b11110,
@@ -242,12 +243,12 @@ byte B[8] = {
   0b11111,
 };
 
-byte K[8] = {31,17,27,27,27,17,31};
-byte S[8] = {31,17,23,17,29,17,31};
-byte B1[8]= {24,24,24,24,24,24,24};
-byte B2[8]= {30,30,30,30,30,30,30};
-byte B3[8]= {31,31,31,31,31,31,31};
-byte B4[8]= {
+byte K[8] = {31,17,27,27,27,17,31};    //Inverted K (Keyer)
+byte S[8] = {31,17,23,17,29,17,31};    //Inverted S (Split)
+byte B1[8]= {24,24,24,24,24,24,24};    // -
+byte B2[8]= {30,30,30,30,30,30,30};    // /
+byte B3[8]= {31,31,31,31,31,31,31};    // |
+byte B4[8]= {                          // \
   0b00000,
   0b10000,
   0b01000,
@@ -298,9 +299,12 @@ int  TWIFI = 10;
 bool wlan0 = false;
 void showPTT();
 
+
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+#include "../lib/gui.h"
+
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getSSW Return status according with the setting of the argument bit onto the SW
 //*--------------------------------------------------------------------------------------------------
@@ -325,21 +329,47 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 //* Manage the PTT of the transceiver (can be used from the keyer or elsewhere
 //*--------------------------------------------------------------------------------------------
 void setPTT(bool statePTT) {
-    if (statePTT==false) {
+
+    float f=SetFrequency;
+    if (statePTT==true) {
        fprintf(stderr,"PTT <ON>, PA Powered\n");
-       if (MODE==MCW || MODE ==MCWR) {
-          dds.set((float)(vx.get(vx.vfoAB)+vx.vfoshift[vx.vfoAB]));
-          softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
+
+//*--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
+
+       if (getWord(FT817,SPLIT)==true) {
+          vx.vfoAB=(vx.vfoAB==VFOA ? VFOB : VFOA);
+          f=(float)vx.get(vx.vfoAB);
        }
+          
+       if (MODE==MCW) {
+          f=f+(float)vx.vfoshift[vx.vfoAB];
+       }
+
+       if (MODE==MCWR) {
+          f=f-(float)vx.vfoshift[vx.vfoAB];
+       }
+       
+       if (f != SetFrequency) {
+          dds.set(f);
+       }
+       softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
        gpioWrite(KEYER_OUT_GPIO, 1);
        return;
-    }
+    } 
+
     fprintf(stderr,"PTT <OFF>, Receiver mode\n");
     softToneWrite (SIDETONE_GPIO, 0);
-    if (MODE==MCW || MODE == MCWR) {
+    gpioWrite(KEYER_OUT_GPIO, 0);
+
+    if (getWord(FT817,SPLIT)==true){
+       (vx.vfoAB==VFOA ? vx.vfoAB=VFOB : vx.vfoAB = VFOA);
+    }
+
+
+    if (MODE==MCW || MODE == MCWR || getWord(FT817,SPLIT)==true) {
        dds.set((float)(vx.get(vx.vfoAB)));
     }
-    gpioWrite(KEYER_OUT_GPIO, 0);
+
     return;
 
 }
@@ -377,6 +407,8 @@ void CATchangeFreq() {
   printf("changeFreq: Frequency set to f(%d)\n",f);
   dds.set(SetFrequency);
   vx.set(vx.vfoAB,f);
+  //showVFO();
+  
 
 }
 //*-----------------------------------------------------------------------------------------------------------
@@ -386,12 +418,13 @@ void CATchangeFreq() {
 //*-----------------------------------------------------------------------------------------------------------
 void CATchangeMode() {
 
-       if (cat.MODE == MAM || cat.MODE == MWFM || cat.MODE == MFM || cat.MODE == MDIG || cat.MODE == MPKT) {
+       if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
           cat.MODE = MODE;
           return;
        }
 
        MODE=cat.MODE;
+       showMode();
        return;
 
 }
@@ -423,11 +456,13 @@ void CATchangeStatus() {
           return;
        }
        if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
-
+          setWord(&FT817,SPLIT,getWord(cat.FT817,SPLIT));
+          showSplit();
           return;
        }
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
-
+          setWord(&FT817,VFO,getWord(cat.FT817,VFO));
+          showVFO(); 
           return;
        }
        if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {      //* PTT Changed
@@ -552,9 +587,13 @@ void updateEncoders(int gpio, int level, uint32_t tick)
            return;
         }
 
-       if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) { //exit if pending to service a previous one
-          return;
-       } 
+        if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) { //exit if pending to service a previous one
+           return;
+        }
+
+        if (getWord(FT817,PTT)==true) {
+           return;    // If transmitting disable encoder
+        }  
 
         int clkState=gpioRead(ENCODER_CLK);
         int dtState= gpioRead(ENCODER_DT);
@@ -768,7 +807,6 @@ void processVFO() {
    }
  
 }
-#include "../lib/gui.h"
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------

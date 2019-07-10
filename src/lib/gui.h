@@ -2,17 +2,20 @@
 #include <cstring>
 using namespace std;
 
+
 char gui[80];
 //*----------------------------------------------------------------------------$
 //* Show the VFO being used (A or B)
 //*----------------------------------------------------------------------------$
 void showVFO() {
    lcd.setCursor(0,0);
-   if (vx.vfoAB==VFOA) {
-      lcd.write(1);
-   } else {
-      lcd.write(2);
-   }
+   (vx.vfoAB==VFOA ? lcd.write(1) : lcd.write(2));
+
+   //if (vx.vfoAB==VFOA) {
+   //   lcd.write(1);
+   //} else {
+   //   lcd.write(2);
+   //}
 }
 //*----------------------------------------------------------------------------$
 //* Show the PTT status
@@ -20,11 +23,12 @@ void showVFO() {
 
 void showPTT() {
    lcd.setCursor(2,0);
-   if (getWord(FT817,PTT)==true) { 
-      lcd.write(0);
-   } else {
-      lcd.print(" ");
-   }
+   (getWord(FT817,PTT)==true ? lcd.write(0) : lcd.print(" "));
+   //if (getWord(FT817,PTT)==true) { 
+   //   lcd.write(0);
+   //} else {
+   //   lcd.print(" ");
+   //}
 
 }
 //*----------------------------------------------------------------------------$
@@ -34,11 +38,13 @@ void showPTT() {
 void showKeyer() {
 
    lcd.setCursor(4,0);
-   if (kyr.mItem == 0) {
-      lcd.print("S");
-   } else {
-      lcd.write(3);
-   }
+   (kyr.mItem == 0 ? lcd.print("S") : lcd.write(3));
+
+   //if (kyr.mItem == 0) {
+   //   lcd.print("S");
+   //} else {
+   //   lcd.write(3);
+   //}
 
 }
 //*----------------------------------------------------------------------------$
@@ -48,11 +54,13 @@ void showKeyer() {
 void showSplit() {
 
    lcd.setCursor(6,0);
-   if (spl.mItem == 0) {
-     lcd.print(" ");
-   } else {
-     lcd.write(4);
-   }
+   (spl.mItem == 0 ? lcd.print(" ") : lcd.write(4));
+
+   //if (spl.mItem == 0) {
+   //  lcd.print(" ");
+   //} else {
+   //  lcd.write(4);
+   //}
 
 }
 //*----------------------------------------------------------------------------$
@@ -62,6 +70,7 @@ void showMode(){
 
    lcd.setCursor(8,0);
    int i=mod.get();
+  
    if (mod.init==true) {
       lcd.print((char*)mod.getText(0)); 
    } else {
@@ -75,7 +84,7 @@ void showWlan0() {
 
    lcd.setCursor(14,1);
    if (wtd.mItem != 0) {
-      if (wlan0 == true) {
+       if (wlan0 == true) {
          lcd.print("*");
       } else {
          lcd.print(" ");
@@ -127,6 +136,7 @@ void showPanel() {
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getCurrentText());
       lcd.print((char*)gui);
+
       lcd.setCursor(1,1);
       sprintf(gui," %s",(char*)z->getText(0));
       lcd.print((char*)gui);
@@ -153,7 +163,7 @@ void showPanel() {
 void showSave(){
       lcd.clear();
       lcd.setCursor(0,0);
-      usleep(300000);
+      usleep(DELAY_SAVE);
       lcd.print("Saving....");
 }
 //*-------------------------------------------------------------------------------------------
@@ -175,7 +185,17 @@ void saveMenu() {
 
       if (vx.vfoAB != vfo.mItem) {      //Switch from VFO A to B or viceversa
          vx.vfoAB=vfo.mItem;
-         vx.set(vx.vfoAB,vx.get(vx.vfoAB));
+         //vx.set(vx.vfoAB,vx.get(vx.vfoAB));
+         cat.SetFrequency=(float)vx.get(vx.vfoAB);
+         (vx.vfoAB==VFOA ? setWord(&cat.FT817,VFO,false) : setWord(&cat.FT817,VFO,true));
+         CATchangeFreq();
+         CATchangeStatus();         
+      }
+
+      bool split=(spl.mItem == 0 ? split=false : split=true);
+      if (split != getWord(cat.FT817,SPLIT)) {   // Change in split configuration
+         setWord(&cat.FT817,SPLIT,split);
+         CATchangeStatus();
       }
 
       if (bck.mItem != backlight) {     //Change in backlight condition
@@ -184,6 +204,12 @@ void saveMenu() {
       
       if (kyr.mItem != cw_keyer_mode) { //Change in keyer mode
          cw_keyer_mode=kyr.mItem;
+      }
+
+      if (mod.mItem != MODE) {
+         cat.MODE=mod.mItem;
+         CATchangeMode();       // Trigger a pseudo-CAT mode change
+
       } 
 
 }
@@ -375,7 +401,9 @@ void KeyerUpdate() {
 
 }
 
+//*--------------------------------------------------------------------------------------------------
 //*---- Split options
+//*--------------------------------------------------------------------------------------------------
 
 void SplitUpdate() {
   if (spl.mItem < 1 && spl.CW == true) {
@@ -396,36 +424,52 @@ void SplitUpdate() {
   return;
 
 }
-
+//*-------------------------------------------------------------------------------------------
 //*---- Mode update
-
+//*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
-  if (mod.mItem < 6 && mod.CW == true) {
+  if (mod.mItem <= 12 && mod.CW == true) {
       mod.mItem++;
   }
   if (mod.mItem > 0 && mod.CCW == true) {
       mod.mItem--;
   }
 
+//*---- Apply policy for modes not implemented making them not selectable
+
+  if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CCW) {
+     mod.mItem--;
+  } else {
+     mod.mItem++;
+  }
+
+
   char* s=(char*)"                  "; 
   switch(mod.mItem) {
-    case 0:                          {s=(char*)"CWL";break;};
-    case 1:                          {s=(char*)"CWU";break;};
-    case 2:                          {s=(char*)"USB";break;};
-    case 3:                          {s=(char*)"LSB";break;};
-    case 4:                          {s=(char*)"WSP";break;};
-    case 5:                          {s=(char*)"FT8";break;};
-    case 6:                          {s=(char*)"PSK";break;};
+    case  0:                          {s=(char*)"LSB";break;};
+    case  1:                          {s=(char*)"USB";break;};
+    case  2:                          {s=(char*)"CW ";break;};
+    case  3:                          {s=(char*)"CWR";break;};
+    case  4:                          {s=(char*)"AM ";break;};
+    case  5:                          {s=(char*)"N/I";break;};
+    case  6:                          {s=(char*)"WFM";break;};
+    case  7:                          {s=(char*)"N/I";break;};
+    case  8:                          {s=(char*)"FM ";break;};
+    case  9:                          {s=(char*)"N/I";break;};
+    case 10:                          {s=(char*)"DIG";break;};
+    case 11:                          {s=(char*)"N/I";break;};
+    case 12:                          {s=(char*)"PKT";break;};
   }
+
   mod.setText(0,s);
   showPanel();
   
   return;
 
 }
-
+//*-----------------------------------------------------------------------------------
 //*---- Watchdog enable/disable content
-
+//*-----------------------------------------------------------------------------------
 void WatchDogUpdate() {
 
   if (wtd.mItem < 1 && wtd.CW == true) {
@@ -446,8 +490,9 @@ void WatchDogUpdate() {
   return;
     
 }
+//*----------------------------------------------------------------------------------------
 //*---- VFO update
-
+//*----------------------------------------------------------------------------------------
 void VfoUpdate() {
 
   if (vfo.mItem < 1 && vfo.CW == true) {
@@ -468,7 +513,9 @@ void VfoUpdate() {
   return;
  
 }
+//*-------------------------------------------------------------------------------------------
 //*--- BackLight mode management
+//*-------------------------------------------------------------------------------------------
 void BackLightUpdate() {
 
   if (bck.CW == true) {
@@ -495,30 +542,27 @@ void BackLightUpdate() {
   return;
 
 }
-//*---- NOT IMPLEMENTED YET
-//*---- Step content management
-void StepUpdate() {
-
-}
+//*-----------------------------------------------------------------------------------------------------
 //*--- Shift Update
+//*-----------------------------------------------------------------------------------------------------
 void ShiftUpdate() {
 
-  if (shf.CW == true) {
-     if (shf.mItem < 80) {
-        shf.mItem=shf.mItem+1;
+  if (shf.CW == true) {         //* Varies Tone shift between 500 and 800 Hz
+     if (shf.mItem < 6) {
+        shf.mItem++;
      } else {
-        shf.mItem = 50;
+        shf.mItem = 0;
      }
   }
   if (shf.CCW == true) {
-     if (shf.mItem > 50) {
+     if (shf.mItem > 0) {
         shf.mItem=shf.mItem-1;
      } else {
-        shf.mItem = 80;
+        shf.mItem = 6;
      }
   }
    
-  sprintf(gui,"%i Hz",(int)shf.mItem*10);
+  sprintf(gui,"%i Hz",500+((int)shf.mItem)*50);
   shf.setText(0,(char*)gui);
 
   shf.CW=false;
@@ -527,6 +571,13 @@ void ShiftUpdate() {
   return;
 
 }
+
+//*---- NOT IMPLEMENTED YET
+//*---- Step content management
+void StepUpdate() {
+
+}
+
 void LockUpdate() {
 
 }

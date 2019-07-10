@@ -72,5 +72,7 @@ enum {
     EXITLOOP
 };
 
+#define DELAY_SAVE	800000
+
 
 
