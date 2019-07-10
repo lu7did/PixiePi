@@ -86,6 +86,9 @@ Boston, MA  02110-1301, USA.
 
 static void* keyer_thread(void *arg);
 static pthread_t keyer_thread_id;
+typedef unsigned char byte;
+typedef bool boolean;
+typedef void (*CALLBACK)();
 
 // GPIO pins
 // set to 0 to use the PI's hw:0 audio out for sidetone
@@ -96,6 +99,10 @@ static pthread_t keyer_thread_id;
 #define KEYER_OUT_GPIO 12
 #define LEFT_PADDLE_GPIO 13
 #define RIGHT_PADDLE_GPIO 15
+
+#define KEY_DOWN 0x01
+#define KEY_UP 0x00
+
 //#define SPEED_GPIO 19
 
 #define KEYER_STRAIGHT 0
@@ -139,6 +146,8 @@ static int cw_keyer_spacing = 0;
 static int cw_active_state = 0;
 static sem_t cw_event;
 static int keyer_out = 0;
+       CALLBACK keyChange=NULL; 
+       byte keyState=KEY_UP; 
 
 void keyer_update() {
     dot_delay = 1200 / cw_keyer_speed;
@@ -180,6 +189,8 @@ void set_keyer_out(int state) {
         if (state) {
             fprintf(stderr,"Key DOWN, PA Powered\n");
             gpioWrite(KEYER_OUT_GPIO, 1);
+            keyState=KEY_DOWN;
+            if (keyChange!=NULL) { keyChange(); }
             //if (SIDETONE_GPIO)
             softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
             //else
@@ -188,6 +199,8 @@ void set_keyer_out(int state) {
         else {
             fprintf(stderr,"Key UP, Receiver mode\n");
             gpioWrite(KEYER_OUT_GPIO, 0);
+            keyState=KEY_UP;
+            if (keyChange!=NULL) { keyChange(); }
             //if (SIDETONE_GPIO)
             softToneWrite (SIDETONE_GPIO, 0);
             //else

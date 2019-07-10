@@ -8,7 +8,7 @@ socat -d -d pty,raw,echo=0,link=/tmp/ttyv0 pty,raw,echo=0,link=/tmp/ttyv1 &
 PID=$!
 echo "socat PID($PID)"
 
-sudo /home/pi/PixiePi/pixie -g 4 -f 7032000 -F 700 -G 20 -s /tmp/ttyv1
+sudo /home/pi/PixiePi/pixie -g 4 -f 7032000 -F 700 -G 20 -s /tmp/ttyv1 -d
 
 
 echo "Killing socat PID($PID)"

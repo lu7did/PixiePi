@@ -286,10 +286,19 @@ int  TBCK = backlight;
 int  TWIFI = 10;
 
 bool wlan0 = false;
+void showPTT();
 
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+void keyChangeEvent() {
+
+     byte s=keyState;
+     fprintf(stderr,"Keyer state(%d)\n",s);
+     showPTT();
+
+}
+
 void changeFreq() {
 
 
@@ -957,6 +966,7 @@ int main(int argc, char* argv[])
 
 //*---
     //startKeyer();
+    keyChange=keyChangeEvent;
     iambic_init();
 
 //*--- DDS is running at the SetFrequency value (initial)

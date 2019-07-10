@@ -562,6 +562,7 @@ void CAT817::get() {
           processCAT(&rxBuffer[0]);
           fflush (stdout) ;
           n=0;
+          return;  //If processed one command don't get stuck here
        }
    }
 }

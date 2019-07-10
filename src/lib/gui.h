@@ -18,9 +18,13 @@ void showVFO() {
 //* Show the PTT status
 //*----------------------------------------------------------------------------$
 
-void showPTT() { 
+void showPTT() {
    lcd.setCursor(2,0);
-   lcd.write(0);
+   if (keyState==KEY_DOWN) { 
+      lcd.write(0);
+   } else {
+      lcd.print(" ");
+   }
 
 }
 //*----------------------------------------------------------------------------$
@@ -169,14 +173,18 @@ void saveMenu() {
       byte j=z->mItem;
       byte k=z->mItemBackup;
 
-      if (vx.vfoAB != vfo.mItem) {   //Switch from VFO A to B or viceversa
+      if (vx.vfoAB != vfo.mItem) {      //Switch from VFO A to B or viceversa
          vx.vfoAB=vfo.mItem;
          vx.set(vx.vfoAB,vx.get(vx.vfoAB));
       }
 
-      if (bck.mItem != backlight) { //Change in backlight condition
+      if (bck.mItem != backlight) {     //Change in backlight condition
          backlight=bck.mItem;
       }
+      
+      if (kyr.mItem != cw_keyer_mode) { //Change in keyer mode
+         cw_keyer_mode=kyr.mItem;
+      } 
 
 }
 //*-------------------------------------------------------------------------------------------
@@ -188,6 +196,7 @@ void doSave() {
       showSave();      
       saveMenu();
       menuRoot.save();
+
 
 }
 
@@ -347,7 +356,8 @@ void CMD_FSM() {
 //*-----------------------------------------------------------------------------------------------------------------
 //*--- Keyer content
 void KeyerUpdate() {
-  if (kyr.mItem < 1 && kyr.CW == true) {
+
+  if (kyr.mItem < 2 && kyr.CW == true) {
       kyr.mItem++;
   }
   if (kyr.mItem > 0 && kyr.CCW == true) {
@@ -356,12 +366,11 @@ void KeyerUpdate() {
   char* s=(char*)"                  "; 
   switch(kyr.mItem) {
     case 0:                          {s=(char*)"Straight";break;};                            
-    case 1:                          {s=(char*)"Iambic";break;};
+    case 1:                          {s=(char*)"Iambic A";break;};
+    case 2:                          {s=(char*)"Iambic B";break;};
   }
-  
   kyr.l.get(0)->mText=s;
   showPanel();
-  
   return;
 
 }
@@ -491,7 +500,31 @@ void BackLightUpdate() {
 void StepUpdate() {
 
 }
+//*--- Shift Update
 void ShiftUpdate() {
+
+  if (shf.CW == true) {
+     if (shf.mItem < 80) {
+        shf.mItem=shf.mItem+1;
+     } else {
+        shf.mItem = 50;
+     }
+  }
+  if (shf.CCW == true) {
+     if (shf.mItem > 50) {
+        shf.mItem=shf.mItem-1;
+     } else {
+        shf.mItem = 80;
+     }
+  }
+   
+  sprintf(gui,"%i Hz",(int)shf.mItem*10);
+  shf.setText(0,(char*)gui);
+
+  shf.CW=false;
+  shf.CCW=false;
+ 
+  return;
 
 }
 void LockUpdate() {
