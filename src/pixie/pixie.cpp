@@ -987,8 +987,9 @@ int main(int argc, char* argv[])
     stp.add((char*)" 100 Hz",NULL);
     stp.set(0);
 
-    shf.add((char*)" 600 Hz",NULL);
-    shf.set(0);
+    shf.add((char*)" ",NULL);
+    shf.set(2);
+    shf.refresh();
 
     kyr.add((char*)" Straight",NULL);
     kyr.add((char*)" Iambic A",NULL);
@@ -1003,20 +1004,10 @@ int main(int argc, char* argv[])
     bck.add((char*)gui,NULL);  
     bck.set(backlight);
 
-    mod.add((char*)"LSB",NULL);
-    mod.add((char*)"USB",NULL);
+
     mod.add((char*)"CW ",NULL);
-    mod.add((char*)"CWR",NULL);
-    mod.add((char*)"AM ",NULL);
-    mod.add((char*)"N/I",NULL);
-    mod.add((char*)"WFM",NULL);
-    mod.add((char*)"N/I",NULL);
-    mod.add((char*)"FM ",NULL);
-    mod.add((char*)"N/I",NULL);
-    mod.add((char*)"DIG",NULL);
-    mod.add((char*)"N/I",NULL);
-    mod.add((char*)"PKT",NULL);
-    mod.set(2);
+    mod.set(0);
+    mod.refresh();
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);

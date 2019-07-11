@@ -1,5 +1,3 @@
-
-
 //*--------------------------------------------------------------------------------------------------
 //* ClassMenu Class   (HEADER CLASS)
 //*--------------------------------------------------------------------------------------------------
@@ -43,6 +41,7 @@ class MenuClass
       void  set(unsigned char i);
       unsigned char  get();
       unsigned char  getBackup();
+      void  refresh();
       
       void  setText(unsigned char i,char* c);
       bool  isUpdated();
@@ -61,7 +60,7 @@ class MenuClass
 
       
   private:    
-      
+      char gui[80];      
       
   
 };
@@ -84,7 +83,15 @@ MenuClass::MenuClass(CALLBACK u) {
 //*-------------------------------------------------------------------------------------------------
 //* Set current Index by force
 //*-------------------------------------------------------------------------------------------------
-
+void MenuClass::refresh() {
+  if (update!=NULL){
+     update();
+  }
+  return;
+}
+//*----------------------------------------------------------------------------
+//* Refresh content for actual value is dynamically created
+//*---------------------------------------------------------------------------
 void MenuClass::set(unsigned char i) {
   mItem=i; 
   if (update!=NULL){
@@ -98,6 +105,7 @@ void MenuClass::set(unsigned char i) {
 void MenuClass::add(char* t,MenuClass* m) {
 
      List* x = (List*)malloc(sizeof(List));
+     init=true;
      x->mText=t;
      x->mChild=m;
      l.add(x);

@@ -10,12 +10,6 @@ char gui[80];
 void showVFO() {
    lcd.setCursor(0,0);
    (vx.vfoAB==VFOA ? lcd.print("A") : lcd.print("B"));
-
-   //if (vx.vfoAB==VFOA) {
-   //   lcd.write(1);
-   //} else {
-   //   lcd.write(2);
-   //}
 }
 //*----------------------------------------------------------------------------$
 //* Show the PTT status
@@ -24,11 +18,6 @@ void showVFO() {
 void showPTT() {
    lcd.setCursor(2,0);
    (getWord(FT817,PTT)==true ? lcd.write(0) : lcd.print(" "));
-   //if (getWord(FT817,PTT)==true) { 
-   //   lcd.write(0);
-   //} else {
-   //   lcd.print(" ");
-   //}
 
 }
 //*----------------------------------------------------------------------------$
@@ -43,14 +32,6 @@ void showKeyer() {
      case 0x01: {lcd.print("1"); break;}
      case 0x02: {lcd.print("2"); break;}
    }
-
-   //(kyr.mItem == 0 ? lcd.print("S") : lcd.write(3));
-   //if (kyr.mItem == 0) {
-   //   lcd.print("S");
-   //} else {
-   //   lcd.write(3);
-   //}
-
 }
 //*----------------------------------------------------------------------------$
 //* Show the split status
@@ -70,16 +51,12 @@ void showMode(){
 
    lcd.setCursor(8,0);
    int i=mod.get();
-   fprintf(stderr,"shodMode i=%d mod.init=%d\n",i,mod.init);
-
-  
+   
    if (mod.init==true) {
-      //lcd.print((char*)mod.getText(i)); 
-      //mod.init=false;
+      lcd.print((char*)mod.getText(0)); 
    } else {
-      //lcd.print((char*)mod.getText(i));
+      lcd.print(" ");
    }
-
 }
 //*----------------------------------------------------------------------------$
 //* Show the Wifi connection status
@@ -433,7 +410,7 @@ void SplitUpdate() {
 //*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
 
-  fprintf(stderr,"Entering ModeUpdate modItem=%d\n",mod.mItem);
+  //fprintf(stderr,"Entering ModeUpdate modItem=%d\n",mod.mItem);
   if (mod.mItem <= 12 && mod.CW == true) {
       mod.mItem++;
   }
@@ -467,10 +444,7 @@ void ModeUpdate() {
     case 12:                          {s=(char*)"PKT";break;};
   }
   
-  //fprintf(stderr,"Texto %s\n",s);
-  //mod.setText(mod.mItem,s);
-  //fprintf(stderr,"Actualizó exitosamente texto\n");
-  mod.l.get(mod.mItem)->mText=s;
+  mod.l.get(0)->mText=s;
   showPanel();
   
   return;
@@ -573,6 +547,7 @@ void ShiftUpdate() {
    
   sprintf(gui,"%i Hz",500+((int)shf.mItem)*50);
   shf.setText(0,(char*)gui);
+  fprintf(stderr,"shiftUpdate: mItem:%d set(%s)\n",shf.mItem,gui);
 
   shf.CW=false;
   shf.CCW=false;
