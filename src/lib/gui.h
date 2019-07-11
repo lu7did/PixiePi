@@ -9,7 +9,7 @@ char gui[80];
 //*----------------------------------------------------------------------------$
 void showVFO() {
    lcd.setCursor(0,0);
-   (vx.vfoAB==VFOA ? lcd.write(1) : lcd.write(2));
+   (vx.vfoAB==VFOA ? lcd.print("A") : lcd.print("B"));
 
    //if (vx.vfoAB==VFOA) {
    //   lcd.write(1);
@@ -38,8 +38,13 @@ void showPTT() {
 void showKeyer() {
 
    lcd.setCursor(4,0);
-   (kyr.mItem == 0 ? lcd.print("S") : lcd.write(3));
+   switch(kyr.mItem) {
+     case 0x00: {lcd.print("S"); break;}
+     case 0x01: {lcd.print("1"); break;}
+     case 0x02: {lcd.print("2"); break;}
+   }
 
+   //(kyr.mItem == 0 ? lcd.print("S") : lcd.write(3));
    //if (kyr.mItem == 0) {
    //   lcd.print("S");
    //} else {
@@ -54,13 +59,8 @@ void showKeyer() {
 void showSplit() {
 
    lcd.setCursor(6,0);
-   (spl.mItem == 0 ? lcd.print(" ") : lcd.write(4));
+   (spl.mItem == 0 ? lcd.print(" ") : lcd.print("S"));
 
-   //if (spl.mItem == 0) {
-   //  lcd.print(" ");
-   //} else {
-   //  lcd.write(4);
-   //}
 
 }
 //*----------------------------------------------------------------------------$
@@ -70,10 +70,14 @@ void showMode(){
 
    lcd.setCursor(8,0);
    int i=mod.get();
+   fprintf(stderr,"shodMode i=%d mod.init=%d\n",i,mod.init);
+
   
    if (mod.init==true) {
-      lcd.print((char*)mod.getText(0)); 
+      //lcd.print((char*)mod.getText(i)); 
+      //mod.init=false;
    } else {
+      //lcd.print((char*)mod.getText(i));
    }
 
 }
@@ -428,6 +432,8 @@ void SplitUpdate() {
 //*---- Mode update
 //*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
+
+  fprintf(stderr,"Entering ModeUpdate modItem=%d\n",mod.mItem);
   if (mod.mItem <= 12 && mod.CW == true) {
       mod.mItem++;
   }
@@ -460,8 +466,11 @@ void ModeUpdate() {
     case 11:                          {s=(char*)"N/I";break;};
     case 12:                          {s=(char*)"PKT";break;};
   }
-
-  mod.setText(0,s);
+  
+  //fprintf(stderr,"Texto %s\n",s);
+  //mod.setText(mod.mItem,s);
+  //fprintf(stderr,"Actualizó exitosamente texto\n");
+  mod.l.get(mod.mItem)->mText=s;
   showPanel();
   
   return;

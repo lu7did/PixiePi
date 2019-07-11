@@ -157,12 +157,14 @@ bool running=true;
 
 //#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
 //#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
+
 void changeFreq();
 void CATchangeMode();
 void CATchangeFreq();
 void CATchangeStatus();
 void CATgetRX();
 void CATgetTX();
+
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
 //*----------------------------------------------------------------------------
@@ -171,6 +173,7 @@ const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="01";
 const char   *COPYRIGHT="(c) LU7DID 2019";
+
 char *strsignal(int sig);
 extern const char * const sys_siglist[];
 //*-------------------------------------------------------------------------------------------------
@@ -214,6 +217,15 @@ auto startPush=std::chrono::system_clock::now();
 auto endPush=std::chrono::system_clock::now();
  
 //*--- LCD custom character definitions
+//* TX -- char(0)     <T>
+//* S0 -- char(1)     < >
+//* S1 -- char(2)     |
+//* S2 -- char(3)     ||
+//* S3 -- char(4)     |||
+//* S4 -- char(5)     ||||
+//* S5 -- char(6)     |||||
+//* SL -- char(7)     
+
 byte TX[8] = {  //Inverted T (Transmission mode)
   0B11111,
   0B10001,
@@ -965,9 +977,11 @@ int main(int argc, char* argv[])
 //*--- Setup child LCD menues
 
     vfo.add((char*)" A",NULL);
+    vfo.add((char*)" B",NULL);
     vfo.set(0);
 
     spl.add((char*)" Off",NULL);
+    spl.add((char*)" On ",NULL);
     spl.set(0);
 
     stp.add((char*)" 100 Hz",NULL);
@@ -976,18 +990,33 @@ int main(int argc, char* argv[])
     shf.add((char*)" 600 Hz",NULL);
     shf.set(0);
 
-    kyr.add((char*)" IambicA",NULL);
+    kyr.add((char*)" Straight",NULL);
+    kyr.add((char*)" Iambic A",NULL);
+    kyr.add((char*)" Iambic B",NULL);
     kyr.set(1);
 
     wtd.add((char*)"Off",NULL);  
+    wtd.add((char*)"On ",NULL);
     wtd.set(0);
 
     sprintf(gui," %d secs",backlight);
     bck.add((char*)gui,NULL);  
     bck.set(backlight);
 
-    mod.add((char*)"CWU  ",NULL);
-    mod.set(0);
+    mod.add((char*)"LSB",NULL);
+    mod.add((char*)"USB",NULL);
+    mod.add((char*)"CW ",NULL);
+    mod.add((char*)"CWR",NULL);
+    mod.add((char*)"AM ",NULL);
+    mod.add((char*)"N/I",NULL);
+    mod.add((char*)"WFM",NULL);
+    mod.add((char*)"N/I",NULL);
+    mod.add((char*)"FM ",NULL);
+    mod.add((char*)"N/I",NULL);
+    mod.add((char*)"DIG",NULL);
+    mod.add((char*)"N/I",NULL);
+    mod.add((char*)"PKT",NULL);
+    mod.set(2);
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);
