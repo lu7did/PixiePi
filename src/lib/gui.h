@@ -4,6 +4,44 @@ using namespace std;
 
 
 char gui[80];
+//*---------------------------------------------------------------------------
+//* showSMeter
+//* represents a linear SMeter composed by 3 segments with 0..5 bars each
+//* input signal must be in the 0..15 range [S0..S9..+10..+60] and assigned
+//* to the range. The caller is responsible to comform the signal to a 
+//* linear representation.
+//*---------------------------------------------------------------------------
+void showSMeter(int S) {
+
+   if (S<0) {
+      S=0;
+   } else {
+     if (S>15) {
+        S=15;
+     }
+   }
+   lcd.setCursor(13,0);
+
+   switch(S) {
+     case 0 : {lcd.print(" ");lcd.print(" ");lcd.print(" "); break;}
+     case 1 : {lcd.write(1);lcd.print(" ");lcd.print(" "); break;}
+     case 2 : {lcd.write(2);lcd.print(" ");lcd.print(" "); break;}
+     case 3 : {lcd.write(3);lcd.print(" ");lcd.print(" "); break;}
+     case 4 : {lcd.write(4);lcd.print(" ");lcd.print(" "); break;}
+     case 5 : {lcd.write(5);lcd.print(" ");lcd.print(" "); break;}
+     case 6 : {lcd.write(5);lcd.write(1);lcd.print(" "); break;}
+     case 7 : {lcd.write(5);lcd.write(2);lcd.print(" "); break;}
+     case 8 : {lcd.write(5);lcd.write(3);lcd.print(" "); break;}
+     case 9 : {lcd.write(5);lcd.write(4);lcd.print(" "); break;}
+     case 10: {lcd.write(5);lcd.write(5);lcd.print(" "); break;}
+     case 11: {lcd.write(5);lcd.write(1);lcd.write(1); break;}
+     case 12: {lcd.write(5);lcd.write(1);lcd.write(2); break;}
+     case 13: {lcd.write(5);lcd.write(1);lcd.write(3); break;}
+     case 14: {lcd.write(5);lcd.write(1);lcd.write(4); break;}
+     case 15: {lcd.write(5);lcd.write(1);lcd.write(5); break;}
+   }
+   return;
+}
 //*----------------------------------------------------------------------------$
 //* Show the VFO being used (A or B)
 //*----------------------------------------------------------------------------$
@@ -190,7 +228,6 @@ void saveMenu() {
       if (mod.mItem != MODE) {
          cat.MODE=mod.mItem;
          CATchangeMode();       // Trigger a pseudo-CAT mode change
-
       } 
 
 }
@@ -486,8 +523,8 @@ void VfoUpdate() {
   }
   char* s=(char*)"                  "; 
   switch(vfo.mItem) {
-    case 0:                          {s=(char*)"A";break;};                            
-    case 1:                          {s=(char*)"B";break;};
+    case 0:                          {s=(char*)"Vfo A";break;};                            
+    case 1:                          {s=(char*)"Vfo B";break;};
   }
 
   vfo.l.get(0)->mText=s;
@@ -547,20 +584,49 @@ void ShiftUpdate() {
    
   sprintf(gui,"%i Hz",500+((int)shf.mItem)*50);
   shf.setText(0,(char*)gui);
-  fprintf(stderr,"shiftUpdate: mItem:%d set(%s)\n",shf.mItem,gui);
-
   shf.CW=false;
   shf.CCW=false;
  
   return;
 
 }
-
-//*---- NOT IMPLEMENTED YET
+//*-------------------------------------------------------------------------
 //*---- Step content management
+//*-------------------------------------------------------------------------
 void StepUpdate() {
 
+  if (stp.CW == true) {         //* Varies Tone shift between 500 and 800 Hz
+     if (stp.mItem < 6) {
+        stp.mItem++;
+     } else {
+        stp.mItem = 0;
+     }
+  }
+  if (stp.CCW == true) {
+     if (stp.mItem > 0) {
+        stp.mItem=shf.mItem-1;
+     } else {
+        stp.mItem = 6;
+     }
+  }
+
+  char* s=(char*)"                  ";
+  switch(stp.mItem) {
+    case 0 : {s=(char*)" 100 Hz"; break;}
+    case 1 : {s=(char*)" 500 Hz"; break;}
+    case 2 : {s=(char*)"   1 KHz"; break;}
+    case 3 : {s=(char*)"   5 KHz"; break;}
+    case 4 : {s=(char*)"  10 KHz"; break;}
+    case 5 : {s=(char*)"  50 KHz"; break;}
+    case 6 : {s=(char*)" 100 KHz"; break;}
+  } 
+
+  stp.setText(0,(char*)s);
+  stp.CW=false;
+  stp.CCW=false;
+  return;
 }
+//*---- NOT IMPLEMENTED YET
 
 void LockUpdate() {
 

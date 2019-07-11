@@ -235,6 +235,54 @@ byte TX[8] = {  //Inverted T (Transmission mode)
   0B11011,
   0B11111,
 };
+
+byte S1[8] = { //S1 signal
+  0B10000,
+  0B10000,
+  0B10000,
+  0B10000,
+  0B10000,
+  0B10000,
+  0B10000,
+};
+byte S2[8] = { //S2 signal
+  0B11000,
+  0B11000,
+  0B11000,
+  0B11000,
+  0B11000,
+  0B11000,
+  0B11000,
+};
+byte S3[8] = { //S3 signal
+  0B11100,
+  0B11100,
+  0B11100,
+  0B11100,
+  0B11100,
+  0B11100,
+  0B11100,
+};
+byte S4[8] = { //S4 signal
+  0B11110,
+  0B11110,
+  0B11110,
+  0B11110,
+  0B11110,
+  0B11110,
+  0B11110,
+};
+byte S5[8] = { //S5 signal
+  0B11111,
+  0B11111,
+  0B11111,
+  0B11111,
+  0B11111,
+  0B11111,
+  0B11111,
+};
+
+
 byte A[8] = {   //VFO A
   0b01110,
   0b10001,
@@ -650,6 +698,7 @@ static void terminate(int num)
 void sigalarm_handler(int sig)
 {
 
+   return;
 
    if (wtd.mItem == 0) { // Exit if watchdog not enabled
       lcd.setCursor(15,1);
@@ -1044,14 +1093,15 @@ int main(int argc, char* argv[])
     lcd.clear();
 
     lcd.createChar(0,TX);
-    lcd.createChar(1,A);
-    lcd.createChar(2,B);
-    lcd.createChar(3,K);
-    lcd.createChar(4,S);
-    lcd.createChar(5,B1);
-    lcd.createChar(6,B2);
-    //*---- lcd.createChar(7,B3);
-    lcd.createChar(7,B4);
+    lcd.createChar(1,S1);
+    lcd.createChar(2,S2);
+    lcd.createChar(3,S3);
+    lcd.createChar(4,S4);
+    lcd.createChar(5,S5);
+
+    lcd.createChar(6,B2);   // Potentially
+    lcd.createChar(7,B4);   // Erasable
+
     lcd.backlight(true);
 
 //*--- Show banner briefly (1 sec)
@@ -1144,7 +1194,7 @@ int main(int argc, char* argv[])
 //*--- Firmware initialization completed
 //*----------------------------------------------------------------------------
 
-//*--- Execute an endless loop while runnint is true
+//*--- Execute an endless loop while running is true
 
     while(running)
       {
