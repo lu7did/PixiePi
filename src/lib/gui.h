@@ -225,10 +225,16 @@ void saveMenu() {
          cw_keyer_mode=kyr.mItem;
       }
 
-      if (mod.mItem != MODE) {
+      if (mod.mItem != cat.MODE) {
          cat.MODE=mod.mItem;
          CATchangeMode();       // Trigger a pseudo-CAT mode change
       } 
+
+      //fprintf(stderr,"saveMenu: stp.mItem=%d STEP=%d\n",stp.mItem,STEP);
+      if (stp.mItem != STEP) {
+         STEP=stp.mItem;
+         CATchangeStatus();
+      }
 
 }
 //*-------------------------------------------------------------------------------------------
@@ -448,7 +454,7 @@ void SplitUpdate() {
 void ModeUpdate() {
 
   //fprintf(stderr,"Entering ModeUpdate modItem=%d\n",mod.mItem);
-  if (mod.mItem <= 12 && mod.CW == true) {
+  if (mod.mItem < 12 && mod.CW == true) {
       mod.mItem++;
   }
   if (mod.mItem > 0 && mod.CCW == true) {
@@ -457,10 +463,13 @@ void ModeUpdate() {
 
 //*---- Apply policy for modes not implemented making them not selectable
 
-  if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CCW) {
-     mod.mItem--;
-  } else {
+  if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CW) {
+     fprintf(stderr,"void mode and CW mItem(%d)\n",mod.mItem);
      mod.mItem++;
+  }
+  if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CCW) {
+     fprintf(stderr,"void mode and CW mItem(%d)\n",mod.mItem);
+     mod.mItem--;
   }
 
 
@@ -576,14 +585,22 @@ void ShiftUpdate() {
   }
   if (shf.CCW == true) {
      if (shf.mItem > 0) {
-        shf.mItem=shf.mItem-1;
+        shf.mItem--;
      } else {
         shf.mItem = 6;
      }
   }
-   
-  sprintf(gui,"%i Hz",500+((int)shf.mItem)*50);
-  shf.setText(0,(char*)gui);
+  char* s=(char*)"           ";
+  switch(shf.mItem) {
+    case 0:                          {s=(char*)"100 Hz ";break;};                            
+    case 1:                          {s=(char*)"500 Hz ";break;};                            
+    case 2:                          {s=(char*)"  1 KHz";break;};                            
+    case 3:                          {s=(char*)"  5 KHz";break;};                            
+    case 4:                          {s=(char*)" 10 KHz";break;};                            
+    case 5:                          {s=(char*)"100 KHz";break;};                            
+    case 6:                          {s=(char*)"500 Hz";break;};                            
+  }
+  shf.setText(0,(char*)s);
   shf.CW=false;
   shf.CCW=false;
  
@@ -595,25 +612,18 @@ void ShiftUpdate() {
 //*-------------------------------------------------------------------------
 void StepUpdate() {
 
-  if (stp.CW == true) {         //* Varies Tone shift between 500 and 800 Hz
-     if (stp.mItem < 6) {
-        stp.mItem++;
-     } else {
-        stp.mItem = 0;
-     }
+  if (stp.CW == true && stp.mItem < 6) {         //* Varies Tone shift between 500 and 800 Hz
+      stp.mItem++;
   }
-  if (stp.CCW == true) {
-     if (stp.mItem > 0) {
-        stp.mItem=shf.mItem-1;
-     } else {
-        stp.mItem = 6;
-     }
+
+  if (stp.CCW == true && stp.mItem > 0) {
+      stp.mItem--;
   }
 
   char* s=(char*)"                  ";
   switch(stp.mItem) {
-    case 0 : {s=(char*)" 100 Hz"; break;}
-    case 1 : {s=(char*)" 500 Hz"; break;}
+    case 0 : {s=(char*)" 100 Hz "; break;}
+    case 1 : {s=(char*)" 500 Hz "; break;}
     case 2 : {s=(char*)"   1 KHz"; break;}
     case 3 : {s=(char*)"   5 KHz"; break;}
     case 4 : {s=(char*)"  10 KHz"; break;}

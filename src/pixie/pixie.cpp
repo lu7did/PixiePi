@@ -80,6 +80,7 @@ byte FT817;
 byte MODE=MCW;
 int  SHIFT=600;
 int  RITOFS=0;
+int  STEP=0;
 
 //*---- Keyer specific definitions
 
@@ -494,6 +495,7 @@ void CATchangeMode() {
 //*------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
 
+       fprintf(stderr,"CATchangeStatus():PTT\n");
 //*---------------------
        if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {        //* PTT Changed
           setWord(&FT817,PTT,getWord(cat.FT817,PTT));
@@ -504,31 +506,48 @@ void CATchangeStatus() {
           }
           showPTT();
           setPTT(getWord(FT817,PTT));
-          return;
+          //return;
        }
+       fprintf(stderr,"CATchangeStatus():RIT\n");
+
 //*---------------------
        if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
           setWord(&FT817,RIT,getWord(cat.FT817,RIT));
-          return;
+          //return;
        }
+       fprintf(stderr,"CATchangeStatus():LOCK\n");
+
        if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
           setWord(&FT817,LOCK,getWord(cat.FT817,LOCK));
-          return;
+          //return;
        }
+       fprintf(stderr,"CATchangeStatus():SPLIT\n");
+
        if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
           setWord(&FT817,SPLIT,getWord(cat.FT817,SPLIT));
           showSplit();
-          return;
+          //return;
        }
+       fprintf(stderr,"CATchangeStatus():VFO\n");
+
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
           setWord(&FT817,VFO,getWord(cat.FT817,VFO));
           showVFO(); 
-          return;
+          //return;
        }
-       if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {      //* PTT Changed
 
-          return;
+       fprintf(stderr,"CATchangeStatus():STEP=%d\n",STEP);
+       switch(STEP) {
+          case 0 : {vx.vfostep[vx.vfoAB]=100; break;}
+          case 1 : {vx.vfostep[vx.vfoAB]=500; break;}
+          case 2 : {vx.vfostep[vx.vfoAB]=1000; break;}
+          case 3 : {vx.vfostep[vx.vfoAB]=5000; break;}
+          case 4 : {vx.vfostep[vx.vfoAB]=10000; break;}
+          case 5 : {vx.vfostep[vx.vfoAB]=50000; break;}
+          case 6 : {vx.vfostep[vx.vfoAB]=100000; break;}
        }
+       fprintf(stderr,"STEP set to (%d) var(%d Hz)\n",STEP,vx.vfostep[vx.vfoAB]);
+
        return;
 
 }
@@ -1055,7 +1074,7 @@ int main(int argc, char* argv[])
 
 
     mod.add((char*)"CW ",NULL);
-    mod.set(0);
+    mod.set(2);
     mod.refresh();
 
     lck.add((char*)"Off",NULL);  
