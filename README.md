@@ -58,7 +58,6 @@ Remember that most national regulations requires the armonics and other spurious
 
 # Schematics
 
-  Not yet available
 ![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics")
 
 # Requirements
