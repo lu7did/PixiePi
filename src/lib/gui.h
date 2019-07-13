@@ -1,3 +1,4 @@
+
 #include <string.h>
 #include <cstring>
 using namespace std;
@@ -23,8 +24,6 @@ void showSMeter(int S) {
      }
    }
    lcd.setCursor(13,0);
-   fprintf(stderr,"showSMeter(): Input(%d) Display(%d)\n",V,S);
-
    switch(S) {
      case 0 : {lcd.print(" ");lcd.print(" ");lcd.print(" "); break;}
      case 1 : {lcd.write(1);lcd.print(" ");lcd.print(" "); break;}
@@ -51,6 +50,18 @@ void showSMeter(int S) {
 void showVFO() {
    lcd.setCursor(0,0);
    (vx.vfoAB==VFOA ? lcd.print("A") : lcd.print("B"));
+}
+
+//*----------------------------------------------------------------------------$
+//* Show the RIT offset
+//*----------------------------------------------------------------------------$
+void showRit() {
+   if (rit.mItem==0) {return;}
+
+   sprintf(gui,"%+04d",RITOFS);
+   lcd.setCursor(11,1);
+   lcd.print(gui);
+
 }
 //*----------------------------------------------------------------------------$
 //* Show the PTT status
@@ -126,12 +137,13 @@ void showGUI() {
    showSplit();
    showKeyer();
    showMode();
-   showWlan0();
+   //showWlan0();
    if (getWord(MSW,PTT)==false) {
       showSMeter(0);
    } else {
       showSMeter(2*dds.power);
    }
+   showRit();
 }
 //*--------------------------------------------------------------------------------------------
 //* showPanel
@@ -239,6 +251,11 @@ void saveMenu() {
 
       if (stp.mItem != STEP) {
          STEP=stp.mItem;
+         CATchangeStatus();
+      }
+
+      if ((500+50*shf.mItem)!=SHIFT) {
+         SHIFT=500+50*shf.mItem;
          CATchangeStatus();
       }
 
@@ -603,6 +620,28 @@ void SpeedUpdate() {
   spd.CCW=false;
 
 }
+
+//*-----------------------------------------------------------------------------------------------------
+//*--- RIT Update
+//*-----------------------------------------------------------------------------------------------------
+void RitUpdate() {
+
+  if (rit.mItem < 1 && rit.CW == true) {
+      rit.mItem++;
+  }
+  if (rit.mItem > 0 && rit.CCW == true) {
+      rit.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(rit.mItem) {
+    case 0:                          {s=(char*)"Off ";break;};                            
+    case 1:                          {s=(char*)"On  ";break;};
+  }
+
+  rit.l.get(0)->mText=s;
+  showPanel();
+
+}
 //*-----------------------------------------------------------------------------------------------------
 //*--- Driver Update
 //*-----------------------------------------------------------------------------------------------------
@@ -657,13 +696,13 @@ void ShiftUpdate() {
   }
   char* s=(char*)"           ";
   switch(shf.mItem) {
-    case 0:                          {s=(char*)"100 Hz ";break;};                            
-    case 1:                          {s=(char*)"500 Hz ";break;};                            
-    case 2:                          {s=(char*)"  1 KHz";break;};                            
-    case 3:                          {s=(char*)"  5 KHz";break;};                            
-    case 4:                          {s=(char*)" 10 KHz";break;};                            
-    case 5:                          {s=(char*)"100 KHz";break;};                            
-    case 6:                          {s=(char*)"500 Hz";break;};                            
+    case 0:                          {s=(char*)"500 Hz ";break;};                            
+    case 1:                          {s=(char*)"550 Hz ";break;};                            
+    case 2:                          {s=(char*)"600 Hz";break;};                            
+    case 3:                          {s=(char*)"650 Hz";break;};                            
+    case 4:                          {s=(char*)"700 Hz";break;};                            
+    case 5:                          {s=(char*)"750 Hz";break;};                            
+    case 6:                          {s=(char*)"800 Hz";break;};                            
   }
   shf.setText(0,(char*)s);
   shf.CW=false;

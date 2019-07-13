@@ -29,6 +29,7 @@ void setDDSFreq();
 void ModeUpdate();
 void DriverUpdate();
 void SpeedUpdate();
+void RitUpdate();
 
 //*-- Added by Lewis Loflin (LCD related)
 

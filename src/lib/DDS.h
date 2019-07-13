@@ -112,6 +112,7 @@ float DDS::get() {
 //*-------------------------------------------------------------------------
 void DDS::set(float f) {
 
+   int fx=(int)f;
    SetFrequency=f;
    if (changeFreq!=NULL) {
       changeFreq();

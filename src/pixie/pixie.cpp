@@ -156,7 +156,7 @@ bool running=true;
 #define JRIGHT    0B00000010
 #define JUP       0B00000100
 #define JDOWN     0B00001000
-
+#define XVFO      0B00010000
 
 //#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
 //#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
@@ -199,6 +199,7 @@ MenuClass menuRoot(NULL);
 
 MenuClass mod(ModeUpdate);
 MenuClass vfo(VfoUpdate);
+MenuClass rit(RitUpdate);
 MenuClass stp(StepUpdate);
 MenuClass shf(ShiftUpdate);
 MenuClass spl(SplitUpdate);
@@ -340,7 +341,7 @@ byte keepalive=0;
 byte backlight=BACKLIGHT_DELAY;
 char port[80];
 byte gpio=GPIO04;
-
+bool fSwap=false;
 
 //*--- Keyer related memory definitions
 
@@ -395,28 +396,29 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 //*--------------------------------------------------------------------------------------------
 void setPTT(bool statePTT) {
 
-    float f=SetFrequency;
+    float df=0;
+    float f=0;
     if (statePTT==true) {
-       fprintf(stderr,"PTT <ON>, PA Powered\n");
 
 //*--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
 
-       if (getWord(FT817,SPLIT)==true) {
+       if (getWord(FT817,SPLIT)==true  && fSwap==false) {
+          fSwap=true;
           vx.vfoAB=(vx.vfoAB==VFOA ? VFOB : VFOA);
-          f=(float)vx.get(vx.vfoAB);
        }
-          
+
        if (MODE==MCW) {
-          f=f+(float)vx.vfoshift[vx.vfoAB];
+          df=(float)vx.vfoshift[vx.vfoAB];
        }
 
        if (MODE==MCWR) {
-          f=f-(float)vx.vfoshift[vx.vfoAB];
+          df=-(float)vx.vfoshift[vx.vfoAB];
        }
-       
-       if (f != SetFrequency) {
-          dds.set(f);
-       }
+
+       f=(float)(vx.vfo[vx.vfoAB]+(MODE==MCW || MODE==MCWR ? df : 0));
+       fprintf(stderr,"setPTT(): PTT On setting DDS f=%d df=%d MODE=%d shift(%d)\n",(int)f,(int)df,MODE,vx.vfoshift[vx.vfoAB]);
+       dds.set(f);
+
        softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
        gpioWrite(KEYER_OUT_GPIO, 1);
        return;
@@ -426,14 +428,15 @@ void setPTT(bool statePTT) {
     softToneWrite (SIDETONE_GPIO, 0);
     gpioWrite(KEYER_OUT_GPIO, 0);
 
-    if (getWord(FT817,SPLIT)==true){
+    if (getWord(FT817,SPLIT)==true && fSwap==true){
        (vx.vfoAB==VFOA ? vx.vfoAB=VFOB : vx.vfoAB = VFOA);
     }
 
+    fSwap=false;  
 
-    if (MODE==MCW || MODE == MCWR || getWord(FT817,SPLIT)==true) {
-       dds.set((float)(vx.get(vx.vfoAB)));
-    }
+    f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? RITOFS : 0);
+    fprintf(stderr,"setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)\n",(int)f,(int)df,MODE,(rit.mItem!=0 ? RITOFS : 0));
+    dds.set((float)(vx.get(vx.vfoAB)));
 
     return;
 
@@ -563,7 +566,8 @@ void CATchangeStatus() {
           case 6 : {vx.vfostep[vx.vfoAB]=100000; break;}
        }
        fprintf(stderr,"STEP set to (%d) var(%d Hz)\n",STEP,vx.vfostep[vx.vfoAB]);
-
+       vx.setVFOShift(VFOA,SHIFT);
+       vx.setVFOShift(VFOB,SHIFT);
        return;
 
 }
@@ -891,37 +895,49 @@ void processVFO() {
 
 //*--- CW (frequency increase)
 
-   if (getWord(USW,BCW)==true) {
-       if (vx.isVFOLocked()==false){
-          vx.updateVFO(vx.vfoAB,vx.vfostep[vx.vfoAB]);      
-       } else {
-          vx.updateVFO(vx.vfoAB,0);      
-       }
+   if (getWord(FT817,PTT)==true) {
       setWord(&USW,BCW,false);
-      setWord(&TSW,FTU,true);
+      setWord(&USW,BCCW,false);
+      return;
+   }
+
+
+   if (getWord(USW,BCW)==true) {
+      if (rit.mItem != 0) {
+         RITOFS=RITOFS+(RITOFS<1000 ? 100 : 0);
+         showRit();
+         setWord(&JSW,XVFO,true);
+      } else { 
+         (vx.isVFOLocked()==false ? vx.updateVFO(vx.vfoAB,vx.vfostep[vx.vfoAB]):vx.updateVFO(vx.vfoAB,0));
+         setWord(&JSW,XVFO,true);
+         setWord(&TSW,FTU,true);
+         TVFO=1;
+         showFreq();
+      }
+      setWord(&USW,BCW,false);
       setWord(&TSW,FTD,false);
       setWord(&TSW,FVFO,false);
-      TVFO=1;
-      showFreq();
    }
 
 //*--- CCW frequency decrease
 
    if (getWord(USW,BCCW)==true) {
-       if (vx.isVFOLocked()==false){
-          vx.updateVFO(vx.vfoAB,-vx.vfostep[vx.vfoAB]); 
-       } else {
-          vx.updateVFO(vx.vfoAB,0);
-       }
-       setWord(&USW,BCCW,false);
-       setWord(&TSW,FTD,true);
-       setWord(&TSW,FTU,false);
-       setWord(&TSW,FVFO,false);
-       TVFO=1;
-       showFreq();
-
+      if (rit.mItem != 0) {
+         RITOFS=RITOFS+(RITOFS>-1000 ? -100 : 0);
+         setWord(&JSW,XVFO,true);
+         showRit();
+      } else { 
+         (vx.isVFOLocked()==false ? vx.updateVFO(vx.vfoAB,-vx.vfostep[vx.vfoAB]):vx.updateVFO(vx.vfoAB,vx.vfostep[vx.vfoAB]));
+         TVFO=1;
+         setWord(&TSW,FTD,true);
+         setWord(&JSW,XVFO,true);
+         showFreq();
+      }
+      setWord(&USW,BCCW,false);
+      setWord(&TSW,FTU,false);
+      setWord(&TSW,FVFO,false);
    }
- 
+
 }
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
@@ -937,8 +953,6 @@ int main(int argc, char* argv[])
     std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock
 
     sprintf(port,"/tmp/ttyv1");
-
-
 
 //*--- Process arguments (mostly an excerpt from tune.cpp
 
@@ -1065,12 +1079,14 @@ int main(int argc, char* argv[])
     setWord(&JSW,JRIGHT,false);
     setWord(&JSW,JUP,false);
     setWord(&JSW,JDOWN,false);
+    setWord(&JSW,XVFO,false);
 
 
 //*--- Setup LCD menues for MENU mode (to be shown when CMD=true), a MenuClass object needs to be created first for each
 
     menuRoot.add((char*)"Mode",&mod);
     menuRoot.add((char*)"VFO",&vfo);
+    menuRoot.add((char*)"RIT",&rit);
     menuRoot.add((char*)"Split",&spl);
     menuRoot.add((char*)"Step",&stp);
     menuRoot.add((char*)"Shift",&shf);
@@ -1091,6 +1107,10 @@ int main(int argc, char* argv[])
     spl.add((char*)" Off",NULL);
     spl.add((char*)" On ",NULL);
     spl.set(0);
+
+    rit.add((char*)" Off",NULL);
+    rit.add((char*)" On ",NULL);
+    rit.set(0);
 
     stp.add((char*)" 100 Hz",NULL);
     stp.set(0);
@@ -1114,7 +1134,8 @@ int main(int argc, char* argv[])
 
 
     mod.add((char*)"CW ",NULL);
-    mod.set(2);
+    mod.set(MCW);
+    MODE=MCW;
     mod.refresh();
 
     lck.add((char*)"Off",NULL);  
@@ -1195,11 +1216,13 @@ int main(int argc, char* argv[])
   vx.set(VFOA,VFO_START);
   vx.setVFOStep(VFOA,VFO_STEP_100Hz);
   vx.setVFOLimit(VFOA,VFO_START,VFO_END);
+  vx.setVFOShift(VFOA,SHIFT);
 
   vx.setVFOBand(VFOB,VFO_BAND_START);
   vx.set(VFOB,VFO_START);
   vx.setVFOStep(VFOB,VFO_STEP_100Hz);
   vx.setVFOLimit(VFOB,VFO_START,VFO_END);
+  vx.setVFOShift(VFOB,SHIFT);
 
   vx.setVFO(VFOA);
 
@@ -1276,25 +1299,20 @@ int main(int argc, char* argv[])
             setWord(&USW,CONX,false);
 	    TWIFI=30;
          } 
+
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
-         if (getWord(MSW,CMD)==false) {
-
-            processVFO();
-            if (SetFrequency != vx.get(vx.vfoAB)) {
-
-               int fVFO=vx.get(vx.vfoAB)/1000;
-	       int fPLL=int(SetFrequency/1000);
-               printf("PLL=%d VFO=%d\n",fPLL,fVFO);
-
-//*--- A frequency change has been detected, alter the PLL with it
-
-               SetFrequency = vx.get(vx.vfoAB) * 1.0;
-               dds.set(SetFrequency);
-
-            }
-
-         } else {
-
+         if (getWord(MSW,CMD)==false && getWord(FT817,PTT)==false) {
+             float f=SetFrequency;
+             processVFO();
+             if (getWord(JSW,XVFO)==true) {
+                setWord(&JSW,XVFO,false);
+                (rit.mItem!=0 ? f = (float) (vx.get(vx.vfoAB)+RITOFS) : f=(float) vx.get(vx.vfoAB));
+                if (f != dds.SetFrequency) {
+                   SetFrequency=f;
+                   cat.SetFrequency=f;
+                   dds.set(SetFrequency);
+                }
+             }
          }
          CMD_FSM();
          lcd.backlight(true);
