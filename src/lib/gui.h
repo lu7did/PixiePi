@@ -572,6 +572,61 @@ void BackLightUpdate() {
 
 }
 //*-----------------------------------------------------------------------------------------------------
+//*--- Speed Update
+//*-----------------------------------------------------------------------------------------------------
+void SpeedUpdate() {
+
+  if (spd.init == false) {return;}
+
+  fprintf(stderr,"SpeedUpdate(): mItem(%d) init(%d)\n",spd.mItem,spd.init);
+  if (spd.CW == true && spd.mItem < 40) {
+     spd.mItem++;
+  }
+
+  if (spd.CCW==true && spd.mItem > 0) {
+     spd.mItem--;
+  }
+  sprintf(gui," %d wpm",spd.mItem);
+  spd.setText(0,(char*)gui);
+
+  spd.CW=false;
+  spd.CCW=false;
+
+}
+//*-----------------------------------------------------------------------------------------------------
+//*--- Driver Update
+//*-----------------------------------------------------------------------------------------------------
+void DriverUpdate() {
+
+  if (drv.init == false) {return;}
+
+  fprintf(stderr,"DriverUpdate(): mItem(%d) init(%d)\n",drv.mItem,drv.init);
+
+  if (drv.CW == true && drv.mItem < 7) {
+     drv.mItem++;
+  } 
+  if (drv.CCW == true && drv.mItem > 0) {
+     drv.mItem--;
+  }
+  if (drv.mItem == 7) {
+    sprintf(gui," Max    ");
+  } 
+  if (drv.mItem == 0) {
+    sprintf(gui," Nul    ");
+  }
+  if (drv.mItem >0 && drv.mItem <7){
+     sprintf(gui," %d/7    ",drv.mItem);
+  }
+  drv.setText(0,(char*)gui);
+  fprintf(stderr,"DriverUpdate(): UPDATED mItem(%d) init(%d) Text(%s)\n",drv.mItem,drv.init,drv.getText(0));
+
+  drv.CW=false;
+  drv.CCW=false;
+ 
+  return;
+     
+}
+//*-----------------------------------------------------------------------------------------------------
 //*--- Shift Update
 //*-----------------------------------------------------------------------------------------------------
 void ShiftUpdate() {

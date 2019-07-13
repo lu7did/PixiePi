@@ -204,6 +204,8 @@ MenuClass kyr(KeyerUpdate);
 MenuClass wtd(WatchDogUpdate);
 MenuClass lck(LockUpdate);
 MenuClass bck(BackLightUpdate);
+MenuClass drv(DriverUpdate);
+MenuClass spd(SpeedUpdate);
 
 //*--- LCD management object
 
@@ -1041,6 +1043,9 @@ int main(int argc, char* argv[])
     menuRoot.add((char*)"WatchDog",&wtd);
     menuRoot.add((char*)"BackLight",&bck);
     menuRoot.add((char*)"Lock",&lck);
+    menuRoot.add((char*)"Drive",&drv);
+    menuRoot.add((char*)"Speed",&spd);
+
 
 //*--- Setup child LCD menues
 
@@ -1079,6 +1084,14 @@ int main(int argc, char* argv[])
 
     lck.add((char*)"Off",NULL);  
     lck.set(0);
+
+    drv.add((char*)"Max  ",NULL);
+    drv.set(7);
+    drv.refresh();
+
+    spd.add((char*)" 15 wpm ",NULL);
+    spd.set(15);
+    spd.refresh();
 
 
 //*---- Initialize Iambic Keyer

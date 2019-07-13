@@ -27,6 +27,8 @@ void WatchDogUpdate();
 void BackLightUpdate();
 void setDDSFreq();
 void ModeUpdate();
+void DriverUpdate();
+void SpeedUpdate();
 
 //*-- Added by Lewis Loflin (LCD related)
 
