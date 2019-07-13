@@ -82,9 +82,10 @@ Remember that most national regulations requires the armonics and other spurious
 
      - Raspberry Pi
      - Pixie Transceiver
+     - Glueware simple electronics to switch transmitter, connect keyer and others.
 
-  This setup can be used with flrig as the front-end and CAT controller,
-  see:
+  This setup can be used with flrig as the front-end and CAT controller, it should work with any
+  other software supporting a Yaesu FT-817 model CAT command set. See:
 
   * DDSPi
   * OT817
