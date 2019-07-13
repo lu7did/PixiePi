@@ -85,12 +85,12 @@ Remember that most national regulations requires the armonics and other spurious
 
   This setup can be used with flrig as the front-end and CAT controller,
   see:
-	* DDSPi
-	* OT817
 
+  * DDSPi
+  * OT817
   * Optional 
-     ** Rotary encoder
-     ** LCD 16x2 display
-     ** USB soundcard (optional)
+     - Rotary encoder
+     - LCD 16x2 display
+     - USB soundcard (optional)
  
 #  Work in progress, this code set is not yet functional
