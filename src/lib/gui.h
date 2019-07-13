@@ -11,8 +11,10 @@ char gui[80];
 //* to the range. The caller is responsible to comform the signal to a 
 //* linear representation.
 //*---------------------------------------------------------------------------
+void timer_SMeter();
 void showSMeter(int S) {
 
+   int V=S;
    if (S<0) {
       S=0;
    } else {
@@ -21,6 +23,7 @@ void showSMeter(int S) {
      }
    }
    lcd.setCursor(13,0);
+   fprintf(stderr,"showSMeter(): Input(%d) Display(%d)\n",V,S);
 
    switch(S) {
      case 0 : {lcd.print(" ");lcd.print(" ");lcd.print(" "); break;}
@@ -34,11 +37,11 @@ void showSMeter(int S) {
      case 8 : {lcd.write(5);lcd.write(3);lcd.print(" "); break;}
      case 9 : {lcd.write(5);lcd.write(4);lcd.print(" "); break;}
      case 10: {lcd.write(5);lcd.write(5);lcd.print(" "); break;}
-     case 11: {lcd.write(5);lcd.write(1);lcd.write(1); break;}
-     case 12: {lcd.write(5);lcd.write(1);lcd.write(2); break;}
-     case 13: {lcd.write(5);lcd.write(1);lcd.write(3); break;}
-     case 14: {lcd.write(5);lcd.write(1);lcd.write(4); break;}
-     case 15: {lcd.write(5);lcd.write(1);lcd.write(5); break;}
+     case 11: {lcd.write(5);lcd.write(5);lcd.write(1); break;}
+     case 12: {lcd.write(5);lcd.write(5);lcd.write(2); break;}
+     case 13: {lcd.write(5);lcd.write(5);lcd.write(3); break;}
+     case 14: {lcd.write(5);lcd.write(5);lcd.write(4); break;}
+     case 15: {lcd.write(5);lcd.write(5);lcd.write(5); break;}
    }
    return;
 }
@@ -124,7 +127,11 @@ void showGUI() {
    showKeyer();
    showMode();
    showWlan0();
-   
+   if (getWord(MSW,PTT)==false) {
+      showSMeter(0);
+   } else {
+      showSMeter(2*dds.power);
+   }
 }
 //*--------------------------------------------------------------------------------------------
 //* showPanel
@@ -157,7 +164,7 @@ void showPanel() {
       lcd.print((char*)gui);
 
       lcd.setCursor(1,1);
-      sprintf(gui," %s",(char*)z->getText(0));
+      sprintf(gui,"  %s ",(char*)z->getText(0));
       lcd.print((char*)gui);
       return;
    } else {
@@ -169,7 +176,7 @@ void showPanel() {
       sprintf(gui,"<%d> %s",i,menuRoot.getText(menuRoot.get()));
       lcd.print(gui);
       lcd.setCursor(0,1);
-      sprintf(gui,"> %s",(char*)z->getText(0));
+      sprintf(gui,"> %s<",(char*)z->getText(0));
       lcd.print(gui);
       return;
    }
@@ -230,12 +237,19 @@ void saveMenu() {
          CATchangeMode();       // Trigger a pseudo-CAT mode change
       } 
 
-      //fprintf(stderr,"saveMenu: stp.mItem=%d STEP=%d\n",stp.mItem,STEP);
       if (stp.mItem != STEP) {
          STEP=stp.mItem;
          CATchangeStatus();
       }
 
+     if (spd.mItem != cw_keyer_speed) {
+        cw_keyer_speed=spd.mItem;
+        CATchangeStatus();
+     }
+     if (drv.mItem != DDSPOWER) {
+        DDSPOWER=drv.mItem;
+        CATchangeFreq();
+     }
 }
 //*-------------------------------------------------------------------------------------------
 //*--- Exit the GUI mode saving the changes
@@ -453,7 +467,6 @@ void SplitUpdate() {
 //*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
 
-  //fprintf(stderr,"Entering ModeUpdate modItem=%d\n",mod.mItem);
   if (mod.mItem < 12 && mod.CW == true) {
       mod.mItem++;
   }
@@ -464,11 +477,9 @@ void ModeUpdate() {
 //*---- Apply policy for modes not implemented making them not selectable
 
   if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CW) {
-     fprintf(stderr,"void mode and CW mItem(%d)\n",mod.mItem);
      mod.mItem++;
   }
   if ((mod.mItem == 5 || mod.mItem == 7 || mod.mItem ==11) && mod.CCW) {
-     fprintf(stderr,"void mode and CW mItem(%d)\n",mod.mItem);
      mod.mItem--;
   }
 
@@ -578,7 +589,6 @@ void SpeedUpdate() {
 
   if (spd.init == false) {return;}
 
-  fprintf(stderr,"SpeedUpdate(): mItem(%d) init(%d)\n",spd.mItem,spd.init);
   if (spd.CW == true && spd.mItem < 40) {
      spd.mItem++;
   }
@@ -600,25 +610,25 @@ void DriverUpdate() {
 
   if (drv.init == false) {return;}
 
-  fprintf(stderr,"DriverUpdate(): mItem(%d) init(%d)\n",drv.mItem,drv.init);
-
   if (drv.CW == true && drv.mItem < 7) {
      drv.mItem++;
   } 
   if (drv.CCW == true && drv.mItem > 0) {
      drv.mItem--;
   }
-  if (drv.mItem == 7) {
-    sprintf(gui," Max    ");
-  } 
-  if (drv.mItem == 0) {
-    sprintf(gui," Nul    ");
+
+  switch(drv.mItem) {
+     case 0 : {sprintf(gui," Off"); break;} 
+     case 1 : {sprintf(gui," 1/7"); break;} 
+     case 2 : {sprintf(gui," 2/7"); break;} 
+     case 3 : {sprintf(gui," 3/7"); break;} 
+     case 4 : {sprintf(gui," 4/7"); break;} 
+     case 5 : {sprintf(gui," 5/7"); break;} 
+     case 6 : {sprintf(gui," 6/7"); break;} 
+     case 7 : {sprintf(gui," Max"); break;} 
   }
-  if (drv.mItem >0 && drv.mItem <7){
-     sprintf(gui," %d/7    ",drv.mItem);
-  }
+
   drv.setText(0,(char*)gui);
-  fprintf(stderr,"DriverUpdate(): UPDATED mItem(%d) init(%d) Text(%s)\n",drv.mItem,drv.init,drv.getText(0));
 
   drv.CW=false;
   drv.CCW=false;

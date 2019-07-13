@@ -72,7 +72,9 @@
 #include "../lib/CAT817.h"
 #include "../lib/DDS.h"
 
-
+#include <iostream>
+#include <cstdlib> // for std::rand() and std::srand()
+#include <ctime> // for std::time()
 
 //*--- Define Initialization Values for CAT
 
@@ -81,7 +83,7 @@ byte MODE=MCW;
 int  SHIFT=600;
 int  RITOFS=0;
 int  STEP=0;
-
+byte DDSPOWER=7;
 //*---- Keyer specific definitions
 
 int i=0;
@@ -442,10 +444,21 @@ void setPTT(bool statePTT) {
 //*---------------------------------------------------------------------------------------------------
 void keyChangeEvent() {
 
+     if (getWord(FT817,PTT) == false && getWord(MSW,CMD)==true) {
+        if (key_state == SENDDASH) {
+           setWord(&USW,BCW,true);
+        }
+        if (key_state == SENDDOT) {
+           setWord(&USW,BCCW,true);
+        }
+        return;
+     }
      if (keyState==KEY_DOWN) {
         setWord(&FT817,PTT,true);
+        showSMeter((int)dds.power*2);
      } else {
         setWord(&FT817,PTT,false);
+        showSMeter(0);
      }
 
      cat.FT817=FT817;
@@ -468,6 +481,7 @@ void CATchangeFreq() {
   SetFrequency=cat.SetFrequency;
   long int f=(long int)SetFrequency;
   printf("changeFreq: Frequency set to f(%d)\n",f);
+  dds.power=DDSPOWER;
   dds.set(SetFrequency);
   vx.set(vx.vfoAB,f);
   //showVFO();
@@ -596,6 +610,26 @@ void timer_start(std::function<void(void)> func, unsigned int interval)
       std::this_thread::sleep_until(x);
     }
   }).detach();
+}
+//*---------------------------------------------------------------------------
+//* Timer callback function
+//*---------------------------------------------------------------------------
+void timer_SMeter() {
+
+    if (getWord(MSW,CMD)==true) {
+       return;
+    }
+
+    if (getWord(FT817,PTT)==true) {
+       return;
+    } else {
+      float prng= (float)std::rand();
+      float pmax= (float)RAND_MAX;
+      float v   = abs(15*(prng/pmax));
+      fprintf(stderr,"Random number generated is %d MAX(%d)\n",prng,RAND_MAX);
+      showSMeter((int)v);
+    }
+
 }
 //*---------------------------------------------------------------------------
 //* Timer callback function
@@ -900,6 +934,7 @@ int main(int argc, char* argv[])
     sprintf(hi,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
     printf(hi);
     dbg_setlevel(1);
+    std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock
 
     sprintf(port,"/tmp/ttyv1");
 
@@ -1043,8 +1078,8 @@ int main(int argc, char* argv[])
     menuRoot.add((char*)"WatchDog",&wtd);
     menuRoot.add((char*)"BackLight",&bck);
     menuRoot.add((char*)"Lock",&lck);
-    menuRoot.add((char*)"Drive",&drv);
     menuRoot.add((char*)"Speed",&spd);
+    menuRoot.add((char*)"DDS Drive",&drv);
 
 
 //*--- Setup child LCD menues
@@ -1085,12 +1120,13 @@ int main(int argc, char* argv[])
     lck.add((char*)"Off",NULL);  
     lck.set(0);
 
-    drv.add((char*)"Max  ",NULL);
+    drv.add((char*)"  Max",NULL);
     drv.set(7);
     drv.refresh();
 
-    spd.add((char*)" 15 wpm ",NULL);
-    spd.set(15);
+    sprintf(gui," %d wpm",cw_keyer_speed);
+    spd.add((char*)gui,NULL);
+    spd.set(cw_keyer_speed);
     spd.refresh();
 
 
@@ -1178,6 +1214,7 @@ int main(int argc, char* argv[])
 
     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
     timer_start(timer_exec,1000);
+    //timer_start(timer_SMeter,1000);
 
 //*--- Define the rest of the signal handlers, basically as termination exceptions
 
@@ -1208,6 +1245,7 @@ int main(int argc, char* argv[])
 //*--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
     dds.ppm=ppm;
     dds.gpio=gpio;
+    dds.power=DDSPOWER;
     dds.open(SetFrequency);
 
 

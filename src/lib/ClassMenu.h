@@ -132,6 +132,7 @@ char* MenuClass::getText(unsigned char i) {
 //* Get the text associated with the ith menu element
 //*------------------------------------------------------------------------------------------------ 
 void MenuClass::setText(unsigned char i,char* c) {
+
   l.get(i)->mText=c;
   return;
 }
