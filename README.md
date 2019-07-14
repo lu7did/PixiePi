@@ -64,6 +64,10 @@ Remember that most national regulations requires the armonics and other spurious
 
 ![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics")
 
+Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
+the sidetone.
+
+
 # Other alternatives
 
 Even if the Pixie schematic is used for the project the software could be used directly with other DIY or homebrew popular
