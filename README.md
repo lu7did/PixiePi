@@ -16,7 +16,7 @@ This project starts with a working Pixie transceiver (a cheap kit bought at eBay
 a Raspberry Pi to provide the signal generation and other functionality.
 
 Instead of a crystal based signal generation the Raspberry Pi itself can be used by meas of the librpitx library (by Evariste Courjaud F5OEO
-acting as a DDS, which is thus the technical core of the project. A carrier generation function has been extracted largely form the tune.cpp program
+acting as a DDS, which is thus the technical core of the project. A carrier generation function has been modelled largely using the tune.cpp program
 available at the package also by Evariste Courjaud F5OEO. Some modifications has been introduced to allow the carrier frequency to be varied during the 
 operation.
 
@@ -24,9 +24,11 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Receive over an entire ham radio band.
 
-* Dual VFO setup, split mode.
+* Dual VFO setup, split mode, controllable step.
 
-* Frequency can be shift during transmission.
+* RIT operation.
+
+* Frequency can be shift during transmission to implement CW.
 
 * Sidetone generation.
 
@@ -34,9 +36,11 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Display LCD & Rotary Encoder.
 
-* Built-in iambic keyer.
+* Built-in iambic keyer, with variable speed.
 
-* Capable of operating most digital modes
+* Variable DDS drive level.
+
+* Capable of operating most digital modes with very small modifications.
 
 * Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
 
@@ -59,6 +63,14 @@ Remember that most national regulations requires the armonics and other spurious
 # Schematics
 
 ![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics")
+
+# Other alternatives
+
+Even if the Pixie schematic is used for the project the software could be used directly with other DIY or homebrew popular
+designs, among others:
+
+[PY2OHH's Curumim](http://py2ohh.w2c.com.br/trx/curumim/curumim.htm)
+
 
 # Requirements
 
