@@ -17,9 +17,11 @@
 #define VFO_STEP_1Hz            1
 #define VFO_STEP_10Hz          10
 #define VFO_STEP_100Hz        100
+#define VFO_STEP_500Hz        500
 #define VFO_STEP_1KHz        1000
 #define VFO_STEP_5KHz        5000
 #define VFO_STEP_10KHz      10000
+#define VFO_STEP_50KHz      50000
 #define VFO_STEP_100KHz    100000
 #define VFO_STEP_1MHz     1000000
 

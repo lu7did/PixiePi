@@ -80,10 +80,12 @@
 
 byte FT817;
 byte MODE=MCW;
-int  SHIFT=600;
+int  SHIFT=CW_SHIFT;
 int  RITOFS=0;
 int  STEP=0;
-byte DDSPOWER=7;
+byte DDSPOWER=MAXPOWER;
+byte TRACE=0x00;
+
 //*---- Keyer specific definitions
 
 int i=0;
@@ -94,69 +96,6 @@ bool running=true;
 #include "../iambic/iambic.c"
 
 }
-
-//*--- Encoder pin definition
-
-#define ENCODER_CLK 17
-#define ENCODER_DT  18
-#define ENCODER_SW  27
-
-//*---  VFO initial setup
-
-#define VFO_START 	  7000000
-#define VFO_END           7299000
-#define VFO_BAND_START          3
-#define ONESEC               1000
-
-
-#define VFO_DELAY               1
-#define BACKLIGHT_DELAY        60
-
-#define GPIO04 			4
-#define GPIO20	   	       20
-//*----------------------------------------------------------------------------------
-//*  System Status Word
-//*----------------------------------------------------------------------------------
-//*--- Master System Word (MSW)
-
-#define CMD       0B00000001
-#define GUI       0B00000010
-#define PTT       0B00000100
-#define DRF       0B00001000
-#define DOG       0B00010000
-#define LCLK      0B00100000
-#define SQL       0B01000000
-#define BCK       0B10000000
-
-//*----- Master Timer and Event flagging (TSW)
-
-#define FT1       0B00000001
-#define FT2       0B00000010
-#define FT3       0B00000100
-#define FTU       0B00001000
-#define FTD       0B00010000
-#define FVFO      0B00100000
-#define FDOG      0B01000000
-#define FBCK      0B10000000
-//*----- UI Control Word (USW)
-
-#define BBOOT     0B00000001
-#define BMULTI    0B00000010
-#define BCW       0B00000100
-#define BCCW      0B00001000
-#define SQ        0B00010000
-#define MIC       0B00100000
-#define KDOWN     0B01000000
-#define BUSY      0B10000000       //Used for Squelch Open in picoFM and for connected to DDS on sinpleA
-#define CONX      0B10000000
-
-//*----- Joystick Control Word (JSW)
-
-#define JLEFT     0B00000001
-#define JRIGHT    0B00000010
-#define JUP       0B00000100
-#define JDOWN     0B00001000
-#define XVFO      0B00010000
 
 //#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
 //#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
@@ -416,7 +355,7 @@ void setPTT(bool statePTT) {
        }
 
        f=(float)(vx.vfo[vx.vfoAB]+(MODE==MCW || MODE==MCWR ? df : 0));
-       fprintf(stderr,"setPTT(): PTT On setting DDS f=%d df=%d MODE=%d shift(%d)\n",(int)f,(int)df,MODE,vx.vfoshift[vx.vfoAB]);
+       (TRACE==0x01 ? fprintf(stderr,"setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)\n",(int)f,(int)dds.SetFrequency,(int)df,MODE,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]) : _NOP);
        dds.set(f);
 
        softToneWrite (SIDETONE_GPIO, cw_keyer_sidetone_frequency);
@@ -424,7 +363,7 @@ void setPTT(bool statePTT) {
        return;
     } 
 
-    fprintf(stderr,"PTT <OFF>, Receiver mode\n");
+    (TRACE==0x01 ? fprintf(stderr,"PTT <OFF>, Receiver mode\n") : _NOP);
     softToneWrite (SIDETONE_GPIO, 0);
     gpioWrite(KEYER_OUT_GPIO, 0);
 
@@ -435,7 +374,7 @@ void setPTT(bool statePTT) {
     fSwap=false;  
 
     f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? RITOFS : 0);
-    fprintf(stderr,"setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)\n",(int)f,(int)df,MODE,(rit.mItem!=0 ? RITOFS : 0));
+    (TRACE==0x01 ? fprintf(stderr,"setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)\n",(int)f,(int)df,MODE,(rit.mItem!=0 ? RITOFS : 0)) : _NOP );
     dds.set((float)(vx.get(vx.vfoAB)));
 
     return;
@@ -465,7 +404,7 @@ void keyChangeEvent() {
      }
 
      cat.FT817=FT817;
-     fprintf(stderr,"Keyer state(%d)\n",getWord(FT817,PTT));
+     (TRACE==0x01 ? fprintf(stderr,"Keyer state(%d)\n",getWord(FT817,PTT)) : _NOP);
      showPTT();
 
 }
@@ -487,7 +426,6 @@ void CATchangeFreq() {
   dds.power=DDSPOWER;
   dds.set(SetFrequency);
   vx.set(vx.vfoAB,f);
-  //showVFO();
   
 
 }
@@ -514,7 +452,7 @@ void CATchangeMode() {
 //*------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
 
-       fprintf(stderr,"CATchangeStatus():PTT\n");
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():PTT\n") : _NOP);
 //*---------------------
        if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {        //* PTT Changed
           setWord(&FT817,PTT,getWord(cat.FT817,PTT));
@@ -525,47 +463,42 @@ void CATchangeStatus() {
           }
           showPTT();
           setPTT(getWord(FT817,PTT));
-          //return;
        }
-       fprintf(stderr,"CATchangeStatus():RIT\n");
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():RIT\n") : _NOP);
 
 //*---------------------
        if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
           setWord(&FT817,RIT,getWord(cat.FT817,RIT));
-          //return;
        }
-       fprintf(stderr,"CATchangeStatus():LOCK\n");
+       (TRACE=0x01 ? fprintf(stderr,"CATchangeStatus():LOCK\n") : _NOP);
 
        if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
           setWord(&FT817,LOCK,getWord(cat.FT817,LOCK));
-          //return;
        }
-       fprintf(stderr,"CATchangeStatus():SPLIT\n");
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():SPLIT\n") : _NOP);
 
        if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
           setWord(&FT817,SPLIT,getWord(cat.FT817,SPLIT));
           showSplit();
-          //return;
        }
-       fprintf(stderr,"CATchangeStatus():VFO\n");
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():VFO\n") : _NOP);
 
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
           setWord(&FT817,VFO,getWord(cat.FT817,VFO));
           showVFO(); 
-          //return;
        }
 
-       fprintf(stderr,"CATchangeStatus():STEP=%d\n",STEP);
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():STEP=%d\n",STEP) : _NOP);
        switch(STEP) {
-          case 0 : {vx.vfostep[vx.vfoAB]=100; break;}
-          case 1 : {vx.vfostep[vx.vfoAB]=500; break;}
-          case 2 : {vx.vfostep[vx.vfoAB]=1000; break;}
-          case 3 : {vx.vfostep[vx.vfoAB]=5000; break;}
-          case 4 : {vx.vfostep[vx.vfoAB]=10000; break;}
-          case 5 : {vx.vfostep[vx.vfoAB]=50000; break;}
-          case 6 : {vx.vfostep[vx.vfoAB]=100000; break;}
+          case 0 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100Hz; break;}
+          case 1 : {vx.vfostep[vx.vfoAB]=VFO_STEP_500Hz; break;}
+          case 2 : {vx.vfostep[vx.vfoAB]=VFO_STEP_1KHz; break;}
+          case 3 : {vx.vfostep[vx.vfoAB]=VFO_STEP_5KHz; break;}
+          case 4 : {vx.vfostep[vx.vfoAB]=VFO_STEP_10KHz; break;}
+          case 5 : {vx.vfostep[vx.vfoAB]=VFO_STEP_50KHz; break;}
+          case 6 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100KHz; break;}
        }
-       fprintf(stderr,"STEP set to (%d) var(%d Hz)\n",STEP,vx.vfostep[vx.vfoAB]);
+       (TRACE==0x01 ? fprintf(stderr,"STEP set to (%d) var(%d Hz)\n",STEP,vx.vfostep[vx.vfoAB]) : _NOP);
        vx.setVFOShift(VFOA,SHIFT);
        vx.setVFOShift(VFOB,SHIFT);
        return;
@@ -629,8 +562,8 @@ void timer_SMeter() {
     } else {
       float prng= (float)std::rand();
       float pmax= (float)RAND_MAX;
-      float v   = abs(15*(prng/pmax));
-      fprintf(stderr,"Random number generated is %d MAX(%d)\n",prng,RAND_MAX);
+      float v   = abs(SMETERMAX*(prng/pmax));
+      (TRACE==0x01 ? fprintf(stderr,"Random number generated is %d MAX(%d)\n",prng,RAND_MAX) : _NOP);
       showSMeter((int)v);
     }
 
@@ -678,11 +611,11 @@ void updateSW(int gpio, int level, uint32_t tick)
               printf("Last push pending processsing, ignore!\n");
               return;
            }
-           if (lapPush < 10) {
+           if (lapPush < MINSWPUSH) {
               printf("Push pulse too short! ignored!\n");
            } else {
              setWord(&USW,BMULTI,true);
-             if (lapPush > 2000) {
+             if (lapPush > MAXSWPUSH) {
                 printf("Push pulse really long, %d ms. KDOWN signal!\n",lapPush);
                 setWord(&USW,KDOWN,true);
              } else {
@@ -724,7 +657,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
         int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
         std::cout << "Rotary Encoder lap " << lapEncoder << "ms.\n";
 
-        if ( lapEncoder  < 2 )  {
+        if ( lapEncoder  < MINENCLAP )  {
              printf("Encoder: ignore pulse too close from last\n");
              return;
         }
@@ -852,7 +785,6 @@ void checkLAN() {
 void showFreq() {
 
   FSTR v;  
-  char hi[80];  
   long int f=vx.get(vx.vfoAB); 
   vx.computeVFO(f,&v);
 
@@ -881,7 +813,7 @@ void showFreq() {
 
   
   signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-  alarm(2);  // set an alarm for 10 seconds from now
+  alarm(TWOSECS);  // set an alarm for 2 seconds from now
 
   memstatus = 0; // Trigger memory write
 
@@ -904,14 +836,14 @@ void processVFO() {
 
    if (getWord(USW,BCW)==true) {
       if (rit.mItem != 0) {
-         RITOFS=RITOFS+(RITOFS<1000 ? 100 : 0);
+         RITOFS=RITOFS+(RITOFS<MAXRIT ? RITSTEP : 0);
          showRit();
          setWord(&JSW,XVFO,true);
       } else { 
          (vx.isVFOLocked()==false ? vx.updateVFO(vx.vfoAB,vx.vfostep[vx.vfoAB]):vx.updateVFO(vx.vfoAB,0));
          setWord(&JSW,XVFO,true);
          setWord(&TSW,FTU,true);
-         TVFO=1;
+         TVFO=ONESECS;
          showFreq();
       }
       setWord(&USW,BCW,false);
@@ -923,12 +855,12 @@ void processVFO() {
 
    if (getWord(USW,BCCW)==true) {
       if (rit.mItem != 0) {
-         RITOFS=RITOFS+(RITOFS>-1000 ? -100 : 0);
+         RITOFS=RITOFS+(RITOFS>MINRIT ? RITSTEPD : 0);
          setWord(&JSW,XVFO,true);
          showRit();
       } else { 
          (vx.isVFOLocked()==false ? vx.updateVFO(vx.vfoAB,-vx.vfostep[vx.vfoAB]):vx.updateVFO(vx.vfoAB,vx.vfostep[vx.vfoAB]));
-         TVFO=1;
+         TVFO=ONESECS;
          setWord(&TSW,FTD,true);
          setWord(&JSW,XVFO,true);
          showFreq();
@@ -956,7 +888,7 @@ int main(int argc, char* argv[])
 
 //*--- Process arguments (mostly an excerpt from tune.cpp
 
-       while(1)
+       while(true)
         {
                 a = getopt(argc, argv, "f:eds:hg:p:A:C:D:E:F:G:M:S:");
 
@@ -975,40 +907,40 @@ int main(int argc, char* argv[])
 
                 case 'A': 
                         cw_active_state = atoi(optarg);
-                        fprintf(stderr,"A: %d\n",cw_active_state);
+                        fprintf(stderr," CW Active State A: %d\n",cw_active_state);
                         break;
                 case 'C':
                         cw_keyer_spacing = atoi(optarg);
-                        fprintf(stderr,"C: %d\n",cw_keyer_spacing);
+                        fprintf(stderr," CW Keyer Space  C: %d\n",cw_keyer_spacing);
                         break;
                 case 'D':
                         strcpy(snd_dev, optarg);
-                        fprintf(stderr,"D:%s\n",snd_dev);
+                        fprintf(stderr," SOUNDCARD HW    D:%s\n",snd_dev);
                         break;
                 case 'E': 
                         cw_keyer_sidetone_envelope = atoi(optarg);
-                        fprintf(stderr,"E: %d\n", cw_keyer_sidetone_envelope);
+                        fprintf(stderr," CW Tone Envelop E: %d\n", cw_keyer_sidetone_envelope);
                         break;
 
                 case 'F':
                         cw_keyer_sidetone_frequency = atoi(optarg);
-                        fprintf(stderr,"F: %d\n",cw_keyer_sidetone_frequency);
+                        fprintf(stderr," CW Tone Freq    F: %d\n",cw_keyer_sidetone_frequency);
                         break;
                 case 'G':     // gain in dB 
                         cw_keyer_sidetone_gain = atoi(optarg);
-                        fprintf(stderr,"G: %d\n",cw_keyer_sidetone_gain);
+                        fprintf(stderr," CW Tone Gain    G: %d\n",cw_keyer_sidetone_gain);
                         break;
                 case 'M':
                         cw_keyer_mode = atoi(optarg);
-                        fprintf(stderr,"M: %d\n",cw_keyer_mode);
+                        fprintf(stderr," CW Keyer Mode   M: %d\n",cw_keyer_mode);
                         break;
                 case 'S':
                         cw_keyer_speed = atoi(optarg);
-                        fprintf(stderr,"S: %d\n",cw_keyer_speed);
+                        fprintf(stderr," CW Keyer Speed  S: %d\n",cw_keyer_speed);
                         break;
                 case 'W':
                         cw_keyer_weight = atoi(optarg);
-                        fprintf(stderr,"W: %d\n",cw_keyer_weight);
+                        fprintf(stderr," CW Keyer Weight W: %d\n",cw_keyer_weight);
                         break;
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
@@ -1016,16 +948,19 @@ int main(int argc, char* argv[])
 		case 'g': // GPIO
 		        gpio=atoi(optarg);
 			if (gpio!=GPIO04 && gpio!=GPIO20) {
-		  	   fprintf(stderr,"Invalid GPIO pin used (%s), default to GPIO04\n",optarg);
+		  	   fprintf(stderr," Invalid GPIO pin used (%s), default to GPIO04\n",optarg);
 			   gpio=GPIO04;
 			}
 			break;
                 case 'p': //ppm
                         ppm=atof(optarg);
+                        fprintf(stderr," PPM correction    p:%d\n",(int)ppm);
                         break;
                 case 'd': //debug
+                        TRACE=0x01;
                         cat.TRACE=0x01;
-                        fprintf(stderr,"d: DEBUG mode activated\n");
+                        
+                        fprintf(stderr," Debug mode actived\n");
                         break;
                 case 'h': // help
                         print_usage();
@@ -1033,21 +968,17 @@ int main(int argc, char* argv[])
                         break;
                 case 's': //serial port
                         sprintf(port,optarg);
-                        fprintf(stderr, "serial port:%s\n", optarg);
+                        fprintf(stderr," serial port: %s\n", optarg);
                         break;
                 case -1:
                 break;
                 case '?':
-                        if (isprint(optopt) )
-                        {
-                                fprintf(stderr, "pixie: unknown option `-%c'.\n", optopt);
-                        }
-                        else
-                        {
-                                fprintf(stderr, "pixie: unknown option character `\\x%x'.\n", optopt);
+                        if (isprint(optopt) ) {
+                           fprintf(stderr, "pixie: unknown option `-%c'.\n", optopt);
+                        } else                         {
+                           fprintf(stderr, "pixie: unknown option character `\\x%x'.\n", optopt);
                         }
                         print_usage();
-
                         exit(1);
                         break;
                 default:
@@ -1081,6 +1012,7 @@ int main(int argc, char* argv[])
     setWord(&JSW,JDOWN,false);
     setWord(&JSW,XVFO,false);
 
+    showSMeter(0);
 
 //*--- Setup LCD menues for MENU mode (to be shown when CMD=true), a MenuClass object needs to be created first for each
 
@@ -1151,8 +1083,6 @@ int main(int argc, char* argv[])
     spd.refresh();
 
 
-//*---- Initialize Iambic Keyer
-
 //*---- Initialize Rotary Encoder
 
     if(gpioInitialise()<0) {
@@ -1196,7 +1126,6 @@ int main(int argc, char* argv[])
 //*--- Show banner briefly (1 sec)
 
     lcd.lcdLoc(LINE1);
-    char hi[80];
     sprintf(hi,"%s %s [%s]",PROGRAMID,PROG_VERSION,PROG_BUILD);
     lcd.print(string(hi));
     lcd.lcdLoc(LINE2);
@@ -1236,7 +1165,7 @@ int main(int argc, char* argv[])
 //*---  Define the handler for the SIGALRM signal (timer)
 
     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-    timer_start(timer_exec,1000);
+    timer_start(timer_exec,MSEC100);
     //timer_start(timer_SMeter,1000);
 
 //*--- Define the rest of the signal handlers, basically as termination exceptions
@@ -1253,7 +1182,7 @@ int main(int argc, char* argv[])
 //*--- Initialize CAT
 
 
-    cat.open(port,4800);
+    cat.open(port,CATBAUD);
     cat.SetFrequency=SetFrequency;
 
     setWord(&FT817,PTT,false);
@@ -1273,13 +1202,12 @@ int main(int argc, char* argv[])
 
 
 //*---
-    //startKeyer();
     keyChange=keyChangeEvent;
     iambic_init();
 
 //*--- DDS is running at the SetFrequency value (initial)
 
-    alarm(1);  // set an alarm for 1 seconds from now to clear all values
+    alarm(ONESECS);  // set an alarm for 1 seconds from now to clear all values
     showPanel();
     showFreq();
 
@@ -1320,7 +1248,6 @@ int main(int argc, char* argv[])
 //*--- Clear the frequency moved marker from the display once the delay expires
 
          if (getWord(TSW,FBCK)==true && backlight != 0) {
-            //* -- Temporary lcd.backlight(false);
             setWord(&TSW,FBCK,false);
          }
       }
@@ -1330,6 +1257,7 @@ int main(int argc, char* argv[])
 //*--- Stop keyer thread
 
     iambic_close();
+
 //*--- Stop the DDS function
 
     dds.close();

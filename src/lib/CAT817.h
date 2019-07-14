@@ -7,7 +7,7 @@
 //*--------------------------------------------------------------------------------------------------
 #ifndef CAT817_h
 #define CAT817_h
-
+#define _NOP        (byte)0
 #include <stdio.h>
 #include <wiringPi.h>
 #include <stdlib.h>
@@ -560,8 +560,7 @@ void CAT817::get() {
        if (n==5) {
           char buffer[18];
           hex2str(&buffer[0],&rxBuffer[0],n);
-          sprintf (msg,"Received Serial hex2str (%s)\n",buffer);
-          printDEBUG(0x02,msg);
+          (TRACE==0x01 ? fprintf (stderr,"Received Serial hex2str (%s)\n",buffer) : _NOP);
           processCAT(&rxBuffer[0]);
           fflush (stdout) ;
           n=0;

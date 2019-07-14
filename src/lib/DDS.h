@@ -8,6 +8,7 @@
 #ifndef DDS_h
 #define DDS_h
 
+#define _NOP        (byte)0
 #include <stdio.h>
 #include <wiringPi.h>
 #include <stdlib.h>
@@ -69,7 +70,7 @@ class DDS
       byte        gpio=GPIO04;
       float       ppm=1000.0;
       byte        power=MAXLEVEL;
-
+      byte 	  TRACE=0x00;
   private:
 
       char msg[80]; 
@@ -113,6 +114,7 @@ float DDS::get() {
 void DDS::set(float f) {
 
    int fx=(int)f;
+   (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
    SetFrequency=f;
    if (changeFreq!=NULL) {
       changeFreq();
