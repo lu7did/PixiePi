@@ -88,6 +88,7 @@ class CAT817
       int  RITOFS=0x00;
       byte MODEWORD=0xff;
       byte FT817;
+      byte POWER=7;
       byte MODE=MUSB;
       byte TRACE=0x00;
       byte RX=0x00;
@@ -465,17 +466,16 @@ void CAT817::processCAT(byte* rxBuffer) {
        sendSerial(&BCDBuf[0],1);
        return;}
       case 0xF7:  {     //* Transmitter status
-       if (getWord(FT817,PTT)==false) { //* Minimum report is based on current known status
-          BCDBuf[0]=BCDBuf[0] | 0B10000000;
+       if (getWord(FT817,PTT)==true) {
+          (getWord(FT817,PTT)==true ? BCDBuf[0]=BCDBuf[0] | 0B10000000 : BCDBuf[0]=BCDBuf[0] & 0B01111111);
+          (getWord(FT817,SPLIT)==false ? BCDBuf[0]=BCDBuf[0] | 0B01000000 : BCDBuf[0]=BCDBuf[0] & 0B10111111);
+          if(getTX!=NULL) {       //* Ask caller thru a callback
+            getTX();
+          }
+          BCDBuf[0]=BCDBuf[0] | (((POWER * 2) & 0x0f));
+       } else {
+          BCDBuf[0]=0x00;
        }
-
-       if (getWord(FT817,SPLIT)==false){
-          BCDBuf[0]=BCDBuf[0] | 0B00100000;
-       }
-       if(getTX!=NULL) {       //* Ask caller thru a callback
-         getTX();
-       }
-       BCDBuf[0]=TX;
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x01 ? fprintf(stderr,"Command 0xF7 Resp(%s)\n",buffer) : _NOP);
 
@@ -490,11 +490,12 @@ void CAT817::processCAT(byte* rxBuffer) {
           sendSerial(&BCDBuf[0],1);
           return;
        }
-       BCDBuf[0]=0x99;
-       BCDBuf[1]=0x99;
-       hex2str(&buffer[0],&BCDBuf[0],1);
+       
+       BCDBuf[0]=BCDBuf[0] | ((((POWER*2) & 0x0f) << 1) & 0xf0) | 0x01;
+       BCDBuf[1]=0x11;
+       hex2str(&buffer[0],&BCDBuf[0],2);
        (TRACE>=0x01 ? fprintf(stderr,"Command 0xBD Resp(%s)\n",buffer) : _NOP);
-       sendSerial(&BCDBuf[0],1);
+       sendSerial(&BCDBuf[0],2);
        return; }
 
       default:    {

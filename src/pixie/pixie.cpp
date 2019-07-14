@@ -427,6 +427,8 @@ void CATchangeFreq() {
   long int f=(long int)SetFrequency;
   printf("changeFreq: Frequency set to f(%d)\n",f);
   dds.power=DDSPOWER;
+
+  cat.POWER=dds.power;
   dds.set(SetFrequency);
   vx.set(vx.vfoAB,f);
   
@@ -465,11 +467,14 @@ void CATchangeStatus() {
           setWord(&FT817,PTT,getWord(cat.FT817,PTT));
           if (getWord(FT817,PTT)==true) {
              keyState=KEY_DOWN;
+             showSMeter((int)2*dds.power & 0x0f);
           } else {
              keyState=KEY_UP;
+             showSMeter(0);
           }
-          showPTT();
           setPTT(getWord(FT817,PTT));
+          showPTT();
+
        }
 
 //*---------------------
@@ -1214,6 +1219,7 @@ int main(int argc, char* argv[])
     dds.gpio=gpio;
     dds.power=DDSPOWER;
     dds.open(SetFrequency);
+    cat.POWER=dds.power;
 
 
 //*---
