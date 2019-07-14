@@ -70,15 +70,20 @@ Even if the Pixie schematic is used for the project the software could be used d
 designs, among others:
 
 [PY2OHH's Curumim](http://py2ohh.w2c.com.br/trx/curumim/curumim.htm)
+[NorCal 49'er](http://www.norcalqrp.org/files/49er.pdf)
+[Miss Mosquita](https://www.qrpproject.de/Media/pdf/Mosquita40Engl.pdf)
+[Mosquito](http://www.qrp.cat/ea3ghs/mosquito.pdf)
 
+Lots of good QRPp projects [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
 
-# Requirements
+# Package requirements
 
 *   sudo apt-get install i2c-tools libi2c-dev
 *   sudo apt-get install socat
 *   git clone git://git.drogon.net/wiringPi
 *   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
 *   Enable I2C and SPI with sudo raspi-config
+*   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
 
 # Build
 
@@ -97,13 +102,25 @@ designs, among others:
      - Glueware simple electronics to switch transmitter, connect keyer and others.
 
   This setup can be used with flrig as the front-end and CAT controller, it should work with any
-  other software supporting a Yaesu FT-817 model CAT command set. See:
+  other software supporting a Yaesu FT-817 model CAT command set.
+
+# Other packages
 
   * DDSPi
+    DDS function controllable thru CAT
+
   * OT817
+    Transceiver USB controllable thru CAT
+
+  * PiWSPR
+    WSPR beacon using a QRPp transceiver
+
+  * iambic-keyer
+    An iambic-keyer for code practice
+
   * Optional 
      - Rotary encoder
      - LCD 16x2 display
      - USB soundcard (optional)
- 
+
 #  Work in progress, this code set is not yet functional
