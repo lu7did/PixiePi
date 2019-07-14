@@ -69,12 +69,13 @@ Remember that most national regulations requires the armonics and other spurious
 Even if the Pixie schematic is used for the project the software could be used directly with other DIY or homebrew popular
 designs, among others:
 
-[PY2OHH's Curumim](http://py2ohh.w2c.com.br/trx/curumim/curumim.htm)
-[NorCal 49'er](http://www.norcalqrp.org/files/49er.pdf)
-[Miss Mosquita](https://www.qrpproject.de/Media/pdf/Mosquita40Engl.pdf)
-[Mosquito](http://www.qrp.cat/ea3ghs/mosquito.pdf)
+* [PY2OHH's Curumim](http://py2ohh.w2c.com.br/trx/curumim/curumim.htm)
+* [NorCal 49'er](http://www.norcalqrp.org/files/49er.pdf)
+* [Miss Mosquita](https://www.qrpproject.de/Media/pdf/Mosquita40Engl.pdf)
+* [Mosquito](http://www.qrp.cat/ea3ghs/mosquito.pdf)
+* [Jersey Fireball](http://www.njqrp.club/fireball40/rev_b/fb40b_manual.pdf)
 
-Lots of good QRPp projects [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
+Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
 
 # Package requirements
 
