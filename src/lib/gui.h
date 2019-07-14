@@ -138,7 +138,7 @@ void showGUI() {
    showSplit();
    showKeyer();
    showMode();
-   //showWlan0();
+
    if (getWord(MSW,PTT)==false) {
       showSMeter(0);
    } else {

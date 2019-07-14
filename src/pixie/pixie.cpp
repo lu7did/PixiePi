@@ -579,7 +579,8 @@ void timer_SMeter() {
       float pmax= (float)RAND_MAX;
       float v   = abs(SMETERMAX*(prng/pmax));
       (TRACE==0x01 ? fprintf(stderr,"Random number generated is %d MAX(%d)\n",prng,RAND_MAX) : _NOP);
-      showSMeter((int)v);
+      //showSMeter((int)v);
+      showSMeter(0);
     }
 
 }
