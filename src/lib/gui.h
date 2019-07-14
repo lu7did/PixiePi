@@ -132,6 +132,7 @@ void showWlan0() {
 //*----------------------------------------------------------------------------$
 void showGUI() {
 
+   showFreq();
    showVFO();
    showPTT();
    showSplit();

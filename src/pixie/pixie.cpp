@@ -91,7 +91,7 @@ byte TRACE=0x00;
 int i=0;
 extern "C" {
 bool running=true;
-
+bool ready=false;
 
 #include "../iambic/iambic.c"
 
@@ -129,6 +129,7 @@ VFOSystem vx(showFreq,NULL,NULL,NULL);
 DDS dds(changeFreq);
 
 //*--- CAT object
+
 CAT817 cat(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
 
 
@@ -420,6 +421,8 @@ void changeFreq() {
 //*---------------------------------------------------------------------------
 void CATchangeFreq() {
 
+  (TRACE==0x01 ? fprintf(stderr,"CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)\n",(int)cat.SetFrequency,(int)SetFrequency) : _NOP);
+
   SetFrequency=cat.SetFrequency;
   long int f=(long int)SetFrequency;
   printf("changeFreq: Frequency set to f(%d)\n",f);
@@ -436,13 +439,17 @@ void CATchangeFreq() {
 //*-----------------------------------------------------------------------------------------------------------
 void CATchangeMode() {
 
+       (TRACE==0x01 ? fprintf(stderr,"CATchangeMode(): cat.MODE(%d) MODE(%d)\n",cat.MODE,MODE) : _NOP);
        if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
-          cat.MODE = MODE;
+          MODE=cat.MODE;
+          (TRACE==0x01 ? fprintf(stderr,"CATchangeMode(): INVALID MODE\n") : _NOP);
+          showMode();
           return;
        }
 
        MODE=cat.MODE;
-       showMode();
+       mod.mItem=cat.MODE;
+       ModeUpdate();
        return;
 
 }
@@ -464,31 +471,40 @@ void CATchangeStatus() {
           showPTT();
           setPTT(getWord(FT817,PTT));
        }
-       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():RIT\n") : _NOP);
 
 //*---------------------
        if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
+          (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():RIT\n") : _NOP);
           setWord(&FT817,RIT,getWord(cat.FT817,RIT));
+          (getWord(FT817,RIT)==true ? rit.mItem=1 : rit.mItem=0);
+          RitUpdate();
        }
-       (TRACE=0x01 ? fprintf(stderr,"CATchangeStatus():LOCK\n") : _NOP);
 
        if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
+          (TRACE=0x01 ? fprintf(stderr,"CATchangeStatus():LOCK\n") : _NOP);
           setWord(&FT817,LOCK,getWord(cat.FT817,LOCK));
        }
-       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():SPLIT\n") : _NOP);
 
        if (getWord(cat.FT817,SPLIT) != getWord(FT817,SPLIT)) {    //* SPLIT mode Changed
+          (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():SPLIT SPLIT(%d) cat.SPLIT(%d)\n",getWord(FT817,SPLIT),getWord(cat.FT817,SPLIT)) : _NOP);
           setWord(&FT817,SPLIT,getWord(cat.FT817,SPLIT));
-          showSplit();
+          (getWord(FT817,SPLIT)==true ? spl.mItem = 1 : spl.mItem=0); 
+          SplitUpdate();
        }
-       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():VFO\n") : _NOP);
 
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
+          (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():VFO VFO(%d) cat.VFO(%d)\n",getWord(FT817,VFO),getWord(cat.FT817,VFO)) : _NOP);
           setWord(&FT817,VFO,getWord(cat.FT817,VFO));
-          showVFO(); 
+          if(getWord(FT817,VFO)==true){
+            vfo.mItem=1;
+            vx.vfoAB=VFOB;
+          } else {
+            vfo.mItem=0;
+            vx.vfoAB=VFOA;
+          }
+          VfoUpdate();
        }
 
-       (TRACE==0x01 ? fprintf(stderr,"CATchangeStatus():STEP=%d\n",STEP) : _NOP);
        switch(STEP) {
           case 0 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100Hz; break;}
           case 1 : {vx.vfostep[vx.vfoAB]=VFO_STEP_500Hz; break;}
@@ -498,7 +514,6 @@ void CATchangeStatus() {
           case 5 : {vx.vfostep[vx.vfoAB]=VFO_STEP_50KHz; break;}
           case 6 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100KHz; break;}
        }
-       (TRACE==0x01 ? fprintf(stderr,"STEP set to (%d) var(%d Hz)\n",STEP,vx.vfostep[vx.vfoAB]) : _NOP);
        vx.setVFOShift(VFOA,SHIFT);
        vx.setVFOShift(VFOB,SHIFT);
        return;
@@ -811,10 +826,10 @@ void showFreq() {
      setWord(&TSW,FVFO,false);
   }
 
-  
-  signal(SIGALRM, &sigalarm_handler);  // set a signal handler
-  alarm(TWOSECS);  // set an alarm for 2 seconds from now
-
+  if (ready==true) {
+     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
+     alarm(TWOSECS);  // set an alarm for 2 seconds from now
+  }
   memstatus = 0; // Trigger memory write
 
 }
@@ -959,7 +974,6 @@ int main(int argc, char* argv[])
                 case 'd': //debug
                         TRACE=0x01;
                         cat.TRACE=0x01;
-                        
                         fprintf(stderr," Debug mode actived\n");
                         break;
                 case 'h': // help
@@ -1217,6 +1231,7 @@ int main(int argc, char* argv[])
 
 //*--- Execute an endless loop while running is true
 
+    ready=true;     //Initialization completed now enable loop runnint
     while(running)
       {
          usleep(100000);

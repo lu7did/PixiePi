@@ -85,7 +85,6 @@ Boston, MA  02110-1301, USA.
 //#include "../lib/keyed_tone.h"
 
 
-
 static void* keyer_thread(void *arg);
 static pthread_t keyer_thread_id;
 
@@ -119,7 +118,9 @@ static int keyer_out = 0;
 //*------------------------------------------------------------------------------------------------------
 void keyer_update() {
     dot_delay = 1200 / cw_keyer_speed;
+
     // will be 3 * dot length at standard weight
+
     dash_delay = (dot_delay * 3 * cw_keyer_weight) / 50;
 
     if (cw_keys_reversed) {
@@ -151,14 +152,17 @@ void keyer_event(int gpio, int level, uint32_t tick) {
 //* clear_memory
 //*---------------------------------------------------------------------------------------------
 void clear_memory() {
+
     dot_memory  = 0;
     dash_memory = 0;
+
 }
 //*---------------------------------------------------------------------------------------------
 //* set_keyer_out
 //* set the PTT or KEYER output depending on the Keyer mode
 //*---------------------------------------------------------------------------------------------
 void set_keyer_out(int state) {
+
     if (keyer_out != state) {
         keyer_out = state;
 
@@ -182,6 +186,7 @@ void set_keyer_out(int state) {
 //* to process
 //*------------------------------------------------------------------------------------------------------------
 static void* keyer_thread(void *arg) {
+
     int pos;
     struct timespec loop_delay;
     int interval = 1000000; // 1 ms
@@ -429,14 +434,6 @@ int iambic_init()  {
     fprintf(stderr,"Ready to operate\n");
     if (SIDETONE_GPIO) {
         softToneCreate(SIDETONE_GPIO);
-    //else {
-        //i = keyed_tone_start(cw_keyer_sidetone_gain, cw_keyer_sidetone_frequency, cw_keyer_sidetone_envelope);
-        //if(i < 0) {
-        //    fprintf(stderr,"keyed_tone_start failed %d\n", i);
-        //    exit(-1);
-        //}
-
-
     }
 
     i = sem_init(&cw_event, 0, 0);
