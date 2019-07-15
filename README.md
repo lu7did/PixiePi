@@ -109,16 +109,19 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
   This setup can be used with flrig as the front-end and CAT controller, it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
-# Other packages
+# Other programs
 
   * DDSPi
-    DDS function controllable thru CAT
+    - DDS function controllable thru CAT
 
   * OT817
-    Transceiver USB controllable thru CAT
+    - Transceiver USB controllable thru CAT
 
   * PiWSPR
-    WSPR beacon using a QRPp transceiver
+    - WSPR beacon using a QRPp transceiver
+
+  * pirtty
+    - RTTY beacon
 
   * iambic-keyer
     An iambic-keyer for code practice
@@ -127,5 +130,11 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
      - Rotary encoder
      - LCD 16x2 display
      - USB soundcard (optional)
+
+# Other packages
+
+In general the hardware can be used to implement modulation modes proposed by the [rpitx package](https://github.com/F5OEO/rpitx).
+In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
+GPIO19 line as the PTT, some external mean to activate or deactivate this line needs to be used.
 
 #  Work in progress, this code set is not yet functional
