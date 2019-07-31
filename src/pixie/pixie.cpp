@@ -1,3 +1,4 @@
+
 /*
  * pixie.c
  * Raspberry Pi based transceiver controller
@@ -229,14 +230,14 @@ byte S5[8] = { //S5 signal
 };
 
 
-byte A[8] = {   //VFO A
-  0b01110,
-  0b10001,
+byte XLOCK[8] = {   //VFO A
   0b11111,
   0b10001,
-  0b10001,
-  0b00000,
   0b11111,
+  0b00100,
+  0b11100,
+  0b00100,
+  0b11100,
 };
 
 byte B[8] = {   //VFO B

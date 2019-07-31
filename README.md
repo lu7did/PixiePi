@@ -81,6 +81,15 @@ designs, among others:
 
 Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
 
+# Case 3D Design
+
+The preliminar 3D design for a project case (with LCD) can be found here
+
+![Alt Text](docs/PixiePi_con_LCD.stl?raw=true "PixiePi Case 3D Design")
+
+Warning: This 3D design is at prototype level and still requires work to be finalized
+
+
 # Package requirements
 
 *   sudo apt-get install i2c-tools libi2c-dev
@@ -135,6 +144,6 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
 
 In general the hardware can be used to implement modulation modes proposed by the [rpitx package](https://github.com/F5OEO/rpitx).
 In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
-GPIO19 line as the PTT, some external mean to activate or deactivate this line needs to be used.
+GPIO19 line as the PTT, some programs might require this line to be activated or deactivated externally.
 
 #  Work in progress, this code set is not yet functional
