@@ -83,9 +83,9 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
 
 # Case 3D Design
 
-The preliminar 3D design for a project case (with LCD) can be found here
+The preliminar 3D design for a project case (with LCD) can be found here(docs/PixiePi_con_LCD.stl).
 
-![Alt Text](docs/PixiePi_con_LCD.stl?raw=true "PixiePi Case 3D Design")
+![Alt Text](docs/PixiePi_LCD.jpg?raw=true "PixiePi Case 3D Design")
 
 Warning: This 3D design is at prototype level and still requires work to be finalized
 
