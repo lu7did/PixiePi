@@ -77,8 +77,6 @@ Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually l
 the sidetone.
 
 
-![Alt Text](docs/PixiePi_with_LCD.stl?raw=true "3D Printer case for 16x2 LCD Display and Rotary Encoder")
-** Current 3D STL file has issues and requires rework **
 
 # Other alternatives
 
@@ -97,10 +95,10 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
 
 The preliminar 3D design for a project case (with LCD) can be seen as follows
 
-[PixiePi 3D Case Design](docs/PixiePi_con_LCD.stl)
+[PixiePi 3D Case Design](docs/PixiePi_with_LCD.stl)
 
-
-Warning: This 3D design is at prototype level and still requires work to be finalized
+**Warning**
+Current 3D STL file has material width, height, size and STL integrity issues and requires rework (see pending at issues)
 
 
 # Package requirements
