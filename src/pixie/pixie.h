@@ -144,7 +144,7 @@ enum {
 #define XVFO      0B00010000
 
 
-#define SMETERMAX  15
+//#define SMETERMAX  15
 #define MINSWPUSH  10
 #define MAXSWPUSH  2000
 #define MINENCLAP   2

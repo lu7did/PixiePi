@@ -34,7 +34,9 @@
 #include <wiringSerial.h>
 #include <sstream>
 #include <iomanip>
-
+#include <iostream>
+#include <cstdlib> // for std::rand() and std::srand()
+#include <ctime> // for std::time()
 
 typedef unsigned char byte;
 typedef bool boolean;
@@ -56,7 +58,7 @@ typedef void (*CALLBACK)();
 #define MFM    0x08
 #define MDIG   0x0A
 #define MPKT   0x0C
-
+#define SMETERMAX 14
 //*---------------------------------------------------------------------------------------------------
 //* VFOSystem CLASS
 //*---------------------------------------------------------------------------------------------------
@@ -124,6 +126,7 @@ CAT817::CAT817(CALLBACK f,CALLBACK s,CALLBACK m, CALLBACK r, CALLBACK t)
  
   FT817=0;
   MODE=MUSB;
+  std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock
 }
 //#*---------------------------------------------------------------------------
 //#* printDEBUG
@@ -438,6 +441,10 @@ void CAT817::processCAT(byte* rxBuffer) {
        return; }  
       case 0xE7:  {     //* Receiver Status
 
+       float prng= (float)std::rand();
+       float pmax= (float)RAND_MAX;
+       int RX  = abs(SMETERMAX*(prng/pmax));
+
        if (getRX!=NULL) {
           getRX();
        }
@@ -460,7 +467,8 @@ void CAT817::processCAT(byte* rxBuffer) {
 //*----- xxxx1110 S9+50dB
 //*----- xxxx1111 S9+60dB
 
-       BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
+       //BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
+       BCDBuf[0]=((int)RX & 0x0f) | 0x00;     //* Fake signal randomly generated
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x02 ? fprintf(stderr,"Command 0xE7 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
@@ -469,10 +477,11 @@ void CAT817::processCAT(byte* rxBuffer) {
        if (getWord(FT817,PTT)==true) {
           (getWord(FT817,PTT)==true ? BCDBuf[0]=BCDBuf[0] | 0B10000000 : BCDBuf[0]=BCDBuf[0] & 0B01111111);
           (getWord(FT817,SPLIT)==false ? BCDBuf[0]=BCDBuf[0] | 0B01000000 : BCDBuf[0]=BCDBuf[0] & 0B10111111);
+          TX=(int)POWER*2;
           if(getTX!=NULL) {       //* Ask caller thru a callback
             getTX();
           }
-          BCDBuf[0]=BCDBuf[0] | (((POWER * 2) & 0x0f));
+          BCDBuf[0]=BCDBuf[0] | ((((int)TX) & 0x0f));
        } else {
           BCDBuf[0]=0x00;
        }
@@ -485,6 +494,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        return;}
 
       case 0xBD:  {   //* TX Metering
+
        if (getWord(FT817,PTT)==false) {
           BCDBuf[0]=0x00;
           sendSerial(&BCDBuf[0],1);

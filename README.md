@@ -63,12 +63,16 @@ Remember that most national regulations requires the armonics and other spurious
 
 # Schematics
 
+## With 16x2 LCD and Rotary Encoder
+
 ![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics with 16x2 LCD Display and Rotary Encoder")
 
-![Alt Text](docs/PixiePiHL.jpg?raw=true "PixiePi Schematics operating "headless" without 16x2 LCD Display and Rotary Encoder")
+## Headless operation (all controls thru CAT) 
 
-** Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal sink is needed in both PA final and keyer **
+![Alt Text](docs/PixiePiHL.jpg?raw=true "PixiePi Schematics operating headless without 16x2 LCD Display and Rotary Encoder")
 
+**Warning**
+Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal sink is needed in both PA final and keyer
 Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
 the sidetone.
 
@@ -88,6 +92,16 @@ designs, among others:
 * [Jersey Fireball](http://www.njqrp.club/fireball40/rev_b/fb40b_manual.pdf)
 
 Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
+
+# Case 3D Design
+
+The preliminar 3D design for a project case (with LCD) can be seen as follows
+
+[PixiePi 3D Case Design](docs/PixiePi_con_LCD.stl)
+
+
+Warning: This 3D design is at prototype level and still requires work to be finalized
+
 
 # Package requirements
 
@@ -117,16 +131,19 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
   This setup can be used with flrig as the front-end and CAT controller (**headless mode**), it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
-# Other packages
+# Other programs
 
   * DDSPi
-    DDS function controllable thru CAT
+    - DDS function controllable thru CAT
 
   * OT817
-    Transceiver USB controllable thru CAT
+    - Transceiver USB controllable thru CAT
 
   * PiWSPR
-    WSPR beacon using a QRPp transceiver
+    - WSPR beacon using a QRPp transceiver
+
+  * pirtty
+    - RTTY beacon
 
   * iambic-keyer
     An iambic-keyer for code practice
@@ -136,4 +153,14 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
      - LCD 16x2 display
      - USB soundcard (optional)
 
+<<<<<<< HEAD
 #  Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
+=======
+# Other packages
+
+In general the hardware can be used to implement modulation modes proposed by the [rpitx package](https://github.com/F5OEO/rpitx).
+In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
+GPIO19 line as the PTT, some programs might require this line to be activated or deactivated externally.
+
+#  Work in progress, this code set is not yet functional
+>>>>>>> 0ddd1e306435acf1d3389367cbdaefd3a3beee8c
