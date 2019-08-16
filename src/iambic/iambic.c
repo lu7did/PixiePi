@@ -199,7 +199,7 @@ static void* keyer_thread(void *arg) {
             switch(key_state) {
             case CHECK: // check for key press
                 if (cw_keyer_mode == KEYER_STRAIGHT) {       // Straight/External key or bug
-                    if (*kdash) {                  // send manual dashes
+                    if (*kdash || *kdot) {                  // send manual dashes
                         set_keyer_out(1);
                         key_state = EXITLOOP;
                     }

@@ -512,6 +512,7 @@ void CAT817::processCAT(byte* rxBuffer) {
 //* open the serial link and enable the CAT operation if successful
 //*-------------------------------------------------------------------------
 void CAT817::open(char* port, int speed) {
+    fprintf(stderr, "Opening port %s at %d bauds \n",port,speed);
     if ((serial_port = serialOpen (port, speed)) < 0)
     {
        fprintf (stderr, "Unable to open serial device: %s rc(%s)\n", port, strerror (errno)) ;

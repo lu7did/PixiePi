@@ -1,5 +1,6 @@
 # PixiePi
 
+
 ## Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
 
 The Pixie QRPp (very low power, less than 1W output) transceiver is a very popular DIY project among hams as it is
@@ -62,11 +63,18 @@ Remember that most national regulations requires the armonics and other spurious
 
 # Schematics
 
-![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics")
+![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics with 16x2 LCD Display and Rotary Encoder")
+
+![Alt Text](docs/PixiePiHL.jpg?raw=true "PixiePi Schematics operating "headless" without 16x2 LCD Display and Rotary Encoder")
+
+** Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal sink is needed in both PA final and keyer **
 
 Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
 the sidetone.
 
+
+![Alt Text](docs/PixiePi_with_LCD.stl?raw=true "3D Printer case for 16x2 LCD Display and Rotary Encoder")
+** Current 3D STL file has issues and requires rework **
 
 # Other alternatives
 
@@ -106,7 +114,7 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
      - Pixie Transceiver
      - Glueware simple electronics to switch transmitter, connect keyer and others.
 
-  This setup can be used with flrig as the front-end and CAT controller, it should work with any
+  This setup can be used with flrig as the front-end and CAT controller (**headless mode**), it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
 # Other packages
@@ -128,4 +136,4 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
      - LCD 16x2 display
      - USB soundcard (optional)
 
-#  Work in progress, this code set is not yet functional
+#  Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
