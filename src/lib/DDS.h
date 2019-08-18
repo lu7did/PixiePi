@@ -1,3 +1,4 @@
+
 //*--------------------------------------------------------------------------------------------------
 //* DDS Management Class   (HEADER CLASS)
 //*--------------------------------------------------------------------------------------------------
@@ -117,6 +118,7 @@ void DDS::set(float f) {
 
    int fx=(int)f;
    (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
+
    SetFrequency=f;
    if (changeFreq!=NULL) {
       changeFreq();
@@ -124,6 +126,7 @@ void DDS::set(float f) {
    gengpio.setpulloff(gpio);
    pad.setlevel(power);
 
+   clk->SetAdvancedPllMode(true);
    clk->SetCenterFrequency(SetFrequency,10);
    clk->SetFrequency(000);
    clk->enableclk(gpio);

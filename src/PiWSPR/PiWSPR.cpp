@@ -1,3 +1,4 @@
+
 /**
  * PiWSPR.cpp 
  * Raspberry Pi based WSPR beacon
@@ -48,6 +49,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <ctime>
+#include <wiringPi.h>
 
 //---  VFO initial setup
 typedef unsigned char byte;
@@ -57,14 +59,11 @@ typedef bool boolean;
 
 #include <unistd.h>
 //---- Program specific includes
+
 #include "./PiWSPR.h"		// wspr definitions and functions
 #include "../lib/WSPR.h"
 #include "../lib/DDS.h"
 
-#define WSPR_RAND_OFFSET 80
-#define VFO_START 14095600
-#define GPIO04     4
-#define GPIO20    20
 //----------------------------------------------------------------------------
 //  Program parameter definitions
 //----------------------------------------------------------------------------
@@ -80,32 +79,35 @@ const char   *COPYRIGHT="(c) LU7DID 2019";
 
 //---- Generic memory allocations
 
-int value=0;
-int lastEncoded=0;
-int counter=0;
-int clkLastState=0; 
-char hi[80];
-byte memstatus=0;
-byte ntimes=1;
-int a;
-int anyargs = 0;
-float SetFrequency=VFO_START;
-float ppm=1000.0;
+int    value=0;
+int    lastEncoded=0;
+int    counter=0;
+int    clkLastState=0; 
+char   hi[80];
+byte   memstatus=0;
+byte   ntimes=1;
+int    a;
+int    anyargs = 0;
+float  SetFrequency=VFO_START;
+float  ppm=1000.0;
 struct sigaction sa;
-bool running=true;
-byte keepalive=0;
-bool first=true;
-char port[80];
-byte gpio=GPIO04;
-char callsign[10];
-char locator[10];
-int  power=10;
-
-char wspr_message[20];          // user beacon message to encode
+bool   running=true;
+byte   keepalive=0;
+bool   first=true;
+char   port[80];
+byte   gpio=GPIO04;
+char   callsign[10];
+char   locator[10];
+int    power=10;
+int    ntx=0;
+int    nskip=0;
+char   wspr_message[20];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 
+bool WSPRwindow=false;
 void cbkDDS();
+
 DDS    dds(cbkDDS);
 WSPR   wspr(NULL);
 
@@ -117,6 +119,7 @@ WSPR   wspr(NULL);
 //--------------------------------------------------------------------------
 void cbkDDS() {
 
+    //fprintf(stderr,"Callback cbkDDS performed\n");
 }
 //-------------------------------------------------------------------------------------------------
 // print_usage
@@ -132,10 +135,20 @@ Usage:\n\
 \t-l set locator (ej GF05)\n\
 \t-d set power in dBm\n\
 \t-n set number of times to emit (0 indefinite)\n\
+\t-i set number of windows to skip between transmission (0 none, default)\n\
 \t-g set GPIO port (4 or 20)\n\
 \t-h help (this help).\n\n\
 \t e.g.: PiWSPR -c LU7DID -l GF05 -d 20 -f 14095600 -n 1 -g 20\n\
 \n");
+}
+//*---------------------------------------------------------------------------------------------
+//* Delay in seconds
+//*---------------------------------------------------------------------------------------------
+void delaySec(long d) {
+       for (int l = d; l > 0; l--) {
+           usleep(long(1000000));
+       }
+
 }
 //---------------------------------------------------------------------------------------------
 // Signal handlers, SIGALRM is used as a timer, all other signals means termination
@@ -144,7 +157,7 @@ static void terminate(int num)
 {
     printf("\n received signal(%d %s)\n",num,strsignal(num));
     running=false;
-    dds.clk->disableclk(gpio);
+    //cycle=false;
     dds.close();
     usleep(100000);
     printf("\n Program abnormally terminated\n");
@@ -166,7 +179,7 @@ int main(int argc, char *argv[])
 
    while(1)
         {
-                a = getopt(argc, argv, "f:ed:hs:g:p:c:l:");
+                a = getopt(argc, argv, "f:ed:hn:s:g:p:c:l:");
         
                 if(a == -1) 
                 {
@@ -198,7 +211,7 @@ int main(int argc, char *argv[])
                      } else if (!strcasecmp(optarg,"60m")) {
                         SetFrequency=5288700.0;
                      } else if (!strcasecmp(optarg,"40m")) {
-                       SetFrequency=7040100.0;
+                       SetFrequency=7038600.0;
                      } else if (!strcasecmp(optarg,"30m")) {
                        SetFrequency=10140200.0;
                      } else if (!strcasecmp(optarg,"20m")) {
@@ -223,6 +236,14 @@ int main(int argc, char *argv[])
                      
 		     fprintf(stderr,"Frequency: %10.0f Hz\n",SetFrequency);
                      break;
+                case 'n': //times to transmit
+                        ntx=atoi(optarg);
+                        fprintf(stderr,"Times to transmit: %d\n",ntx);
+                        break;
+                case 'i': //times to skip
+                        nskip=atoi(optarg);
+                        fprintf(stderr,"wSPR cycles to skip: %d\n",nskip);
+                        break;
         	case 'd': //power
 			power=atoi(optarg);
 			fprintf(stderr,"Power: %d dBm\n",power);
@@ -292,10 +313,21 @@ int main(int argc, char *argv[])
     }
 
 
+    if(gpioInitialise()<0) {
+       fprintf(stderr,"Cannot initialize GPIO\n");
+       return -1;
+    }
+
+
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
     dds.gpio=gpio;
-    dds.setppm(ppm);
+    dds.power=1;
+    dds.setppm(1000.0);
+
+//*--- Seed random number generator
+
+    srand(time(0));
 
 //--- Generate WSPR message
 
@@ -308,52 +340,100 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    bool WSPRwindow=false;
+    WSPRwindow=false;
     tm *gmtm;
     char* dt;
     time_t now;
+
+//int k=nskip;
+//int m=ntx;
+//boolean cycle=true;
+    now=time(0);
+    dt=ctime(&now);
+
+    float f=SetFrequency+WSPR_SHIFT+WSPR_BAND;
+    //while (cycle==true) {
+//*-------------------------------------------------------------------
+// Wait for next WSPR window (even minutes)
+//*-------------------------------------------------------------------
     printf("Waiting till next window\n");
 
     while (WSPRwindow==false) {
+
  // current date/time based on current system
-      now = time(0);
+       now = time(0);
  // convert now to string form
-      dt = ctime(&now);
+       dt = ctime(&now);
  // convert now to tm struct for UTC
-      gmtm = gmtime(&now);
-      dt = asctime(gmtm);
-      byte m=( time( 0 ) % 3600 ) / 60;
-      if ((m%2 ==0) && gmtm->tm_sec == 0) {
-         WSPRwindow = true;
-      }
-    }
+       gmtm = gmtime(&now);
+       dt = asctime(gmtm);
+  byte m=( time( 0 ) % 3600 ) / 60;
+       if ((m%2 ==0) && gmtm->tm_sec == 0) {
+          WSPRwindow = true;
+       }
+    }   //* End of window waiting while
 
-//--- Transmit WSPR message
+//*-------------------------------------------------------------------------------------------
+//* Start transmission of WSPR message
+//*-------------------------------------------------------------------------------------------
 
-    printf("Current time is %s\n",dt);
-    printf("Starting TX\n");
+    fprintf(stderr,"Current time is %s Starting TX\n",dt);
 
     int j=0;
-    srand(time(0));
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
-    printf("Random frequency offset %10.2f\n",wspr_offset);
+    f+=wspr_offset;
+    fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
+    dds.open(f);
 
+//*---- Turn on Transmitter
+
+    gpioWrite(KEYER_OUT_GPIO,1);
+    usleep(1000);
+    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",SetFrequency,f,wspr_offset);
     while (j<WSPR_LENGTH && running==true){
-        int t=wspr_symbols[j];
-        if ((t >= 0) && (t <= 3) ) {
-           float frequency=(SetFrequency + (t * 1.4648));
-           frequency+=wspr_offset;
-           dds.set(frequency);
-        }
+       int t=wspr_symbols[j];
+       if ((t >= 0) && (t <= 3) ) {
+          float frequency=(f + (t * 1.4648));
+        //fprintf(stderr,"Symbol sent(%d) initDDS(%d) f(%10.0f)\n",t,initDDS,frequency);
+          dds.set(frequency);
+        //fprintf(stderr,"End of symbol\n");
+          usleep(1000);
+        //dds.set(frequency);
+       }
        j++;
        usleep(683000); 
-    }
-  dds.clk->disableclk(gpio);
-  dds.close();
-  usleep(100000);
+    } //* End of symbol sending while
 
-  printf("\nEnding Tx\n");
-  usleep(10000);
+       //fprintf(stderr,"Turning off DDS\n");
+       //usleep(1000);
+       //dds.close();
+       //usleep(1000);
+       //WSPRwindow=false;
 
-  exit(0);
+
+       //if (ntx!=0) {
+       //   m--;
+       //   fprintf(stderr,"Completed cycle %d/%d\n",m,ntx);
+       //   if (m==0) {
+       //      cycle=false;
+       //   }
+       //} else {
+       //   fprintf(stderr,"Continuous loop....\n");
+       //}
+
+       //if (nskip!=0) {
+       //   fprintf(stderr,"Skipping %d cycles, waiting %d secs\n",nskip,50*2);
+       //   delaySec((nskip-1)*50*2);
+       //}
+
+    //}
+
+    fprintf(stderr,"Turning off TX\n");
+    gpioWrite(KEYER_OUT_GPIO,0);
+
+    dds.close();
+    usleep(100000);
+
+    printf("\nEnding beacon\n");
+    exit(0);
 }

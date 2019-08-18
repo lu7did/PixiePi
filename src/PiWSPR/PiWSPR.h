@@ -12,3 +12,13 @@ void Synchronise(unsigned char[], unsigned char[]);  // synchronize with a pseud
 void code_wspr(char* wspr_message, unsigned char* wspr_symbol);		// encode the wspr message
 
 #endif
+
+#define KEYER_OUT_GPIO    12
+#define WSPR_RAND_OFFSET 80
+#define VFO_START 14095600
+#define GPIO04     4
+#define GPIO20    20
+#define GPIO12    12
+#define WSPR_SHIFT    1400
+#define WSPR_BAND      100
+
