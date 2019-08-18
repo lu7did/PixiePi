@@ -42,23 +42,32 @@ typedef bool boolean;
 typedef void (*CALLBACK)();
 
 // GPIO pins
+#define sizearray(a)  (sizeof(a) / sizeof((a)[0]))
+
+// Define keyer related GPIO pin definition
 // set to 0 to use the PI's hw:0 audio out for sidetone
+
 #define SIDETONE_GPIO 19 // this is in wiringPi notation
-
-// Define output GPIO pin
-
 #define KEYER_OUT_GPIO 12
 #define LEFT_PADDLE_GPIO 13
 #define RIGHT_PADDLE_GPIO 15
-
 #define KEY_DOWN 0x01
 #define KEY_UP 0x00
 
-//#define SPEED_GPIO 19
+//*----------- Define Keyer related constants
 
 #define KEYER_STRAIGHT 0
 #define KEYER_MODE_A 1
 #define KEYER_MODE_B 2
+
+#define KEYER_SPEED 20
+#define KEYER_SIDETONE_FREQUENCY 600
+#define KEYER_SIDETONE_GAIN 5
+#define KEYER_SIDETONE_ENVELOPE 5
+#define KEYER_SPACING 0
+#define KEYER_LOW 0
+#define KEYER_HIGH 1
+
 
 #define NSEC_PER_SEC (1000000000)
 enum {
@@ -88,19 +97,23 @@ enum {
 
 
 
-//*---  VFO initial setup
-
 #define VFO_START         7000000
 #define VFO_END           7299000
 #define VFO_BAND_START          3
+#define VFO_SHIFT             600
 #define ONESEC               1000
+
+#define MINRIT              -1000
+#define MAXRIT               1000
+#define RITSTEP               100
+#define RITSTEPD             -100
 
 #define VFO_DELAY               1
 #define BACKLIGHT_DELAY        60
 
 #define GPIO04                  4
 #define GPIO20                 20
-
+#define PPM                  1000
 //*----- Master Timer and Event flagging (TSW)
 
 #define FT1       0B00000001

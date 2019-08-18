@@ -76,7 +76,7 @@ void showVFO() {
 void showRit() {
    if (rit.mItem==0) {return;}
 
-   sprintf(gui,"%+04d",RITOFS);
+   sprintf(gui,"%+04d",ritofs);
    lcd.setCursor(11,1);
    lcd.print(gui);
 
@@ -268,13 +268,13 @@ void saveMenu() {
          CATchangeMode();       // Trigger a pseudo-CAT mode change
       } 
 
-      if (stp.mItem != STEP) {
-         STEP=stp.mItem;
+      if (stp.mItem != step) {
+         step=stp.mItem;
          CATchangeStatus();
       }
 
-      if ((500+50*shf.mItem)!=SHIFT) {
-         SHIFT=500+50*shf.mItem;
+      if ((500+50*shf.mItem)!=shift) {
+         shift=500+50*shf.mItem;
          CATchangeStatus();
       }
 
@@ -282,8 +282,8 @@ void saveMenu() {
         cw_keyer_speed=spd.mItem;
         CATchangeStatus();
      }
-     if (drv.mItem != DDSPOWER) {
-        DDSPOWER=drv.mItem;
+     if (drv.mItem != ddspower) {
+        ddspower=drv.mItem;
         CATchangeFreq();
      }
 }

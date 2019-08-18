@@ -62,6 +62,8 @@ class DDS
       void open(float f);
       void close();
       void setppm(float ppm);
+      void disable();
+      void enable();
 
       float       SetFrequency;
       clkgpio     *clk=new clkgpio;
@@ -71,8 +73,8 @@ class DDS
       float       ppm=1000.0;
       byte        power=MAXLEVEL;
       byte 	  TRACE=0x00;
-  private:
 
+  private:
       char msg[80]; 
 };
 
@@ -125,6 +127,22 @@ void DDS::set(float f) {
    clk->SetCenterFrequency(SetFrequency,10);
    clk->SetFrequency(000);
    clk->enableclk(gpio);
+
+}
+//*------------------------------------------------------------------------
+//* enable DDS
+//*------------------------------------------------------------------------
+
+void DDS::enable() {
+   clk->enableclk(gpio);
+}
+//*------------------------------------------------------------------------
+//* disable DDS
+//*------------------------------------------------------------------------
+void DDS::disable() {
+
+   //set(0);
+   clk->disableclk(gpio);
 
 }
 //*------------------------------------------------------------------------

@@ -43,12 +43,6 @@ typedef bool boolean;
 typedef void (*CALLBACK)();
 
 
-#define RIT   0B00010000
-#define LOCK  0B00001000
-#define PTT   0B00000100
-#define SPLIT 0B00000010
-#define VFO   0B00000001
-
 #define MLSB   0x00
 #define MUSB   0x01
 #define MCW    0x02
@@ -59,6 +53,17 @@ typedef void (*CALLBACK)();
 #define MDIG   0x0A
 #define MPKT   0x0C
 #define SMETERMAX 14
+
+//*--- Transmission control
+
+#define TXONLY 0B00100000
+#define RIT    0B00010000
+#define LOCK   0B00001000
+#define PTT    0B00000100
+#define SPLIT  0B00000010
+#define VFO    0B00000001
+
+
 //*---------------------------------------------------------------------------------------------------
 //* VFOSystem CLASS
 //*---------------------------------------------------------------------------------------------------
