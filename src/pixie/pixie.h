@@ -67,7 +67,7 @@ typedef void (*CALLBACK)();
 #define KEYER_SPACING 0
 #define KEYER_LOW 0
 #define KEYER_HIGH 1
-
+#define KEYER_BRK 20
 
 #define NSEC_PER_SEC (1000000000)
 enum {
@@ -86,8 +86,11 @@ enum {
 
 #define DELAY_SAVE	800000
 #define CW_SHIFT        600
-#define MAXPOWER        7
-
+#define MAXPOWER        1
+#define PTT_OFF         0
+#define PTT_ON          1
+#define ALWAYS          0
+#define ONLY_TX         1
 //*--- Encoder pin definition
 
 

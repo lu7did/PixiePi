@@ -160,7 +160,7 @@ void showGUI() {
    if (getWord(MSW,PTT)==false) {
       showSMeter(0);
    } else {
-      showSMeter(2*dds.power);
+      showSMeter(2*dds->power);
    }
    showRit();
 }
@@ -249,7 +249,8 @@ void saveMenu() {
          CATchangeStatus();         
       }
 
-      bool split=(spl.mItem == 0 ? split=false : split=true);
+      bool split=false;
+      (spl.mItem == 0 ? split=false : split=true);
       if (split != getWord(cat.FT817,SPLIT)) {   // Change in split configuration
          setWord(&cat.FT817,SPLIT,split);
          CATchangeStatus();

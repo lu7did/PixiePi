@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
     dds->gpio=gpio;
-    dds->power=1;
+    dds->power=MAXLEVEL;
     dds->setppm(1000.0);
 
 //*--- Seed random number generator

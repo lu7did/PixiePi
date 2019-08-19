@@ -40,7 +40,7 @@
 
 #define GPIO04   4
 #define GPIO20  20 
-#define MAXLEVEL 7
+#define MAXLEVEL 1
 
 typedef unsigned char byte;
 typedef bool boolean;

@@ -199,25 +199,27 @@ static void* keyer_thread(void *arg) {
             switch(key_state) {
             case CHECK: // check for key press
                 if (cw_keyer_mode == KEYER_STRAIGHT) {       // Straight/External key or bug
+
                     if (*kdash || *kdot) {                  // send manual dashes
                         set_keyer_out(1);
                         key_state = EXITLOOP;
-                    }
-                    else if (*kdot)                // and automatic dots
+                    } else {
+                      if (*kdot) {                // and automatic dots
                         key_state = PREDOT;
-                    else {
+                      } else {
                         set_keyer_out(0);
                         key_state = EXITLOOP;
+                      }
                     }
-                }
-                else {
-                    if (*kdot)
+                } else {
+                    if (*kdot) {
                         key_state = PREDOT;
-                    else if (*kdash)
-                        key_state = PREDASH;
-                    else {
-                        set_keyer_out(0);
-                        key_state = EXITLOOP;
+                    }  else { if (*kdash) {
+                                key_state = PREDASH;
+                               } else {
+                                set_keyer_out(0);
+                                key_state = EXITLOOP;
+                               }
                     }
                 }
                 break;
@@ -238,25 +240,18 @@ static void* keyer_thread(void *arg) {
                     kdelay = 0;
                     set_keyer_out(0);
                     key_state = DOTDELAY;        // add inter-character spacing of one dot length
-                    //if (gpioRead(SPEED_GPIO)==0){
-                        //fprintf(stderr,"-");
-       		        //cw_keyer_speed=cw_keyer_speed-1;
-    		        //if (cw_keyer_speed <= 5) {
-                           //cw_keyer_speed=5;
-                      //  }
-                      //keyer_update();
-                      //printf("Speed set to %d wpm\n",cw_keyer_speed);
-                    //} 
-                    //  fprintf(stderr,".");
-                }
-                else kdelay++;
-
-                // if Mode A and both paddels are relesed then clear dash memory
-                if (cw_keyer_mode == KEYER_MODE_A)
-                    if (!*kdot & !*kdash)
+                } else  
+                    kdelay++;
+                
+                // if ode A and both paddels are relesed then clear dash memory
+                if (cw_keyer_mode == KEYER_MODE_A) {
+                    if (!*kdot & !*kdash) 
                         dash_memory = 0;
-                    else if (*kdash)                   // set dash memory
-                        dash_memory = 1;
+                    } else {
+                        if (*kdash) {                   // set dash memory
+                           dash_memory = 1;
+                         }
+                }
                 break;
 
             // dash paddle pressed so set keyer_out high for time dependant on 3 x dot delay and weight
@@ -266,27 +261,21 @@ static void* keyer_thread(void *arg) {
                 if (kdelay == dash_delay) {
                     kdelay = 0;
                     set_keyer_out(0);
-                    //if (gpioRead(SPEED_GPIO)==0){
-                       //fprintf(stderr,"+");
-  	               //cw_keyer_speed=cw_keyer_speed+1;
-                       //if (cw_keyer_speed >=50) {
-                       //   cw_keyer_speed=50;
-                       //}
-                       //keyer_update();
-                       //printf("Speed set to %d wpm\n",cw_keyer_speed);
-
- //                   } 
- //                   fprintf(stderr,"-");
                     key_state = DASHDELAY;       // add inter-character spacing of one dot length
                 }
-                else kdelay++;
+                else
+                     kdelay++;
 
                 // if Mode A and both padles are relesed then clear dot memory
-                if (cw_keyer_mode == KEYER_MODE_A)
-                    if (!*kdot & !*kdash)
+                if (cw_keyer_mode == KEYER_MODE_A) {
+                    if (!*kdot & !*kdash) {
                         dot_memory = 0;
-                    else if (*kdot)                    // set dot memory
-                        dot_memory = 1;
+                    } else {
+                        if (*kdot) {                    // set dot memory
+                            dot_memory = 1;
+                        }
+                    }
+                }
                 break;
 
             // add dot delay at end of the dot and check for dash memory, then check if paddle still held
@@ -295,11 +284,14 @@ static void* keyer_thread(void *arg) {
                     kdelay = 0;
                     if(!*kdot && cw_keyer_mode == KEYER_STRAIGHT)   // just return if in bug mode
                         key_state = EXITLOOP;
-                    else if (dash_memory)                 // dash has been set during the dot so service
-                        key_state = PREDASH;
-                    else key_state = DOTHELD;             // dot is still active so service
+                    else
+                        if (dash_memory)                 // dash has been set during the dot so service
+                           key_state = PREDASH;
+                        else
+                            key_state = DOTHELD;             // dot is still active so service
                 }
-                else kdelay++;
+                else
+                  kdelay++;
 
                 if (*kdash)                                 // set dash memory
                     dash_memory = 1;
@@ -312,9 +304,10 @@ static void* keyer_thread(void *arg) {
 
                     if (dot_memory)                       // dot has been set during the dash so service
                         key_state = PREDOT;
-                    else key_state = DASHHELD;            // dash is still active so service
-                }
-                else kdelay++;
+                    else
+                        key_state = DASHHELD;            // dash is still active so service
+                } else
+                     kdelay++;
 
                 if (*kdot)                                  // set dot memory
                     dot_memory = 1;
@@ -324,26 +317,32 @@ static void* keyer_thread(void *arg) {
             case DOTHELD:
                 if (*kdot)                                  // dot has been set during the dash so service
                     key_state = PREDOT;
-                else if (*kdash)                            // has dash paddle been pressed
-                    key_state = PREDASH;
-                else if (cw_keyer_spacing) {    // Letter space enabled so clear any pending dots or dashes
-                    clear_memory();
-                    key_state = LETTERSPACE;
-                }
-                else key_state = EXITLOOP;
+                else
+                    if (*kdash)                            // has dash paddle been pressed
+                       key_state = PREDASH;
+                    else
+                       if (cw_keyer_spacing) {    // Letter space enabled so clear any pending dots or dashes
+                          clear_memory();
+                          key_state = LETTERSPACE;
+                       }
+                else
+                    key_state = EXITLOOP;
                 break;
 
             // check if dash paddle is still held, if so repeat the dash. Else check if Letter space is required
             case DASHHELD:
                 if (*kdash)                   // dash has been set during the dot so service
                     key_state = PREDASH;
-                else if (*kdot)               // has dot paddle been pressed
-                    key_state = PREDOT;
-                else if (cw_keyer_spacing) {    // Letter space enabled so clear any pending dots or dashes
-                    clear_memory();
-                    key_state = LETTERSPACE;
-                }
-                else key_state = EXITLOOP;
+                else 
+                    if (*kdot)               // has dot paddle been pressed
+                        key_state = PREDOT;
+                    else
+                       if (cw_keyer_spacing) {    // Letter space enabled so clear any pending dots or dashes
+                          clear_memory();
+                          key_state = LETTERSPACE;
+                       }
+                       else
+                          key_state = EXITLOOP;
                 break;
 
             // Add letter space (3 x dot delay) to end of character and check if a paddle is pressed during this time.
@@ -353,15 +352,20 @@ static void* keyer_thread(void *arg) {
                     kdelay = 0;
                     if (dot_memory)         // check if a dot or dash paddle was pressed during the delay.
                         key_state = PREDOT;
-                    else if (dash_memory)
-                        key_state = PREDASH;
-                    else key_state = EXITLOOP;   // no memories set so restart
+                    else
+                        if (dash_memory)
+                           key_state = PREDASH;
+                        else
+                           key_state = EXITLOOP;   // no memories set so restart
                 }
-                else kdelay++;
+                else
+                    kdelay++;
 
                 // save any key presses during the letter space delay
-                if (*kdot) dot_memory = 1;
-                if (*kdash) dash_memory = 1;
+                if (*kdot)
+                   dot_memory = 1;
+                if (*kdash)
+                   dash_memory = 1;
                 break;
 
             default:
@@ -379,6 +383,7 @@ static void* keyer_thread(void *arg) {
         }
     }
     fprintf(stderr,"\n\nSIGINT received, terminating\n");
+    return 0 ;
 }
 //*------------------------------------------------------------------------------------------------
 //* iambic_close
