@@ -144,6 +144,7 @@ Current 3D STL file has material width, height, size and STL integrity issues an
 *   Enable I2C and SPI with sudo raspi-config
 *   Follow instructions to download and build the HamLib package from https://sourceforge.net/projects/hamlib/files/hamlib/  (hamlib-1.0.1.tgz at this moment, check it out for latest)
 *   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
+*   Enable PWM in your Raspberry Pi [tutorial](https://learn.adafruit.com/adding-basic-audio-ouput-to-raspberry-pi-zero/pi-zero-pwm-audio) 
 
 # Build
 
@@ -185,7 +186,7 @@ double conversion receiver at work. Follows an example of a report captured from
 
 ## Beacon station
 
-* Run ./bash/PiWSPR.sh (replace your call, grid and power).
+* Run ./bash/PiWSPR.sh (replace your call, grid and power). A sample script can be found at bash/PiWSPR.sh
 This program will run once, so call it repeatedely with a timing of your choice, WSPR frames align and fire on even minutes.
 
 # Operating FT8
@@ -203,7 +204,21 @@ Sample of FT8 receiving:
 
 ## Beacon station
 Run pift8 from the rpitx package, simultaneous monitoring and beaconing will require a larger Raspberry Pi in order
-to accomodate the extra power to run WSJT-X.
+to accomodate the extra power to run WSJT-X. Sample script can be found at bash/PiFT8.sh
+
+# Operating as a CW transceiver
+
+Configure settings accordingly at the pixie.cfg file and fire bash/pixie.sh
+
+The following settings can be configured using the CAT interface, most changes will be made permanent at the pixie.cfg
+file upon termination.
+
+## Keyer
+
+Using the default configuration (KEYER_MODE=0) the keyer will work as a straight keyer, however the keying must be made
+thru the interface in order for the program to detect changes and shift frequencies in CW accordingly. Other keyer modes
+can be programed using (KEYER_MODE=1 and KEYER_MODE=2).
+When programmed as modes other than CW or CWR the keyer will basically become a PTT line (low=ON,high=OFF).
 
 
 # Other programs
