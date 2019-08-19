@@ -78,6 +78,12 @@ Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal s
 Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
 the sidetone.
 
+## Hardware prototype
+
+This is a snapshot of the very early prototype used to develop and debug this project:
+
+![Alt Text](docs/PixiePi_Hardware.jpg?raw=true "PixiePi Hardware Prototype")
+
 
 # Chinese Pixie MODS
 
@@ -132,9 +138,11 @@ Current 3D STL file has material width, height, size and STL integrity issues an
 
 *   sudo apt-get install i2c-tools libi2c-dev
 *   sudo apt-get install socat
+*   sudo apt-get install telnet
 *   git clone git://git.drogon.net/wiringPi
 *   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
 *   Enable I2C and SPI with sudo raspi-config
+*   Follow instructions to download and build the HamLib package from https://sourceforge.net/projects/hamlib/files/hamlib/  (hamlib-1.0.1.tgz at this moment, check it out for latest)
 *   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
 
 # Build
@@ -158,7 +166,7 @@ Current 3D STL file has material width, height, size and STL integrity issues an
 
 # Operating WSPR
 
-WSPR can be operated either as a monitoring station or as a beacon (or both).
+WSPR can be operated either as a monitoring station or as a beacon.
 
 ## Monitoring station
 
@@ -167,14 +175,22 @@ WSPR can be operated either as a monitoring station or as a beacon (or both).
 * Use WSJTX to monitor, select Mode as WSPR
 * Ctl-C to terminate.
 
+Your mileage might vary depending on local CONDX, antenna available and overall noise floor at your location,
+some fairly strong signals can be decoded this way, after all it's just a very simple (tiniest imaginable)
+double conversion receiver at work. Follows an example of a report captured from a WSPR Beacon in PY-Land some
+500+ miles North of me.
+
+![Alt Text](docs/PixiePi_WSPR.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for WSPR monitoring")
+
+
 ## Beacon station
 
 * Run ./bash/PiWSPR.sh (replace your call, grid and power).
-* this program will run once, so call it repeatedely with a timing of your choice, WSPR frames fires on even minutes.
+This program will run once, so call it repeatedely with a timing of your choice, WSPR frames align and fire on even minutes.
 
 # Operating FT8
 
-FT8 can be operated either as a monitoring station or as a beacon (or both).
+FT8 can be operated either as a monitoring station or as a beacon.
 
 ## Monitoring station
 Same as WSPR monitoring station but selecting 7074000 as the frequency and FT8 at WSJTX, your mileage might vary
@@ -183,10 +199,11 @@ transceiver so probably relatively strong signals will be detected.
 
 Sample of FT8 receiving:
 
-![Alt Text](docs/PixiePi_FT8.jpg?raw=true "WSJT-X Program using PixiePi as the receiver")
+![Alt Text](docs/PixiePi_FT8.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for FT8 monitoring")
 
 ## Beacon station
-* Run pift8 from the rpitx package.
+Run pift8 from the rpitx package, simultaneous monitoring and beaconing will require a larger Raspberry Pi in order
+to accomodate the extra power to run WSJT-X.
 
 
 # Other programs
@@ -197,21 +214,39 @@ Sample of FT8 receiving:
   * OT817
     - Transceiver USB controllable thru CAT
 
-  * PiWSPR
-    - WSPR beacon using a QRPp transceiver
-
   * pirtty
     - RTTY beacon
 
-  * iambic-keyer
-    An iambic-keyer for code practice
-
-  * Optional 
+  * Optional hardware 
      - Rotary encoder
      - LCD 16x2 display
      - USB soundcard (optional)
 
-#  Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
+**Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
+
+# CAT Control
+
+CAT control can be performed over the programs of this project as they implement a limited subset of the Yaesu FT-817 CAT Command set.
+Commands are carried thru an internal pipe (created using the socat package, see bash/pixie.sh script for details) which looks to the
+controlling program just like a serial port (usually /tmp/tty0).
+
+Operated in "headless" mode, with no tunning control or LCD display, this feature can be used to operate the transceiver.
+
+Two alternatives has been tested:
+
+## FLRig
+FLRig can be built on the Raspberry Pi and used to control the PixiePi rig just configuring it as a FT-817 with the serial port as
+/tmp/ttyv0. The PixiePi program must be up a running and the pipe established when this program is run.
+Being a graphic X-Window app FLRig is somewhat taxing on resources and might not perform well when using a Raspberry Pi Zero W, however
+it will run just fine on a Raspberry Pi 3 or higher.
+
+##RigCtl
+RigCtl is a companion program of the HamLib library, it's main advantage is  a console operation with a very low resources consumption,
+therefore it can be used on a Raspberry Pi Zero W to control the rig. See bash/pixie.sh in order to understand the way to configure it.
+
+The rigctl interface is a server running in the background (rigctld) which can be accessed using a telnet interface at localhost port 4532.
+
+See the docs/rigctl_commands.txt for a summary of the commands or visit the Hamlib page for complete documentation.
 
 # Other packages
 
