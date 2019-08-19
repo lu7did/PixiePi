@@ -87,7 +87,7 @@ byte mode=MCW;
 int  shift=VFO_SHIFT;
 int  ritofs=0;
 int  step=0;
-byte ddspower=MAXPOWER;
+byte ddspower=MAXLEVEL;
 byte trace=0x00;
 byte ptt=KEYER_OUT_GPIO;
 byte txonly=ALWAYS;
@@ -1086,7 +1086,7 @@ int main(int argc, char* argv[])
    gpio=ini_getl("DDS","GPIO",GPIO04,inifile);
    ptt=ini_getl("DDS","PTT",KEYER_OUT_GPIO,inifile);
    txonly=ini_getl("DDS","TXONLY",0,inifile);
-   ddspower=ini_getl("DDS","DDSPOWER",MAXPOWER,inifile);
+   ddspower=ini_getl("DDS","MAXLEVEL",MAXLEVEL,inifile);
    log_trace("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
 
 //*--- Configuration: CAT

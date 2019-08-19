@@ -43,6 +43,8 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Capable of operating most digital modes with very small modifications.
 
+* Full or Partial Break-In in transmit.
+
 * Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
 
 # Fair and educated warning
@@ -77,6 +79,31 @@ Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually l
 the sidetone.
 
 
+# Chinese Pixie MODS
+
+Some minor modifications are needed while building the Chinese DIY Pixie kit, other versionas might vary:
+
+## Components not needed
+
+The following components needs not to be placed when building the kit
+
+* D2 - Diode 1N4001
+* R6 - R 100K
+* C8 - C 100nF
+* W1 - R 47K (var)
+* D3 - Diode 1N4148
+* Y1 - Cristal 7.032 MHz
+
+## Different connections
+
+* Connect Pin 7 LM386 to PWM exit from interface card (sidetone)
+* Connect Cx=100 nF on the same place than Y1 on the kit.
+* Connect positive side of D2 diode to the interface board PTT line
+
+## Broadcast Interference (BCI)
+
+At some locations the Chinese DIY Pixie kit might be subject to heavy BCI, in order to minimize try to replace R3 from
+1K to 47-100 Ohms.
 
 # Other alternatives
 

@@ -86,7 +86,6 @@ enum {
 
 #define DELAY_SAVE	800000
 #define CW_SHIFT        600
-#define MAXPOWER        1
 #define PTT_OFF         0
 #define PTT_ON          1
 #define ALWAYS          0
