@@ -50,6 +50,8 @@
 #include <signal.h>
 #include <ctime>
 #include <wiringPi.h>
+#include <iostream>
+#include <csignal>
 
 //---  VFO initial setup
 typedef unsigned char byte;
@@ -77,6 +79,8 @@ const char   *COPYRIGHT="(c) LU7DID 2019";
 // Main structures
 //-------------------------------------------------------------------------------------------------
 
+struct sigaction sa;
+
 //---- Generic memory allocations
 
 int    value=0;
@@ -90,7 +94,6 @@ int    a;
 int    anyargs = 0;
 float  SetFrequency=VFO_START;
 float  ppm=1000.0;
-struct sigaction sa;
 bool   running=true;
 byte   keepalive=0;
 bool   first=true;
@@ -101,6 +104,8 @@ char   locator[10];
 int    power=10;
 int    ntx=0;
 int    nskip=0;
+byte   ptt=GPIO12;
+
 char   wspr_message[20];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
@@ -108,7 +113,9 @@ unsigned long tuning_words[WSPR_LENGTH];
 bool WSPRwindow=false;
 void cbkDDS();
 
-DDS    dds(cbkDDS);
+//*---- Define WSPR memory blocks
+
+DDS    *dds=new DDS(cbkDDS);
 WSPR   wspr(NULL);
 
 //=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -119,7 +126,7 @@ WSPR   wspr(NULL);
 //--------------------------------------------------------------------------
 void cbkDDS() {
 
-    //fprintf(stderr,"Callback cbkDDS performed\n");
+    //NOP
 }
 //-------------------------------------------------------------------------------------------------
 // print_usage
@@ -134,35 +141,21 @@ Usage:\n\
 \t-c set callsign (ej LU7DID)\n\
 \t-l set locator (ej GF05)\n\
 \t-d set power in dBm\n\
-\t-n set number of times to emit (0 indefinite)\n\
+\t-n set GPIO port for PTT (default: GPIO12)\n\
 \t-i set number of windows to skip between transmission (0 none, default)\n\
 \t-g set GPIO port (4 or 20)\n\
+\t-x force WSPR Window now (test only)\n\
 \t-h help (this help).\n\n\
 \t e.g.: PiWSPR -c LU7DID -l GF05 -d 20 -f 14095600 -n 1 -g 20\n\
 \n");
-}
-//*---------------------------------------------------------------------------------------------
-//* Delay in seconds
-//*---------------------------------------------------------------------------------------------
-void delaySec(long d) {
-       for (int l = d; l > 0; l--) {
-           usleep(long(1000000));
-       }
-
 }
 //---------------------------------------------------------------------------------------------
 // Signal handlers, SIGALRM is used as a timer, all other signals means termination
 //---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    printf("\n received signal(%d %s)\n",num,strsignal(num));
+    fprintf(stderr,"\n Received signal INT(%d %s)\n",num,strsignal(num));
     running=false;
-    //cycle=false;
-    dds.close();
-    usleep(100000);
-    printf("\n Program abnormally terminated\n");
-    exit(4);
-   
 }
 //---------------------------------------------------------------------------------------------
 // MAIN Program
@@ -172,14 +165,13 @@ int main(int argc, char *argv[])
 
 //--- Initial presentation
 
-  sprintf(hi,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
-  printf(hi);
+  fprintf(stderr,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
 
 //--- Parse arguments
 
    while(1)
         {
-                a = getopt(argc, argv, "f:ed:hn:s:g:p:c:l:");
+                a = getopt(argc, argv, "f:ed:hs:g:p:n:c:l:x");
         
                 if(a == -1) 
                 {
@@ -193,57 +185,53 @@ int main(int argc, char *argv[])
 
                 switch(a)
                 {
+                case 'x': // Force WSPR window now (test only!)
+                     WSPRwindow=true;
+                     fprintf(stderr,"Forcing WSPR window now!\n");
+                     break; 
                 case 'f': // Frequency
                      if (!strcasecmp(optarg,"LF")) {
                         SetFrequency=137500.0;
                      } else if (!strcasecmp(optarg,"LF-15")) {
-                        SetFrequency=137612.5;
-                     } else if (!strcasecmp(optarg,"MF")) {
-                        SetFrequency=475700.0;
-                     } else if (!strcasecmp(optarg,"MF-15")) {
-                        SetFrequency=475812.5;
-                     } else if (!strcasecmp(optarg,"160m")) {
-                        SetFrequency=1838100.0;
-                     } else if (!strcasecmp(optarg,"160m-15")) {
-                        SetFrequency=1838212.5;
-                     } else if (!strcasecmp(optarg,"80m")) {
-                        SetFrequency=3594100.0;
-                     } else if (!strcasecmp(optarg,"60m")) {
-                        SetFrequency=5288700.0;
-                     } else if (!strcasecmp(optarg,"40m")) {
-                       SetFrequency=7038600.0;
-                     } else if (!strcasecmp(optarg,"30m")) {
-                       SetFrequency=10140200.0;
-                     } else if (!strcasecmp(optarg,"20m")) {
-                       SetFrequency=14097100.0;
-                     } else if (!strcasecmp(optarg,"17m")) {
-                       SetFrequency=18106100.0;
-                     } else if (!strcasecmp(optarg,"15m")) {
-                       SetFrequency=21096100.0;
-                     } else if (!strcasecmp(optarg,"12m")) {
-                       SetFrequency=24926100.0;
-                     } else if (!strcasecmp(optarg,"10m")) {
-                       SetFrequency=28126100.0;
-                     } else if (!strcasecmp(optarg,"6m")) {
-                       SetFrequency=50294500.0;
-                     } else if (!strcasecmp(optarg,"4m")) {
-                       SetFrequency=70092500.0;
-                     } else if (!strcasecmp(optarg,"2m")) {
-                       SetFrequency=144490500.0;
-                     } else {
-                        SetFrequency = atof(optarg);
-                     }
+                               SetFrequency=137612.5;
+                            } else if (!strcasecmp(optarg,"MF")) {
+                                      SetFrequency=475700.0;
+                                   } else if (!strcasecmp(optarg,"MF-15")) {
+                                             SetFrequency=475812.5;
+                                          } else if (!strcasecmp(optarg,"160m")) {
+                                                    SetFrequency=1838100.0;
+                                                 } else if (!strcasecmp(optarg,"160m-15")) {
+                                                           SetFrequency=1838212.5;
+                                                        } else if (!strcasecmp(optarg,"80m")) {
+                                                                  SetFrequency=3594100.0;
+                                                               } else if (!strcasecmp(optarg,"60m")) {
+                                                                         SetFrequency=5288700.0;
+                                                                      } else if (!strcasecmp(optarg,"40m")) {
+                                                                                SetFrequency=7038600.0;
+                                                                             } else if (!strcasecmp(optarg,"30m")) {
+                                                                                       SetFrequency=10140200.0;
+                                                                                    } else if (!strcasecmp(optarg,"20m")) {
+                                                                                              SetFrequency=14097100.0;
+                                                                                           } else if (!strcasecmp(optarg,"17m")) {
+                                                                                                     SetFrequency=18106100.0;
+                                                                                                  } else if (!strcasecmp(optarg,"15m")) {
+                                                                                                            SetFrequency=21096100.0;
+                                                                                                         } else if (!strcasecmp(optarg,"12m")) {
+                                                                                                                   SetFrequency=24926100.0;
+                                                                                                                } else if (!strcasecmp(optarg,"10m")) {
+                                                                                                                          SetFrequency=28126100.0;
+                                                                                                                       } else if (!strcasecmp(optarg,"6m")) {
+                                                                                                                                 SetFrequency=50294500.0;
+                                                                                                                              } else if (!strcasecmp(optarg,"4m")) {
+                                                                                                                                        SetFrequency=70092500.0;
+                                                                                                                                     } else if (!strcasecmp(optarg,"2m")) {
+                                                                                                                                               SetFrequency=144490500.0;
+                                                                                                                                            } else {
+                                                                                                                                               SetFrequency = atof(optarg);
+                                                                                                                                            }
                      
 		     fprintf(stderr,"Frequency: %10.0f Hz\n",SetFrequency);
                      break;
-                case 'n': //times to transmit
-                        ntx=atoi(optarg);
-                        fprintf(stderr,"Times to transmit: %d\n",ntx);
-                        break;
-                case 'i': //times to skip
-                        nskip=atoi(optarg);
-                        fprintf(stderr,"wSPR cycles to skip: %d\n",nskip);
-                        break;
         	case 'd': //power
 			power=atoi(optarg);
 			fprintf(stderr,"Power: %d dBm\n",power);
@@ -256,15 +244,19 @@ int main(int argc, char *argv[])
 			sprintf(locator,optarg);
 			fprintf(stderr,"Locator: %s\n",locator);
 			break;
+                case 'n': // GPIO PTT
+                        ptt=atoi(optarg);
+                        if (gpio < 1 || gpio > 19) {
+                           ptt=GPIO12;
+                        }
+                        fprintf(stderr,"PTT Out: GPIO%d\n",ptt);
+                        break;
                 case 'g': // GPIO
-              
                         gpio = atoi(optarg);
                         if (gpio != GPIO04 && gpio != GPIO20) {
-                           sprintf(port,optarg);
                            fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
                            break;
                         }
-                        sprintf(port,optarg);
 			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
                         break;
                 case 'p': //ppm
@@ -275,19 +267,12 @@ int main(int argc, char *argv[])
                         print_usage();
                         exit(1);
                         break;
-                case 's': //serial port
-                        sprintf(port,optarg);
-                        fprintf(stderr, "Serial port:%s\n", optarg);
-                        break;
                 case -1:
                 break;
                 case '?':
-                        if (isprint(optopt) )
-                        {
+                        if (isprint(optopt) ) {
                            fprintf(stderr, "PiWSPR: unknown option `-%c'.\n", optopt);
-                        }
-                        else
-                        {
+                        } else {
                            fprintf(stderr, "PiWSPR: unknown option character `\\x%x'.\n", optopt);
                         }
                         print_usage();
@@ -301,17 +286,16 @@ int main(int argc, char *argv[])
                 }
         }
 
-//--- Define the rest of the signal handlers, basically as termination exceptions
+//--- Define the INT signal handlers, basically as termination exceptions
 
     for (int i = 0; i < 64; i++) {
 
         if (i != SIGALRM && i != 17 && i != 28 ) {
-           std::memset(&sa, 0, sizeof(sa));
-           sa.sa_handler = terminate;
-           sigaction(i, &sa, NULL);
+           signal(i,terminate);
         }
     }
 
+//*--- Initialize GPIO management (PTT)
 
     if(gpioInitialise()<0) {
        fprintf(stderr,"Cannot initialize GPIO\n");
@@ -321,9 +305,9 @@ int main(int argc, char *argv[])
 
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
-    dds.gpio=gpio;
-    dds.power=1;
-    dds.setppm(1000.0);
+    dds->gpio=gpio;
+    dds->power=1;
+    dds->setppm(1000.0);
 
 //*--- Seed random number generator
 
@@ -340,19 +324,14 @@ int main(int argc, char *argv[])
     }
     printf("\n");
 
-    WSPRwindow=false;
     tm *gmtm;
     char* dt;
     time_t now;
 
-//int k=nskip;
-//int m=ntx;
-//boolean cycle=true;
     now=time(0);
     dt=ctime(&now);
 
     float f=SetFrequency+WSPR_SHIFT+WSPR_BAND;
-    //while (cycle==true) {
 //*-------------------------------------------------------------------
 // Wait for next WSPR window (even minutes)
 //*-------------------------------------------------------------------
@@ -367,7 +346,7 @@ int main(int argc, char *argv[])
  // convert now to tm struct for UTC
        gmtm = gmtime(&now);
        dt = asctime(gmtm);
-  byte m=( time( 0 ) % 3600 ) / 60;
+       byte m=( time( 0 ) % 3600 ) / 60;
        if ((m%2 ==0) && gmtm->tm_sec == 0) {
           WSPRwindow = true;
        }
@@ -383,57 +362,34 @@ int main(int argc, char *argv[])
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
     f+=wspr_offset;
     fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
-    dds.open(f);
+    dds->open(f);
 
 //*---- Turn on Transmitter
 
-    gpioWrite(KEYER_OUT_GPIO,1);
+    gpioWrite(ptt,PTT_ON);
     usleep(1000);
     fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",SetFrequency,f,wspr_offset);
+    signal(SIGINT, terminate); 
     while (j<WSPR_LENGTH && running==true){
        int t=wspr_symbols[j];
        if ((t >= 0) && (t <= 3) ) {
           float frequency=(f + (t * 1.4648));
-        //fprintf(stderr,"Symbol sent(%d) initDDS(%d) f(%10.0f)\n",t,initDDS,frequency);
-          dds.set(frequency);
-        //fprintf(stderr,"End of symbol\n");
+          dds->set(frequency);
           usleep(1000);
-        //dds.set(frequency);
        }
        j++;
        usleep(683000); 
     } //* End of symbol sending while
 
-       //fprintf(stderr,"Turning off DDS\n");
-       //usleep(1000);
-       //dds.close();
-       //usleep(1000);
-       //WSPRwindow=false;
-
-
-       //if (ntx!=0) {
-       //   m--;
-       //   fprintf(stderr,"Completed cycle %d/%d\n",m,ntx);
-       //   if (m==0) {
-       //      cycle=false;
-       //   }
-       //} else {
-       //   fprintf(stderr,"Continuous loop....\n");
-       //}
-
-       //if (nskip!=0) {
-       //   fprintf(stderr,"Skipping %d cycles, waiting %d secs\n",nskip,50*2);
-       //   delaySec((nskip-1)*50*2);
-       //}
-
-    //}
+//*--- Finalize beacon
 
     fprintf(stderr,"Turning off TX\n");
-    gpioWrite(KEYER_OUT_GPIO,0);
+    gpioWrite(ptt,PTT_OFF);
 
-    dds.close();
+    dds->close();
     usleep(100000);
 
+    delete(dds);
     printf("\nEnding beacon\n");
     exit(0);
 }

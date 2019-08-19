@@ -21,4 +21,5 @@ void code_wspr(char* wspr_message, unsigned char* wspr_symbol);		// encode the w
 #define GPIO12    12
 #define WSPR_SHIFT    1400
 #define WSPR_BAND      100
-
+#define PTT_ON    1
+#define PTT_OFF   0

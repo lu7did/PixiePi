@@ -63,11 +63,11 @@ class DDS
       void open(float f);
       void close();
       void setppm(float ppm);
-      void disable();
-      void enable();
 
       float       SetFrequency;
-      clkgpio     *clk=new clkgpio;
+      //clkgpio     *clk=new clkgpio;
+      clkgpio     *clk;
+      //clkgpio     *clk=new clkgpio;
       generalgpio gengpio;
       padgpio     pad;
       byte        gpio=GPIO04;
@@ -90,17 +90,40 @@ class DDS
 DDS::DDS(CALLBACK c)
 {
 
-  if (c!=NULL) {changeFreq=c;}   //* Callback of change VFO frequency
 
-//  gengpio.setpulloff(4);
-  gpio=GPIO04;
-
-  gengpio.setpulloff(gpio);
-  pad.setlevel(power);
-  clk->SetAdvancedPllMode(true);
+ if (c!=NULL) {changeFreq=c;}   //* Callback of change VFO frequency
+ gengpio.setpulloff(GPIO04);
+ gpio=GPIO04;
 
 
 }
+//*------------------------------------------------------------------------
+//* open
+//* start the dds
+//*------------------------------------------------------------------------
+void DDS::open(float f) {
+
+  clk=new clkgpio;
+  clk->SetAdvancedPllMode(true);
+
+  gengpio.setpulloff(gpio);
+  pad.setlevel(power);
+
+  setppm(ppm);
+  set(f);
+}
+//*-----------------------------------------------------------------------
+//* close
+//* finalizes and close the DDS
+//*-----------------------------------------------------------------------
+void DDS::close() {
+
+    clk->disableclk(gpio);
+    delete(clk);
+    usleep(100000);
+
+}
+
 //*-------------------------------------------------------------------------
 //* get()
 //* get the current frequency
@@ -116,6 +139,7 @@ float DDS::get() {
 //*-------------------------------------------------------------------------
 void DDS::set(float f) {
 
+   
    int fx=(int)f;
    (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
 
@@ -133,48 +157,11 @@ void DDS::set(float f) {
 
 }
 //*------------------------------------------------------------------------
-//* enable DDS
-//*------------------------------------------------------------------------
-
-void DDS::enable() {
-   clk->enableclk(gpio);
-}
-//*------------------------------------------------------------------------
-//* disable DDS
-//*------------------------------------------------------------------------
-void DDS::disable() {
-
-   //set(0);
-   clk->disableclk(gpio);
-
-}
-//*------------------------------------------------------------------------
 //* setppm
 //*------------------------------------------------------------------------
 void DDS::setppm(float ppm) {
   if(ppm!=1000) {   //ppm is set else use ntp
     clk->Setppm(ppm);
   }
-}
-//*------------------------------------------------------------------------
-//* open
-//* start the dds
-//*------------------------------------------------------------------------
-void DDS::open(float f) {
-
-  setppm(ppm);
-  set(f);
-}
-//*-----------------------------------------------------------------------
-//* close
-//* finalizes and close the DDS
-//*-----------------------------------------------------------------------
-void DDS::close() {
-
-    clk->disableclk(gpio);
-    delete(clk);
-
-    usleep(100000);
-
 }
 
