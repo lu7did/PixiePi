@@ -156,6 +156,33 @@ Current 3D STL file has material width, height, size and STL integrity issues an
   This setup can be used with flrig as the front-end and CAT controller (**headless mode**), it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
+# Operating WSPR
+
+WSPR can be operated either as a monitoring station or as a beacon (or both).
+
+## Monitoring station
+
+* Plug the PHONE exit to the LINE-IN entry of a soundcard.
+* Start the pixie program with ./bash/pixie.sh (correct frequency to 7038600).
+* Use WSJTX to monitor, select Mode as WSPR
+* Ctl-C to terminate.
+
+## Beacon station
+
+* Run ./bash/PiWSPR.sh (replace your call, grid and power).
+* this program will run once, so call it repeatedely with a timing of your choice, WSPR frames fires on even minutes.
+
+# Operating FT8
+
+FT8 can be operated either as a monitoring station or as a beacon (or both).
+
+## Monitoring station
+Same as WSPR monitoring station but selecting 7074000 as the frequency and FT8 at WSJTX
+
+## Beacon station
+* Run pift8 from the rpitx package.
+
+
 # Other programs
 
   * DDSPi
@@ -178,9 +205,8 @@ Current 3D STL file has material width, height, size and STL integrity issues an
      - LCD 16x2 display
      - USB soundcard (optional)
 
-<<<<<<< HEAD
 #  Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
-=======
+
 # Other packages
 
 In general the hardware can be used to implement modulation modes proposed by the [rpitx package](https://github.com/F5OEO/rpitx).
@@ -188,4 +214,3 @@ In some cases the RF chain after the Raspberry Pi needs to be activated, the har
 GPIO19 line as the PTT, some programs might require this line to be activated or deactivated externally.
 
 #  Work in progress, this code set is not yet functional
->>>>>>> 0ddd1e306435acf1d3389367cbdaefd3a3beee8c
