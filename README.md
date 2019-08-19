@@ -177,7 +177,13 @@ WSPR can be operated either as a monitoring station or as a beacon (or both).
 FT8 can be operated either as a monitoring station or as a beacon (or both).
 
 ## Monitoring station
-Same as WSPR monitoring station but selecting 7074000 as the frequency and FT8 at WSJTX
+Same as WSPR monitoring station but selecting 7074000 as the frequency and FT8 at WSJTX, your mileage might vary
+depending on local CONDX, antenna settings and overall noise floor at your locations, it's just a very basic
+transceiver so probably relatively strong signals will be detected.
+
+Sample of FT8 receiving:
+
+![Alt Text](docs/PixiePi_FT8.jpg?raw=true "WSJT-X Program using PixiePi as the receiver")
 
 ## Beacon station
 * Run pift8 from the rpitx package.
