@@ -2,23 +2,6 @@ Commands  can  be  sent  over the TCP socket either as a single char, or as a lo
 
        name plus the value(s) space separated on one '\n' terminated line. See PROTOCOL.
 
-       Since most of the Hamlib operations have a set and a get method, an upper case letter will
-       be  used  for  set  methods  whereas the corresponding lower case letter refers to the get
-       method.  Each operation also has a long name; prepend a backslash to send a  long  command
-       name.
-
-       Example (Perl): `print $socket "\\dump_caps\n";' to see what the radio's backend can do
-       (N.B.: In Perl and many other languages a '\' will need to be escaped with a preceding '\'
-       so that even though two backslash characters appear in the code, only one will  be  passed
-       to rigctld.  This is a possible bug, beware!).
-
-       Please  note  that the backend for the radio to be controlled, or the radio itself may not
-       support some commands. In that case, the operation will fail with a Hamlib error message.
-
-       Here is a summary of the supported commands (In the case  of  "set"  commands  the  quoted
-       string  is  replaced  by  the value in the description.  In the case of "get" commands the
-       quoted string is the key name of the value returned.):
-
        F, set_freq 'Frequency'
               Set 'Frequency', in Hz.
 
@@ -32,7 +15,7 @@ Commands  can  be  sent  over the TCP socket either as a single char, or as a lo
               Set 'Passband' in Hz, or '0' for the Hamlib backend default.
 
        m, get_mode
-              Get 'Mode' 'Passband'.
+V              Get 'Mode' 'Passband'.
 
               Returns Mode as a string from set_mode above and Passband in Hz.
 

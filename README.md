@@ -189,6 +189,12 @@ double conversion receiver at work. Follows an example of a report captured from
 * Run ./bash/PiWSPR.sh (replace your call, grid and power). A sample script can be found at bash/PiWSPR.sh
 This program will run once, so call it repeatedely with a timing of your choice, WSPR frames align and fire on even minutes.
 
+Follows a screen capture of some reports given by the WSPRNet monitoring network[link](http://www.wsprnet.org), a fair distance has been achieved considered
+the power output were in the order of 200 mW during the tests!
+
+![Alt Text](docs/PixiePi_Reports_WSPR.png?raw=true "Reports from WSPRNet during the test")
+
+
 # Operating FT8
 
 FT8 can be operated either as a monitoring station or as a beacon.
@@ -205,6 +211,12 @@ Sample of FT8 receiving:
 ## Beacon station
 Run pift8 from the rpitx package, simultaneous monitoring and beaconing will require a larger Raspberry Pi in order
 to accomodate the extra power to run WSJT-X. Sample script can be found at bash/PiFT8.sh
+
+Follows a screen capture of some reports given by the PSKReporter monitoring network[link](http://pskreporter.info), a fair distance has been achieved considered
+the power output were in the order of 200 mW during the tests!
+
+![Alt Text](docs/PixiePi_Reports_FT8.png?raw=true "Reports from PSKReporter network during the test")
+
 
 # Operating as a CW transceiver
 
