@@ -87,7 +87,7 @@ This is a snapshot of the very early prototype used to develop and debug this pr
 
 # Chinese Pixie MODS
 
-Some minor modifications are needed while building the Chinese DIY Pixie kit, other versionas might vary:
+Some minor modifications are needed while building the Chinese DIY Pixie kit, other versions might vary:
 
 ## Components not needed
 
@@ -102,7 +102,7 @@ The following components needs not to be placed when building the kit
 
 ## Different connections
 
-* Connect Pin 7 LM386 to PWM exit from interface card (sidetone)
+* Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect positive side of D2 diode to the interface board PTT line
 
@@ -279,6 +279,6 @@ See the docs/rigctl_commands.txt for a summary of the commands or visit the Haml
 
 In general the hardware can be used to implement modulation modes proposed by the [rpitx package](https://github.com/F5OEO/rpitx).
 In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
-GPIO19 line as the PTT, some programs might require this line to be activated or deactivated externally.
+GPIO12 line as the PTT, some programs might require this line to be activated or deactivated externally.
 
 #  Work in progress, this code set is not yet functional
