@@ -106,7 +106,6 @@ class CAT817
       byte TX=0x00;
 
       byte bufChar[16];
-      int  bufLen=0;
       float SetFrequency;
     
       int  n=0;
@@ -226,16 +225,17 @@ void CAT817::dec2BCD(byte* BCDBuf, int f){
 //#* send buffer over serial link
 //#*---------------------------------------------------------------------------
 void CAT817::sendSerial(byte* BCDBuf,int len) {
-    bufLen=0;
+    
     for(int j = 0; j < len; j++) {
        if (sendChar != NULL) {
-          fprintf(stderr,"CAT817::sendSerial():%d\n",BCDBuf[j]);
-          bufChar[bufLen]=BCDBuf[j];
-          bufChar[bufLen+1]=0x00;
-          bufLen++;
+         fprintf(stderr,"CAT817::sendSerial():%d\n",BCDBuf[j]);
+         bufChar[0]=BCDBuf[j];
+         //bufChar[0]='a';
+         bufChar[1]=0x00;
+         sendChar();
        } else {
-          serialPutchar(serial_port,(char)BCDBuf[j]);
-       }
+         serialPutchar(serial_port,(char)BCDBuf[j]);
+       }0
     }
 }
 //#*---------------------------------------------------------------------------
