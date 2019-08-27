@@ -236,7 +236,7 @@ void CAT817::sendSerial(byte* BCDBuf,int len) {
     bufLen=0;
     for(int j = 0; j < len; j++) {
        if (sendChar != NULL) {
-          fprintf(stderr,"CAT817::sendSerial():%d\n",BCDBuf[j]);
+          //fprintf(stderr,"CAT817::sendSerial():%d\n",BCDBuf[j]);
           bufChar[bufLen]=BCDBuf[j];
           bufChar[bufLen+1]=0x00;
           bufLen++;
