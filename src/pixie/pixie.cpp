@@ -1,4 +1,3 @@
-
 /*
  * pixie.c
  * Raspberry Pi based transceiver controller
@@ -391,6 +390,7 @@ void setPTT(bool statePTT) {
 
        f=(float)(vx.vfo[vx.vfoAB]+(mode==MCW || mode==MCWR ? df : 0));
        log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->SetFrequency,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
+       log_info("PTT(On)");
        (txonly==1 ? dds->open(f) : dds->set(f)) ;
        softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
        gpioWrite(ptt, PTT_ON);
@@ -398,6 +398,7 @@ void setPTT(bool statePTT) {
     } 
 
     log_trace("PTT <OFF>, Receiver mode");
+    log_info("PTT(Off)");
     softToneWrite (sidetone_gpio, 0);
     gpioWrite(ptt, PTT_OFF);
 
@@ -406,14 +407,15 @@ void setPTT(bool statePTT) {
     }
 
     fSwap=false;  
-
     f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? ritofs : 0);
     log_trace("setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
 
     if (keyer_brk==0) {
        (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
+      log_trace("Break-In Timer not set");
     } else {
       TBRK=keyer_brk;
+      log_trace("Break-In Timer set");
     }
     //(getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
 
@@ -461,19 +463,14 @@ void changeFreq() {
 void CATchangeFreq() {
 
   log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)SetFrequency);
-
   SetFrequency=cat.SetFrequency;
+  log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
   long int f=(long int)SetFrequency;
   log_trace("changeFreq: Frequency set to f(%d)",f);
   dds->power=ddspower;
 
   cat.POWER=dds->power;
   dds->set(SetFrequency);
-  //if (getWord(FT817,PTT)==0) {  
-  //   (getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
-  //} else {
-  //   dds->enable();
-  //}
   vx.set(vx.vfoAB,f);
   
 
@@ -486,9 +483,10 @@ void CATchangeFreq() {
 void CATchangeMode() {
 
        log_trace("CATchangeMode(): cat.MODE(%d) MODE(%d)",cat.MODE,mode);
+       log_info("CAT Change Mode()");
        if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
           mode=cat.MODE;
-          log_trace("CATchangeMode(): INVALID MODE");
+          log_info("CATchangeMode(): INVALID MODE");
           showMode();
           return;
        }
@@ -524,14 +522,14 @@ void CATchangeStatus() {
 //*---------------------
 
        if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
-          log_trace("CATchangeStatus():RIT");
+          log_info("CATchangeStatus():RIT");
           setWord(&FT817,RIT,getWord(cat.FT817,RIT));
           (getWord(FT817,RIT)==true ? rit.mItem=1 : rit.mItem=0);
           RitUpdate();
        }
 
        if (getWord(cat.FT817,LOCK) != getWord(FT817,LOCK)) {      //* LOCK Changed
-          log_trace("CATchangeStatus():LOCK");
+          log_info("CATchangeStatus():LOCK");
           setWord(&FT817,LOCK,getWord(cat.FT817,LOCK));
        }
 
@@ -553,7 +551,7 @@ void CATchangeStatus() {
             vx.vfoAB=VFOA;
           }
           VfoUpdate();
-          log_trace("CATchangeStatus(): VFO Changed now VFOAB(%d) f(%li)",vx.vfoAB,vx.get(vx.vfoAB)); 
+          log_info("VFO Changed now VFOAB(%d) f(%li)",vx.vfoAB,vx.get(vx.vfoAB)); 
        }
 
        switch(step) {
@@ -755,7 +753,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 //*---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    fprintf(stderr,"\n Received signal (%d %s)\n",num,strsignal(num));
+    log_warn("\n Received signal (%d %s)",num,strsignal(num));
     sem_post(&cw_event);
     running=false;
    
@@ -789,43 +787,6 @@ string do_console_command_get_result (char* command)
 	pclose(pipe);
         log_trace("External command result: %s",result);
 	return(result);
-}
-//*---------------------------------------------------------------------
-//* start Keyer services
-//*---------------------------------------------------------------------
-void startKeyer() {
-
-	string CommandResult = do_console_command_get_result((char*)"sudo ./keyer start &");
-        return;
-
-}
-//*---------------------------------------------------------------------
-//* stop Keyer services
-//*---------------------------------------------------------------------
-void stopKeyer() {
-
-	string CommandResult = do_console_command_get_result((char*)"sudo pkill iambic");
-        return;
-
-}
-
-//*---------------------------------------------------------------------
-//* Check Wifi connection status
-//*---------------------------------------------------------------------
-void checkLAN() {
-
-        if (wtd.mItem == 0) {
-           return;
-        }
-
-	string CommandResult = do_console_command_get_result((char*)"cat /sys/class/net/wlan0/operstate");
-	if (CommandResult.find("up") == 0)		//If first character is '1' then interface is connected (command returns: '1', '0' or a 'not found' error message)
-	{
-           wlan0=true;
-	} else 	{
-           wlan0=false;
-	}
-        return;
 }
 //*--------------------------------------------------------------------------------------------
 //* showFreq
@@ -932,7 +893,8 @@ int main(int argc, char* argv[])
     dbg_setlevel(1);
     std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock
 
-    //sprintf(port,"/tmp/ttyv1");
+    log_set_quiet(0);
+    log_set_level(LOG_INFO);
 
 
 
@@ -957,44 +919,44 @@ int main(int argc, char* argv[])
 
                 case 'A': 
                         cw_active_state = atoi(optarg);
-                        log_trace(" CW Active State A: %d",cw_active_state);
+                        log_info(" CW Active State A: %d",cw_active_state);
                         break;
                 case 'i':
                         strcpy(inifile,optarg);
-                        log_trace("INI file: %s",inifile);
+                        log_info("INI file: %s",inifile);
                         break;
                 case 'C':
                         cw_keyer_spacing = atoi(optarg);
-                        log_trace(" CW Keyer Space  C: %d",cw_keyer_spacing);
+                        log_info(" CW Keyer Space  C: %d",cw_keyer_spacing);
                         break;
                 case 'D':
                         strcpy(snd_dev, optarg);
-                        log_trace(" SOUNDCARD HW    D:%s",snd_dev);
+                        log_info(" SOUNDCARD HW    D:%s",snd_dev);
                         break;
                 case 'E': 
                         cw_keyer_sidetone_envelope = atoi(optarg);
-                        log_trace(" CW Tone Envelop E: %d", cw_keyer_sidetone_envelope);
+                        log_info(" CW Tone Envelop E: %d", cw_keyer_sidetone_envelope);
                         break;
 
                 case 'F':
                         cw_keyer_sidetone_frequency = atoi(optarg);
-                        log_trace(" CW Tone Freq    F: %d",cw_keyer_sidetone_frequency);
+                        log_info(" CW Tone Freq    F: %d",cw_keyer_sidetone_frequency);
                         break;
                 case 'G':     // gain in dB 
                         cw_keyer_sidetone_gain = atoi(optarg);
-                        log_trace(" CW Tone Gain    G: %d",cw_keyer_sidetone_gain);
+                        log_info(" CW Tone Gain    G: %d",cw_keyer_sidetone_gain);
                         break;
                 case 'M':
                         cw_keyer_mode = atoi(optarg);
-                        log_trace(" CW Keyer Mode   M: %d",cw_keyer_mode);
+                        log_info(" CW Keyer Mode   M: %d",cw_keyer_mode);
                         break;
                 case 'S':
                         cw_keyer_speed = atoi(optarg);
-                        log_trace(" CW Keyer Speed  S: %d",cw_keyer_speed);
+                        log_info(" CW Keyer Speed  S: %d",cw_keyer_speed);
                         break;
                 case 'W':
                         cw_keyer_weight = atoi(optarg);
-                        log_trace(" CW Keyer Weight W: %d",cw_keyer_weight);
+                        log_info(" CW Keyer Weight W: %d",cw_keyer_weight);
                         break;
                 case 'f': // Frequency
                         SetFrequency = atof(optarg);
@@ -1002,20 +964,20 @@ int main(int argc, char* argv[])
 		case 'g': // GPIO
 		        gpio=atoi(optarg);
 			if (gpio!=GPIO04 && gpio!=GPIO20) {
-		  	   log_trace(" Invalid GPIO pin used (%s), default to GPIO04",optarg);
+		  	   log_info(" Invalid GPIO pin used (%s), default to GPIO04",optarg);
 			   gpio=GPIO04;
 			}
 			break;
                 case 'p': //ppm
                         ppm=atof(optarg);
-                        log_trace(" PPM correction    p:%d",(int)ppm);
+                        log_info(" PPM correction    p:%d",(int)ppm);
                         break;
                 case 'd': //debug
+                        trace=0x00;
+                        cat.TRACE=LOG_TRACE;
                         log_set_quiet(0);
-                        //log_set_level(LOG_TRACE);
-                        trace=0x01;
-                        cat.TRACE=0x01;
-                        log_trace(" Debug mode active");
+                        log_set_level(LOG_TRACE);
+                        log_info(" Trace debug mode active");
                         break;
                 case 'h': // help
                         print_usage();
@@ -1023,15 +985,15 @@ int main(int argc, char* argv[])
                         break;
                 case 's': //serial port
                         sprintf(port,optarg);
-                        log_trace(" serial port: %s", port);
+                        log_info(" serial port: %s", port);
                         break;
                 case -1:
                 break;
                 case '?':
                         if (isprint(optopt) ) {
-                           log_trace("pixie: unknown option `-%c'.", optopt);
+                           log_info("pixie: unknown option `-%c'.", optopt);
                         } else                         {
-                           log_trace("pixie: unknown option character `\\x%x'.", optopt);
+                           log_info("pixie: unknown option character `\\x%x'.", optopt);
                         }
                         print_usage();
                         exit(1);
@@ -1046,16 +1008,18 @@ int main(int argc, char* argv[])
 
 //*--- Get Basic configuration data (INIMARKER)
 
-   (ini_getl("MISC","TRACE",0,inifile)>0 ? trace=1 : trace=0);
+   trace=ini_getl("MISC","TRACE",2,inifile);
+   switch(trace) {
 
-//*--- Trace and debug
+     case 0x00  : {log_set_level(LOG_TRACE); break; }
+     case 0x01  : {log_set_level(LOG_DEBUG); break; }
+     case 0x02  : {log_set_level(LOG_INFO); break; }
+     case 0x03  : {log_set_level(LOG_WARN); break; }
+     case 0x04  : {log_set_level(LOG_ERROR); break; }
+     case 0x05  : {log_set_level(LOG_FATAL); break; }
+     default    : {log_set_level(LOG_INFO);trace=2; break; }
+  }
 
-   if (trace==0) {
-      log_set_quiet(1);
-   } else {
-      log_set_quiet(0);
-      //log_set_level(LOG_TRACE);
-   }
 
 //*--- Configuration: VFO
 
@@ -1068,18 +1032,20 @@ int main(int argc, char* argv[])
    setWord(&FT817,RIT,ini_getl("VFO","RIT",0,inifile));
    setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
    setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
+   log_info("Transceiver configuration");
    log_trace("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,SetFrequency,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
 
    maxrit=ini_getl("VFO","MAXRIT",MAXRIT,inifile);
    minrit=ini_getl("VFO","MINRIT",MINRIT,inifile);
    ritstep=ini_getl("VFO","RITSTEP",RITSTEP,inifile),
    ritstepd=ini_getl("VFO","RITSTEPD",RITSTEPD,inifile);
-
+   log_info("Transceiver status configuration");
    log_trace("VFO MaxRIT(%d) MinRIT(%d) RIT+(%d) RIT-(%d)",maxrit,minrit,ritstep,ritstepd);
 
 //*--- Configuration: MISC
 
    backlight=ini_getl("MISC","BACKLIGHT",BACKLIGHT_DELAY,inifile);
+   log_info("Transceiver misc. configuration");
    log_trace("Misc Trace(%d) Backlight Timeout(%d)",trace,backlight);
 
 //*---- Configuration: DDS 
@@ -1087,12 +1053,16 @@ int main(int argc, char* argv[])
    ptt=ini_getl("DDS","PTT",KEYER_OUT_GPIO,inifile);
    txonly=ini_getl("DDS","TXONLY",0,inifile);
    ddspower=ini_getl("DDS","MAXLEVEL",MAXLEVEL,inifile);
+   log_info("DDS configuration");
    log_trace("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
 
 //*--- Configuration: CAT
    nIni=ini_gets("CAT", "PORT", "/tmp/ttyv1", port, sizearray(port), inifile);
    catbaud=ini_getl("CAT","BAUD",CATBAUD,inifile);
-   log_trace("CAT Port(%s) at baud(%d)",port,catbaud);
+   cat.TRACE=trace;
+
+   log_info("CAT sub-system configuration");
+   log_trace("CAT Port(%s) at baud(%d) trace(%d)",port,catbaud,cat.TRACE);
 
 //*--- Configuration: KEYER
 
@@ -1106,6 +1076,7 @@ int main(int argc, char* argv[])
    sidetone_gpio=ini_getl("KEYER","KEYER_SIDETONE_GPIO",SIDETONE_GPIO,inifile);
    nIni=ini_gets("KEYER","SND_DEV","hw:0",snd_dev,sizearray(snd_dev),inifile);
    keyer_brk=ini_getl("KEYER","KEYER_BRK",KEYER_BRK,inifile);
+   log_info("Keyer configuration");
    log_trace("Keyer mode(%d) speed(%d) freq(%d) gain(%d) envelope(%d) spacing(%d) GPIO(%d) SoundHW(%s) Break(%d)",cw_keyer_mode,cw_keyer_speed,cw_keyer_sidetone_frequency,cw_keyer_sidetone_gain,cw_keyer_sidetone_envelope,cw_keyer_spacing,sidetone_gpio,snd_dev,keyer_brk);
 
 
@@ -1210,7 +1181,7 @@ int main(int argc, char* argv[])
 //*---- Initialize Rotary Encoder
 
     if(gpioInitialise()<0) {
-        log_trace("Cannot initialize GPIO");
+        log_fatal("Cannot initialize GPIO");
         return -1;
     }
 
@@ -1257,13 +1228,13 @@ int main(int argc, char* argv[])
     delay(ONESEC);
 
     if (wiringPiSetup () < 0) {
-        fprintf (stderr,"Unable to setup wiringPi: %s\n", strerror (errno));
+        log_fatal("Unable to setup wiringPi: %s", strerror (errno));
         return 1;
     }
 
 //*---- Define the VFO System parameters (Initial Firmware conditions)
 
-  (trace=0x01 ? ini_browse(Callback, NULL, inifile) : _NOP);
+  //(trace=0x01 ? ini_browse(Callback, NULL, inifile) : _NOP);
 
   vx.setVFOdds(setDDSFreq);
 
@@ -1299,9 +1270,6 @@ int main(int argc, char* argv[])
     for (int i = 0; i < 64; i++) {
 
         if (i != SIGALRM && i != 17 && i != 28) {
-           //std::memset(&sa, 0, sizeof(sa));
-           //sa.sa_handler = terminate;
-           //sigaction(i, &sa, NULL);
            signal(i,terminate);
         }
     }
@@ -1313,11 +1281,6 @@ int main(int argc, char* argv[])
     cat.SetFrequency=SetFrequency;
 
     setWord(&FT817,PTT,false);
-
-    //setWord(&FT817,RIT,ini_getl("VFO","RIT",0,inifile));
-    //setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
-    //setWord(&FT817,SPLIT,ini_getl("VFO","SPLIT",0,inifile));
-    //setWord(&FT817,VFO,ini_getl("VFO","AB",VFOA,inifile));
 
     cat.FT817=FT817;
     cat.MODE=mode;
@@ -1352,12 +1315,6 @@ int main(int argc, char* argv[])
          usleep(100000);
          cat.get();
 
- 	 if (getWord(USW,CONX) == true) {
-            //checkLAN();
-            setWord(&USW,CONX,false);
-	    TWIFI=30;
-         } 
-
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
 
          if (getWord(MSW,CMD)==false && getWord(FT817,PTT)==false) {
@@ -1388,17 +1345,18 @@ int main(int argc, char* argv[])
 //*-------------------------------------------------------------------------------------------
 //*--- Stop keyer thread
 
+    log_info("Closing keyer");
     iambic_close();
 
 //*--- Stop the DDS function
 
+    log_info("Closing DDS");
     (txonly==0 ? dds->close() : void(_NOP));
     delete(dds);
 
 //*---- Saving configuration
 
-    fprintf(stderr,"\nSaving configuration...\n");
- 
+    log_info("Saving configuration");
     sprintf(iniStr,"%ld",vx.get(VFOA));
     nIni = ini_puts("VFO","VFOA",iniStr, inifile);
 
