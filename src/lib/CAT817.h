@@ -113,13 +113,13 @@ class CAT817
       byte TX=0x00;
       byte METER=0xFF;
 
-      byte bufChar[16];
+      byte bufChar[128];
       int  bufLen=0;
       float SetFrequency;
     
       int  n=0;
-      byte rxBuffer[10];
-      char buffer[10];
+      byte rxBuffer[128];
+      char buffer[128];
 
       byte fchangeMode=0x00;
       byte fchangeFreq=0x00;
