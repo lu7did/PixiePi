@@ -111,6 +111,7 @@ class CAT817
       byte TRACE=0x05;
       byte RX=0x00;
       byte TX=0x00;
+      byte METER=0xFF;
 
       byte bufChar[16];
       int  bufLen=0;
@@ -119,6 +120,10 @@ class CAT817
       int  n=0;
       byte rxBuffer[10];
       char buffer[10];
+
+      byte fchangeMode=0x00;
+      byte fchangeFreq=0x00;
+      byte fchangeStatus=0x00;
  
   private:
 
@@ -251,6 +256,7 @@ void CAT817::sendSerial(byte* BCDBuf,int len) {
 //#*---------------------------------------------------------------------------
 void CAT817::sendStatus() {
     if (changeStatus != NULL) {
+       fchangeStatus=0x01;
        changeStatus();
     }
 } 
@@ -260,6 +266,7 @@ void CAT817::sendStatus() {
 //#*---------------------------------------------------------------------------
 void CAT817::sendMode() {
     if (changeMode != NULL) {
+       fchangeMode=0x01;
        changeMode();
     }
 } 
@@ -287,6 +294,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE<=0x01 ? fprintf(stderr,"Command 0x01 Resp(%s)\n",buffer) : _NOP);
        if (changeFreq != NULL) {
+          fchangeFreq=0x01;
           changeFreq();
        }
        BCDBuf[0]=0x00;
@@ -467,11 +475,14 @@ void CAT817::processCAT(byte* rxBuffer) {
        sendStatus();
        return; }  
       case 0xE7:  {     //* Receiver Status
-
-       float prng= (float)std::rand();
-       float pmax= (float)RAND_MAX;
-       //int RX  = abs(SMETERMAX*(prng/pmax));
-       int RX  = (SMETERMAX*(float(prng/pmax)));
+       int RX;
+       if (METER>0x0F) {
+          float prng= (float)std::rand();
+          float pmax= (float)RAND_MAX;
+          RX  = (SMETERMAX*(float(prng/pmax)));
+       } else {
+          RX  = METER;
+       }
 
        if (getRX!=NULL) {
           getRX();
@@ -496,7 +507,7 @@ void CAT817::processCAT(byte* rxBuffer) {
 //*----- xxxx1111 S9+60dB
 
        //BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
-       BCDBuf[0]=((int)RX & 0x0f) | 0x00;     //* Fake signal randomly generated
+       BCDBuf[0]=((int)RX & 0x0f) | 0x00;     //* Either fake level or extracted from receiver
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE<=0x02 ? fprintf(stderr,"Command 0xE7 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
