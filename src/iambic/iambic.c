@@ -117,10 +117,9 @@ static int keyer_out = 0;
 //* keyer_update
 //*------------------------------------------------------------------------------------------------------
 void keyer_update() {
+
     dot_delay = 1200 / cw_keyer_speed;
-
     // will be 3 * dot length at standard weight
-
     dash_delay = (dot_delay * 3 * cw_keyer_weight) / 50;
 
     if (cw_keys_reversed) {
@@ -382,7 +381,8 @@ static void* keyer_thread(void *arg) {
             clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &loop_delay, NULL);
         }
     }
-    fprintf(stderr,"\n\nSIGINT received, terminating\n");
+    setPTT(false);
+    //fprintf(stderr,"\n\niambic.c:SIGINT received, terminating\n");
     return 0 ;
 }
 //*------------------------------------------------------------------------------------------------
@@ -391,8 +391,14 @@ static void* keyer_thread(void *arg) {
 //*------------------------------------------------------------------------------------------------
 void iambic_close() {
 
-    fprintf(stderr,"Stopping keyer thread and killing semaphore\n");
+    //int status = pthread_kill(keyer_thread_id, SIGUSR1); 
+    //sem_post(&cw_event);
+    running=false;
+    fprintf(stderr,"iambic.c: Posting terminating event\n");
+    sem_post(&cw_event);
+    fprintf(stderr,"iambic.c: Stopping keyer thread\n");
     pthread_join(keyer_thread_id, 0);
+    fprintf(stderr,"iambic.c: Killing semaphore\n");
     sem_destroy(&cw_event);
     return;
 
@@ -404,12 +410,13 @@ void iambic_close() {
 //*------------------------------------------------------------------------------------------------
 int iambic_init()  {
 
-    fprintf(stderr,"Initializing Keyer thread\n");
+    fprintf(stderr,"iambic.c: Initializing Keyer thread\n");
     if(gpioInitialise()<0) {
-        fprintf(stderr,"Cannot initialize GPIO\n");
+        fprintf(stderr,"iambic.c: Cannot initialize GPIO\n");
         return -1;
     }
 
+    setPTT(false);
     gpioSetMode(RIGHT_PADDLE_GPIO, PI_INPUT);
     gpioSetPullUpDown(RIGHT_PADDLE_GPIO,PI_PUD_UP);
     usleep(100000);
@@ -432,11 +439,11 @@ int iambic_init()  {
     keyer_update();
 
     if (wiringPiSetup () < 0) {
-        printf ("Unable to setup wiringPi: %s\n", strerror (errno));
+        printf ("iambic.c: Unable to setup wiringPi: %s\n", strerror (errno));
         return 1;
     }
     int i=0;
-    fprintf(stderr,"Ready to operate\n");
+    fprintf(stderr,"iambic.c: Ready to operate\n");
     if (SIDETONE_GPIO) {
         softToneCreate(SIDETONE_GPIO);
     }
@@ -444,10 +451,10 @@ int iambic_init()  {
     i = sem_init(&cw_event, 0, 0);
     i |= pthread_create(&keyer_thread_id, NULL, keyer_thread, NULL);
     if(i < 0) {
-        fprintf(stderr,"pthread_create for keyer_thread failed %d\n", i);
+        fprintf(stderr,"iambic.c: pthread_create for keyer_thread failed %d\n", i);
         exit(-1);
     }
 
-    fprintf(stderr,"Keyer thread initialized\n");
+    fprintf(stderr,"iambic.c: Keyer thread initialized\n");
     return 0;
 }
