@@ -58,28 +58,28 @@ class VFOSystem
       VFOSystem(CALLBACK c,CALLBACK t,CALLBACK r,CALLBACK d);
       void setVFOdds(CALLBACK d);
       
-      void set(unsigned char VFO,long int f);
-      long int get(byte VFO);
-      void setVFO(byte VFO);
-      void setVFOFreq(byte VFO,long int fVFO);
-      void setVFOShift(byte VFO,long int shiftVFO);
-      void setVFOStep(byte VFO,long int stepVFO);
-      void setVFOLimit(byte VFO,long int fMIN, long int fMAX);
-      void setVFOBand(byte VFO,byte band);
+      void set(unsigned char bVFO,long int f);
+      long int get(byte bVFO);
+      void setVFO(byte bVFO);
+      void setVFOFreq(byte bVFO,long int fVFO);
+      void setVFOShift(byte bVFO,long int shiftVFO);
+      void setVFOStep(byte bVFO,long int stepVFO);
+      void setVFOLimit(byte bVFO,long int fMIN, long int fMAX);
+      void setVFOBand(byte bVFO,byte band);
       byte findBand(long int f);
 
   
       
-      boolean isVFOChanged(byte VFO);
+      boolean isVFOChanged(byte bVFO);
       boolean isVFOLocked();
 
-      void resetVFO(byte VFO);
+      void resetVFO(byte bVFO);
       //void resetVFOFreq(byte VFO);
       void computeVFO(long int f, FSTR* v);
       
 
-      void getStr(byte VFO);
-      void updateVFO(byte VFO, long int vstep);
+      void getStr(byte bVFO);
+      void updateVFO(byte bVFO, long int vstep);
 
       long int code2step(byte b);
       byte step2code(long int s);
@@ -220,11 +220,11 @@ byte VFOSystem::step2code(long int s) {
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Shift
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::setVFOShift(byte VFO,long int shiftVFO) {
+void VFOSystem::setVFOShift(byte bVFO,long int shiftVFO) {
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
 
-  vfoshift[VFO]=shiftVFO;
+  vfoshift[bVFO]=shiftVFO;
   return;
  
 }
@@ -240,34 +240,34 @@ void VFOSystem::swapVFO() {
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Step
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::setVFOStep(byte VFO,long int stepVFO) {
+void VFOSystem::setVFOStep(byte bVFO,long int stepVFO) {
    
-   if (VFO<VFOA || VFO>VFOB) { return;}
+   if (bVFO<VFOA || bVFO>VFOB) { return;}
 
-   vfostep[VFO]=stepVFO;
+   vfostep[bVFO]=stepVFO;
    return;
   
 }
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Band
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::setVFOBand(byte VFO,byte band) {
+void VFOSystem::setVFOBand(byte bVFO,byte band) {
    
-   if (VFO<VFOA || VFO>VFOB) { return;}
+   if (bVFO<VFOA || bVFO>VFOB) { return;}
 
-   vfoband[VFO]=band;
+   vfoband[bVFO]=band;
    return;
   
 }
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Band
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::setVFOLimit(byte VFO,long int fMIN,long int fMAX) {
+void VFOSystem::setVFOLimit(byte bVFO,long int fMIN,long int fMAX) {
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
 
-  vfomin[VFO]=fMIN;
-  vfomax[VFO]=fMAX;
+  vfomin[bVFO]=fMIN;
+  vfomax[bVFO]=fMAX;
   return;
   
 }
@@ -275,26 +275,26 @@ void VFOSystem::setVFOLimit(byte VFO,long int fMIN,long int fMAX) {
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Frequency
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::set(byte VFO,long int f) {
+void VFOSystem::set(byte bVFO,long int f) {
   char hi[80];
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
 
 #if DEBUG
 
-  sprintf(hi,"VFOSystem:set VFO(%d) f(%ld)",VFO,f);
+  sprintf(hi,"VFOSystem:set VFO(%d) f(%ld)",bVFO,f);
   Serial.println(hi);
 
 #endif  
-  vfo[VFO]=f;
-  _rxa[VFO]=f;
+  vfo[bVFO]=f;
+  _rxa[bVFO]=f;
   
   if (changeVFO!=NULL) {
     changeVFO();}
   if (changeDDS!=NULL) {
      changeDDS();}
-  getStr(VFO);
-  resetVFO(VFO);
+  getStr(bVFO);
+  resetVFO(bVFO);
   
   return;
   
@@ -310,11 +310,11 @@ boolean VFOSystem::isVFOLocked(){
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO Frequency
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::resetVFO(byte VFO) {
+void VFOSystem::resetVFO(byte bVFO) {
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
   
-  _rxa[VFO]=vfo[VFO];
+  _rxa[bVFO]=vfo[bVFO];
   if (changeReset!=NULL) {changeReset();}
   
   return;
@@ -324,21 +324,21 @@ void VFOSystem::resetVFO(byte VFO) {
 //*---------------------------------------------------------------------------------------------------
 //* Set the focus VFO
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::setVFO(byte VFO) {
+void VFOSystem::setVFO(byte bVFO) {
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
-  vfoAB = VFO;
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
+  vfoAB = bVFO;
   resetVFO(vfoAB);
   
 }
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::getStr(byte VFO) {
+void VFOSystem::getStr(byte bVFO) {
   
-  if (VFO<VFOA || VFO>VFOB) { return;}
+  if (bVFO<VFOA || bVFO>VFOB) { return;}
   
-  long int fx=vfo[VFO];
+  long int fx=vfo[bVFO];
   computeVFO(fx,&vfostr[vfoAB]);
   return;
   
@@ -361,41 +361,41 @@ void VFOSystem::computeVFO(long int f, FSTR* v) {
 //*---------------------------------------------------------------------------------------------------
 //* check if the VFO had changed
 //*---------------------------------------------------------------------------------------------------
-boolean VFOSystem::isVFOChanged(byte VFO) {
+boolean VFOSystem::isVFOChanged(byte bVFO) {
 
-  if (_rxa[VFO] == vfo[VFO]) {return false;}
+  if (_rxa[bVFO] == vfo[bVFO]) {return false;}
   return true;
   
 }
 //*---------------------------------------------------------------------------------------------------
 //* Set the parameters of a given VFO
 //*---------------------------------------------------------------------------------------------------
-void VFOSystem::updateVFO(byte VFO,long int vstep) {
+void VFOSystem::updateVFO(byte bVFO,long int vstep) {
    
-   vfo[VFO]=vfo[VFO]+vstep;
+   vfo[bVFO]=vfo[bVFO]+vstep;
 
 
 #if DEBUG
 
    char hi[80];   
-   sprintf(hi,"updateVFO VFO(%d) vfo=%ld rxa=%ld min=%ld max=%ld",VFO,vfo[VFO],_rxa[VFO],vfomin[VFO],vfomax[VFO]);
+   sprintf(hi,"updateVFO VFO(%d) vfo=%ld rxa=%ld min=%ld max=%ld",bVFO,vfo[bVFO],_rxa[bVFO],vfomin[bVFO],vfomax[bVFO]);
    Serial.println(hi);
 
 #endif
 
    
-   if (vfo[VFO] > vfomax[VFO]) {
-       vfo[VFO] = vfomax[VFO];
+   if (vfo[bVFO] > vfomax[bVFO]) {
+       vfo[bVFO] = vfomax[bVFO];
    } // UPPER VFO LIMIT
        
-   if (vfo[VFO] < vfomin[VFO]) {
-       vfo[VFO] = vfomin[VFO];
+   if (vfo[bVFO] < vfomin[bVFO]) {
+       vfo[bVFO] = vfomin[bVFO];
    } // LOWER VFO LIMIT
 
-   getStr(VFO);
+   getStr(bVFO);
 
-   if (vfo[VFO]!=_rxa[VFO]) {
-      resetVFO(VFO); 
+   if (vfo[bVFO]!=_rxa[bVFO]) {
+      resetVFO(bVFO); 
 
 
       if (changeDDS!=NULL) {
