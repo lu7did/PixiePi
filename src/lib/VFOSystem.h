@@ -45,7 +45,8 @@ typedef struct {
 //*============================================================================================
 //*---- HF band definition
 
-#define BANDMAX 6
+#define BANDMAX 20
+
 
 
 //*---------------------------------------------------------------------------------------------------
@@ -110,8 +111,10 @@ class VFOSystem
       CALLBACK changeReset=NULL;
  
 
-      long int loFreq[BANDMAX+1]={100,1800,3500,7000,14000,21000,28000};
-      long int hiFreq[BANDMAX+1]={60000,2000,3800,7300,14350,21450,29700};
+      long int loFreq[BANDMAX+1]={472,500,1800,3500,7000,10100,14000,18068,21000,24890,28000,50000,87000,108000,144000,420000,1240000};
+      long int hiFreq[BANDMAX+1]={479,1650,2000,3800,7300,10150,14350,18168,21450,24990,29700,54000,107000,137000,148000,450000,1300000};
+      long int inSamp[BANDMAX+1]={    2,    2,    2,    2,    2,    2,    2,    2,    2,    2,    2,    0,     0,     0,     0,     0,      0};
+      long int isTxOk[BANDMAX+1]={    1,    0,    1,    1,    1,    1,    1,    1,    1,    1,    1,    1,     0,     0,     1,     1,      0};
       //long int bandvfo[VFOMAX][BANDMAX+1];
       
 
@@ -254,8 +257,10 @@ void VFOSystem::setVFOStep(byte bVFO,long int stepVFO) {
 void VFOSystem::setVFOBand(byte bVFO,byte band) {
    
    if (bVFO<VFOA || bVFO>VFOB) { return;}
+   if (bVFO<0    || bVFO>VFOMAX) { return;}
 
    vfoband[bVFO]=band;
+   setVFOLimit(bVFO,loFreq[band],hiFreq[bVFO]);
    return;
   
 }
