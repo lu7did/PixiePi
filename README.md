@@ -100,7 +100,7 @@ The following components needs not to be placed when building the kit
 * D3 - Diode 1N4148
 * Y1 - Cristal 7.032 MHz
 
-## Different connections
+## Different connections (Recommended MODS)
 
 * Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
@@ -110,6 +110,10 @@ The following components needs not to be placed when building the kit
 
 At some locations the Chinese DIY Pixie kit might be subject to heavy BCI, in order to minimize try to replace R3 from
 1K to 47-100 Ohms.
+
+## Increase power and other features
+An interesting set of low cost modifications to increase the power, improve efficiency and other enhancements to the original DIY Kit
+can be found at [link](http://vtenn.com/Blog/?p=1348).
 
 # Other alternatives
 
