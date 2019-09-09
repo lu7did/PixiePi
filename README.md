@@ -106,6 +106,9 @@ The following components needs not to be placed when building the kit
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect positive side of D2 diode to the interface board PTT line
 
+![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
+
+
 ## Broadcast Interference (BCI)
 
 At some locations the Chinese DIY Pixie kit might be subject to heavy BCI, in order to minimize try to replace R3 from
