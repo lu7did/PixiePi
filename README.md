@@ -240,6 +240,14 @@ can be programed using (KEYER_MODE=1 and KEYER_MODE=2).
 When programmed as modes other than CW or CWR the keyer will basically become a PTT line (low=ON,high=OFF).
 
 
+# Operating as a SSB transceiver
+
+To be implemented
+
+# Operating as a FM transceiver
+
+To be implemented
+
 # Other programs
 
   * DDSPi
