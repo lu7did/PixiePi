@@ -973,7 +973,7 @@ int main(int argc, char* argv[])
                         log_info(" PPM correction    p:%d",(int)ppm);
                         break;
                 case 'd': //debug
-                        trace=0x00;
+                        trace=0x02;
                         cat.TRACE=LOG_TRACE;
                         log_set_quiet(0);
                         log_set_level(LOG_TRACE);
@@ -1009,15 +1009,16 @@ int main(int argc, char* argv[])
 //*--- Get Basic configuration data (INIMARKER)
 
    trace=ini_getl("MISC","TRACE",2,inifile);
+   log_info("pixie: Trace level set to %d",trace);   
    switch(trace) {
 
-     case 0x00  : {log_set_level(LOG_TRACE); break; }
-     case 0x01  : {log_set_level(LOG_DEBUG); break; }
-     case 0x02  : {log_set_level(LOG_INFO); break; }
-     case 0x03  : {log_set_level(LOG_WARN); break; }
-     case 0x04  : {log_set_level(LOG_ERROR); break; }
-     case 0x05  : {log_set_level(LOG_FATAL); break; }
-     default    : {log_set_level(LOG_INFO);trace=2; break; }
+     case 0x00  : {log_set_level(LOG_FATAL); cat.TRACE=0x00; break; }
+     case 0x01  : {log_set_level(LOG_ERROR); cat.TRACE=0x01; break; }
+     case 0x02  : {log_set_level(LOG_WARN);  cat.TRACE=0x02; break; }
+     case 0x03  : {log_set_level(LOG_INFO);  cat.TRACE=0x02; break; }
+     case 0x04  : {log_set_level(LOG_DEBUG); cat.TRACE=0x02; break; }
+     case 0x05  : {log_set_level(LOG_TRACE); cat.TRACE=0x02; break; }
+     default    : {log_set_level(LOG_INFO);  trace=2; cat.TRACE=trace; break; }
   }
 
 
@@ -1032,37 +1033,37 @@ int main(int argc, char* argv[])
    setWord(&FT817,RIT,ini_getl("VFO","RIT",0,inifile));
    setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
    setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
-   log_info("Transceiver configuration");
-   log_trace("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,SetFrequency,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
+   log_fatal("Transceiver configuration");
+   log_fatal("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,SetFrequency,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
 
    maxrit=ini_getl("VFO","MAXRIT",MAXRIT,inifile);
    minrit=ini_getl("VFO","MINRIT",MINRIT,inifile);
    ritstep=ini_getl("VFO","RITSTEP",RITSTEP,inifile),
    ritstepd=ini_getl("VFO","RITSTEPD",RITSTEPD,inifile);
-   log_info("Transceiver status configuration");
-   log_trace("VFO MaxRIT(%d) MinRIT(%d) RIT+(%d) RIT-(%d)",maxrit,minrit,ritstep,ritstepd);
+   log_fatal("Transceiver status configuration");
+   log_fatal("VFO MaxRIT(%d) MinRIT(%d) RIT+(%d) RIT-(%d)",maxrit,minrit,ritstep,ritstepd);
 
 //*--- Configuration: MISC
 
    backlight=ini_getl("MISC","BACKLIGHT",BACKLIGHT_DELAY,inifile);
-   log_info("Transceiver misc. configuration");
-   log_trace("Misc Trace(%d) Backlight Timeout(%d)",trace,backlight);
+   log_fatal("Transceiver misc. configuration");
+   log_fatal("Misc Trace(%d) Backlight Timeout(%d)",trace,backlight);
 
 //*---- Configuration: DDS 
    gpio=ini_getl("DDS","GPIO",GPIO04,inifile);
    ptt=ini_getl("DDS","PTT",KEYER_OUT_GPIO,inifile);
    txonly=ini_getl("DDS","TXONLY",0,inifile);
    ddspower=ini_getl("DDS","MAXLEVEL",MAXLEVEL,inifile);
-   log_info("DDS configuration");
-   log_trace("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
+   log_fatal("DDS configuration");
+   log_fatal("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
 
 //*--- Configuration: CAT
    nIni=ini_gets("CAT", "PORT", "/tmp/ttyv1", port, sizearray(port), inifile);
    catbaud=ini_getl("CAT","BAUD",CATBAUD,inifile);
-   cat.TRACE=trace;
+   //cat.TRACE=trace;
 
-   log_info("CAT sub-system configuration");
-   log_trace("CAT Port(%s) at baud(%d) trace(%d)",port,catbaud,cat.TRACE);
+   log_fatal("CAT sub-system configuration");
+   log_fatal("CAT Port(%s) at baud(%d) trace(%d)",port,catbaud,cat.TRACE);
 
 //*--- Configuration: KEYER
 
@@ -1076,8 +1077,8 @@ int main(int argc, char* argv[])
    sidetone_gpio=ini_getl("KEYER","KEYER_SIDETONE_GPIO",SIDETONE_GPIO,inifile);
    nIni=ini_gets("KEYER","SND_DEV","hw:0",snd_dev,sizearray(snd_dev),inifile);
    keyer_brk=ini_getl("KEYER","KEYER_BRK",KEYER_BRK,inifile);
-   log_info("Keyer configuration");
-   log_trace("Keyer mode(%d) speed(%d) freq(%d) gain(%d) envelope(%d) spacing(%d) GPIO(%d) SoundHW(%s) Break(%d)",cw_keyer_mode,cw_keyer_speed,cw_keyer_sidetone_frequency,cw_keyer_sidetone_gain,cw_keyer_sidetone_envelope,cw_keyer_spacing,sidetone_gpio,snd_dev,keyer_brk);
+   log_fatal("Keyer configuration");
+   log_fatal("Keyer mode(%d) speed(%d) freq(%d) gain(%d) envelope(%d) spacing(%d) GPIO(%d) SoundHW(%s) Break(%d)",cw_keyer_mode,cw_keyer_speed,cw_keyer_sidetone_frequency,cw_keyer_sidetone_gain,cw_keyer_sidetone_envelope,cw_keyer_spacing,sidetone_gpio,snd_dev,keyer_brk);
 
 
    cat.TRACE=trace;
