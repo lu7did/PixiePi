@@ -284,7 +284,8 @@ FLRig can be built on the Raspberry Pi and used to control the PixiePi rig just 
 Being a graphic X-Window app FLRig is somewhat taxing on resources and might not perform well when using a Raspberry Pi Zero W, however
 it will run just fine on a Raspberry Pi 3 or higher.
 
-##RigCtl
+## RigCtl
+
 RigCtl is a companion program of the HamLib library, it's main advantage is  a console operation with a very low resources consumption,
 therefore it can be used on a Raspberry Pi Zero W to control the rig. See bash/pixie.sh in order to understand the way to configure it.
 
