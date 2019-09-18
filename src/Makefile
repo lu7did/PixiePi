@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/DDSPi  ../bin/PiWSPR ../bin/PiRTTY 
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY 
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
@@ -17,21 +17,16 @@ GCC = gcc
 ../bin/PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
 	$(CCP) $(CXXFLAGS) -o ../bin/PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS)
  
-../bin/DDSPi : DDSPi/DDSPi.cpp /home/pi/librpitx/src/librpitx.a DDSPi/DDSPi.h lib/CAT817.h lib/DDS.h
-	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/DDSPi ./DDSPi/DDSPi.cpp  $(LDFLAGS)
-
 ../bin/PiRTTY : PiRTTY/PiRTTY.cpp  /home/pi/librpitx/src/librpitx.a
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/PiRTTY PiRTTY/PiRTTY.cpp  $(LDFLAGS)
 
 
 clean:
 	rm -r  ../bin/pixie
-	rm -r  ../bin/DDSPi
 	rm -r  ../bin/PiWSPR
 	rm -r  ../bin/PiRTTY
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
-	install -m 0755 ../bin/DDSPi  /usr/bin
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
