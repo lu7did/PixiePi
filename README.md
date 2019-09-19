@@ -1,7 +1,7 @@
 # PixiePi
 
 
-# Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
+## Ham radio Pixie Transceiver controlled by a Raspberry Pi Zero W board
 
 The Pixie QRPp (very low power, less than 1W output) transceiver is a very popular DIY project among hams as it is
 very easy to build, test and operate from the electronic standpoint, yet able to perform some actual limited communications
@@ -47,7 +47,7 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
 
-# DISCLAIMER
+## DISCLAIMER
 
 This is a pure, non-for-profit, project being performed in the pure ham radio spirit of experimentation, learning and sharing.
 This project is original in conception and has a significant amount of code developed by me, it does also being built up on top
@@ -56,8 +56,10 @@ Therefore this code should not be used outside the limits of the license provide
 ham radio or similar experimental purposes.
 No fit for any purpose is claimed nor guaranteed, use it at your own risk. The elements used are very common and safe, the skills
 required very basic and limited, but again, use it at your own risk.
+Despite being a software enginering professional with access to technology, infrastructure and computing facilities of different sorts
+ I declare this project has been performed on my own time and equipment.
 
-# Fair and educated warning
+## Fair and educated warning
 
 Raspberry Pi is a marvel.
 
