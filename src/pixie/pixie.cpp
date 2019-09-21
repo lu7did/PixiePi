@@ -2,18 +2,25 @@
  * pixie.c
  * Raspberry Pi based transceiver controller
  *---------------------------------------------------------------------
- * This program turns the Raspberry pi into a DDS software able
- * to operate as the LO for a double conversion rig, in this case
- * the popular Pixie setup, but can be extended to any other suitable
- * scheme
+ * This program operates as a controller for a Raspberry Pi to control
+ * a Pixie transceiver hardware.
+ * Project at http://www.github.com/lu7did/PixiePi
  *---------------------------------------------------------------------
  *
  * Created by Pedro E. Colla (lu7did@gmail.com)
  * Code excerpts from several packages:
  *    Adafruit's python code for CharLCDPlate 
  *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
+ *    sendiq.cpp from rpitx package (also) by Evariste Coujaud (F5EOE)
  *    wiringPi library (git clone git://git.drogon.net/wiringPi)
  *    iambic-keyer (https://github.com/n1gp/iambic-keyer)
+ *    log.c logging facility by  rxi https://github.com/rxi/log.c
+ *    minIni configuration management package by Compuphase https://github.com/compuphase/minIni/tree/master/dev
+ *
+ * Also libraries
+ *    librpitx by  Evariste Courjaud (F5EOE)
+ *    libcsdr by Karol Simonyi (HA7ILM) https://github.com/compuphase/minIni/tree/master/dev
+ * 
  * ---------------------------------------------------------------------
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,6 +81,7 @@
 #include "../lib/DDS.h"
 #include "../minIni/minIni.h"
 #include "../log.c/log.h"
+#include "../lib/SSB.h"
 
 #include <iostream>
 #include <cstdlib> // for std::rand() and std::srand()
@@ -112,6 +120,7 @@ void CATchangeFreq();
 void CATchangeStatus();
 void CATgetRX();
 void CATgetTX();
+void ssbCall();
 
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
@@ -119,7 +128,7 @@ void CATgetTX();
 
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
-const char   *PROG_BUILD="01";
+const char   *PROG_BUILD="45";
 const char   *COPYRIGHT="(c) LU7DID 2019";
 
 char *strsignal(int sig);
@@ -135,9 +144,10 @@ VFOSystem vx(showFreq,NULL,NULL,NULL);
 DDS *dds=new DDS(changeFreq);
 
 //*--- CAT object
-
 CAT817 cat(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
 
+//*--- SSB object
+SSB *ssb=new SSB(ssbCall);
 
 //*--- Strutctures to hold menu definitions
 
@@ -178,97 +188,20 @@ auto endPush=std::chrono::system_clock::now();
 //* S5 -- char(6)     |||||
 //* SL -- char(7)     
 
-byte TX[8] = {  //Inverted T (Transmission mode)
-  0B11111,
-  0B10001,
-  0B11011,
-  0B11011,
-  0B11011,
-  0B11011,
-  0B11111,
-};
-
-byte S1[8] = { //S1 signal
-  0B10000,
-  0B10000,
-  0B10000,
-  0B10000,
-  0B10000,
-  0B10000,
-  0B10000,
-};
-byte S2[8] = { //S2 signal
-  0B11000,
-  0B11000,
-  0B11000,
-  0B11000,
-  0B11000,
-  0B11000,
-  0B11000,
-};
-byte S3[8] = { //S3 signal
-  0B11100,
-  0B11100,
-  0B11100,
-  0B11100,
-  0B11100,
-  0B11100,
-  0B11100,
-};
-byte S4[8] = { //S4 signal
-  0B11110,
-  0B11110,
-  0B11110,
-  0B11110,
-  0B11110,
-  0B11110,
-  0B11110,
-};
-byte S5[8] = { //S5 signal
-  0B11111,
-  0B11111,
-  0B11111,
-  0B11111,
-  0B11111,
-  0B11111,
-  0B11111,
-};
-
-
-byte XLOCK[8] = {   //VFO A
-  0b11111,
-  0b10001,
-  0b11111,
-  0b00100,
-  0b11100,
-  0b00100,
-  0b11100,
-};
-
-byte B[8] = {   //VFO B
-  0b11110,
-  0b10001,
-  0b11110,
-  0b10001,
-  0b11110,
-  0b00000,
-  0b11111,
-};
-
-byte K[8] = {31,17,27,27,27,17,31};    //Inverted K (Keyer)
-byte S[8] = {31,17,23,17,29,17,31};    //Inverted S (Split)
-byte B1[8]= {24,24,24,24,24,24,24};    // -
-byte B2[8]= {30,30,30,30,30,30,30};    // /
-byte B3[8]= {31,31,31,31,31,31,31};    // |
-byte B4[8]= {                          // 
-  0b00000, 
-  0b10000, 
-  0b01000, 
-  0b00100, 
-  0b00010,
-  0b00001,
-  0b00000,
-};
+byte TX[8] = {0B11111,0B10001,0B11011,0B11011,0B11011,0B11011,0B11111}; // Inverted T (Transmission Mode)
+byte S1[8] = {0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000}; // S1 Signal
+byte S2[8] = {0B11000,0B11000,0B11000,0B11000,0B11000,0B11000,0B11000}; // S2 Signal
+byte S3[8] = {0B11100,0B11100,0B11100,0B11100,0B11100,0B11100,0B11100}; // S3 Signal
+byte S4[8] = {0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110}; // S4 Signal
+byte S5[8] = {0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111}; // S5 Signal
+byte B[8]  = {0b11110,0b10001,0b11110,0b10001,0b11110,0b00000,0b11111};
+byte K[8]  = {31,17,27,27,27,17,31};    //Inverted K (Keyer)
+byte S[8]  = {31,17,23,17,29,17,31};    //Inverted S (Split)
+byte B1[8] = {24,24,24,24,24,24,24};    // -
+byte B2[8] = {30,30,30,30,30,30,30};    // /
+byte B3[8] = {31,31,31,31,31,31,31};    // |
+byte B4[8] = {0b00000,0b10000,0b01000,0b00100,0b00010,0b00001,0b00000};
+byte XLOCK[8] = {0b11111,0b10001,0b11111,0b00100,0b11100,0b00100,0b11100}; //VFOA
 
 //*---- Generic memory allocations
 
@@ -300,24 +233,6 @@ int ritstepd=RITSTEPD;
 
 char snd_dev[64]="hw:0";
 
-
-//*--- System Status Word initial definitions
-
-byte MSW  = 0;
-byte TSW  = 0;
-byte USW  = 0;
-byte JSW  = 0;
-
-byte LUSW = 0;
-int  TVFO = 0;
-int  TBCK = backlight;
-int  TBRK = 0;
-
-int  TWIFI = 10;
-
-bool wlan0 = false;
-void showPTT();
-
 //* --- Define minIni related parameters
 
 char inifile[80];
@@ -325,6 +240,23 @@ char iniStr[100];
 long nIni;
 int  sIni,kIni;
 char iniSection[50];
+
+//*--- System Status Word initial definitions
+
+byte MSW  = 0;
+byte TSW  = 0;
+byte USW  = 0;
+byte JSW  = 0;
+byte MCB =0;
+
+byte LUSW = 0;
+int  TVFO = 0;
+int  TBCK = backlight;
+int  TBRK = 0;
+int  TWIFI = 10;
+
+bool wlan0 = false;
+void showPTT();
 
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
@@ -450,12 +382,19 @@ void keyChangeEvent() {
      showPTT();
 
 }
+//*---------------------------------------------------------------------------
+//*
+//*---------------------------------------------------------------------------
 
 void changeFreq() {
 
 
 }
-
+//*---------------------------------------------------------------------------
+//*
+//*---------------------------------------------------------------------------
+void ssbCall() {
+}
 //*---------------------------------------------------------------------------
 //* CATchangeFreq()
 //* CAT Callback when frequency changes
@@ -484,12 +423,12 @@ void CATchangeMode() {
 
        log_trace("CATchangeMode(): cat.MODE(%d) MODE(%d)",cat.MODE,mode);
        log_info("CAT Change Mode()");
-       if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
-          mode=cat.MODE;
-          log_info("CATchangeMode(): INVALID MODE");
-          showMode();
-          return;
-       }
+       //if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
+       //   mode=cat.MODE;
+       //   log_info("CATchangeMode(): INVALID MODE");
+       //   showMode();
+       //   return;
+       //}
 
        mode=cat.MODE;
        mod.mItem=cat.MODE;
@@ -621,16 +560,15 @@ void timer_SMeter() {
        return;
     }
 
-    if (getWord(FT817,PTT)==true) {
-       return;
-    } else {
-      float prng= (float)std::rand();
-      float pmax= (float)RAND_MAX;
-      float v   = abs(SMETERMAX*(prng/pmax));
-      log_trace("Random number generated is %d MAX(%d)",prng,RAND_MAX);
-      //showSMeter((int)v);
-      showSMeter(0);
-    }
+//    if (getWord(FT817,PTT)==true) {
+//       return;
+//    } else {
+//      float prng= (float)std::rand();
+//      float pmax= (float)RAND_MAX;
+//      float v   = abs(SMETERMAX*(prng/pmax));
+//      log_trace("Random number generated is %d MAX(%d)",prng,RAND_MAX);
+//      showSMeter(0);
+//    }
 
 }
 //*---------------------------------------------------------------------------
@@ -898,7 +836,7 @@ int main(int argc, char* argv[])
 
 
 
-//*--- Process arguments (mostly an excerpt from tune.cpp
+//*--- Process arguments (mostly an excerpt from tune.cpp)
 
        while(true)
         {
@@ -1082,6 +1020,11 @@ int main(int argc, char* argv[])
 
 
    cat.TRACE=trace;
+
+
+   log_fatal("SSB object initialized");
+   ssb->open(SetFrequency);
+   ssb->close();
 
    
 //*---- Establish initial values of system variables
@@ -1297,8 +1240,6 @@ int main(int argc, char* argv[])
 
     keyChange=keyChangeEvent;
     iambic_init();
-
-//*--- DDS is running at the SetFrequency value (initial)
 
     alarm(ONESECS);  // set an alarm for 1 seconds from now to clear all values
     showPanel();
