@@ -12,6 +12,14 @@ rigctld --model=$(rigctl -l | grep "FT-817" | awk '{print $1}') -r /tmp/ttyv0 -t
 RIGCTL=$!
 echo "rigctld PID($RIGCTL)"
 
+sudo rm -r /tmp/ssbpipe
+mkfifo /tmp/ssbpipe || exit
+arecord -c1 -r48000 -D default -fS16_LE - | csdr convert_i16_f \
+  | csdr fir_interpolate_cc 2 | csdr dsb_fc \
+  | csdr bandpass_fir_fft_cc 0.002 0.06 0.01 | csdr fastagc_ff > /tmp/ssbpipe &
+SSB=$!
+
+
 sudo /home/pi/PixiePi/bin/pixie -g 4 -f 7032000 -F 700 -G 20 -s /tmp/ttyv1 -i /home/pi/PixiePi/src/pixie/pixie.cfg
 
 
@@ -20,5 +28,6 @@ sudo pkill rigctld
 echo "Killing socat PID($PID)"
 sudo pkill socat
 
-
+echo "Killing SSB pipeline ($SSB)"
+rm -f /tmp/ssbpipe  2>&1 > /dev/null
 
