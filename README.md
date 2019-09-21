@@ -47,7 +47,19 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
 
-# Fair and educated warning
+## DISCLAIMER
+
+This is a pure, non-for-profit, project being performed in the pure ham radio spirit of experimentation, learning and sharing.
+This project is original in conception and has a significant amount of code developed by me, it does also being built up on top
+of a giant effort of others to develop the base platform and libraries used.
+Therefore this code should not be used outside the limits of the license provided and in particular for uses other than
+ham radio or similar experimental purposes.
+No fit for any purpose is claimed nor guaranteed, use it at your own risk. The elements used are very common and safe, the skills
+required very basic and limited, but again, use it at your own risk.
+Despite being a software enginering professional with access to technology, infrastructure and computing facilities of different sorts
+ I declare this project has been performed on my own time and equipment.
+
+## Fair and educated warning
 
 Raspberry Pi is a marvel.
 
@@ -87,7 +99,11 @@ This is a snapshot of the very early prototype used to develop and debug this pr
 
 # Chinese Pixie MODS
 
-Some minor modifications are needed while building the Chinese DIY Pixie kit, other versions might vary:
+A typical circuit for the kit might be:
+
+![Alt Text](docs/PixiePi_Schematics.jpg?raw=true "PixiePi Schematics")
+
+Some minor modifications are needed while building the Chinese DIY Pixie kit, other versions might vary.
 
 ## Components not needed
 
@@ -104,7 +120,7 @@ The following components needs not to be placed when building the kit
 
 * Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
-* Connect positive side of D2 diode to the interface board PTT line
+* Connect negative side of D3 diode to the interface board PTT line
 
 ![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
 
@@ -115,6 +131,7 @@ At some locations the Chinese DIY Pixie kit might be subject to heavy BCI, in or
 1K to 47-100 Ohms.
 
 ## Increase power and other features
+
 An interesting set of low cost modifications to increase the power, improve efficiency and other enhancements to the original DIY Kit
 can be found at [link](http://vtenn.com/Blog/?p=1348).
 
@@ -138,6 +155,7 @@ The preliminar 3D design for a project case (with LCD) can be seen as follows
 [PixiePi 3D Case Design](docs/PixiePi_with_LCD.stl)
 
 **Warning**
+
 Current 3D STL file has material width, height, size and STL integrity issues and requires rework (see pending at issues)
 
 
@@ -207,6 +225,7 @@ the power output were in the order of 200 mW during the tests!
 FT8 can be operated either as a monitoring station or as a beacon.
 
 ## Monitoring station
+
 Same as WSPR monitoring station but selecting 7074000 as the frequency and FT8 at WSJTX, your mileage might vary
 depending on local CONDX, antenna settings and overall noise floor at your locations, it's just a very basic
 transceiver so probably relatively strong signals will be detected.
@@ -216,6 +235,7 @@ Sample of FT8 receiving:
 ![Alt Text](docs/PixiePi_FT8.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for FT8 monitoring")
 
 ## Beacon station
+
 Run pift8 from the rpitx package, simultaneous monitoring and beaconing will require a larger Raspberry Pi in order
 to accomodate the extra power to run WSJT-X. Sample script can be found at bash/PiFT8.sh
 
@@ -250,12 +270,6 @@ To be implemented
 
 # Other programs
 
-  * DDSPi
-    - DDS function controllable thru CAT
-
-  * OT817
-    - Transceiver USB controllable thru CAT
-
   * pirtty
     - RTTY beacon
 
@@ -282,7 +296,8 @@ FLRig can be built on the Raspberry Pi and used to control the PixiePi rig just 
 Being a graphic X-Window app FLRig is somewhat taxing on resources and might not perform well when using a Raspberry Pi Zero W, however
 it will run just fine on a Raspberry Pi 3 or higher.
 
-##RigCtl
+## RigCtl
+
 RigCtl is a companion program of the HamLib library, it's main advantage is  a console operation with a very low resources consumption,
 therefore it can be used on a Raspberry Pi Zero W to control the rig. See bash/pixie.sh in order to understand the way to configure it.
 
