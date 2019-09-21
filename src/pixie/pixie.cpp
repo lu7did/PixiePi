@@ -301,6 +301,11 @@ void setPTT(bool statePTT) {
 
     float df=0;
     float f=0;
+    int i=0;
+
+//*---------------------------------*
+//*          PTT Activated          *
+//*---------------------------------*
     if (statePTT==true) {
 
 //*--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
@@ -322,12 +327,36 @@ void setPTT(bool statePTT) {
 
        f=(float)(vx.vfo[vx.vfoAB]+(mode==MCW || mode==MCWR ? df : 0));
        log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->SetFrequency,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
+
+//*--- Now turn the transmitter at the frequency f based on the mode
+
        log_info("PTT(On)");
-       (txonly==1 ? dds->open(f) : dds->set(f)) ;
-       softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
+
+       switch(mode) {
+           case MCW:
+           case MCWR: 
+                   {
+                     (txonly==1 ? dds->open(f) : dds->set(f)) ;
+                     softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
+                     break;
+                   }
+           case MUSB:
+           case MLSB:
+                   {
+                     (txonly==0 ? dds->close() : (void)_NOP );
+                     ssb->open(f);
+                     break;
+                   }
+       }
+
        gpioWrite(ptt, PTT_ON);
        return;
     } 
+
+//*---------------------------------*
+//*          PTT Inactivated        *
+//*---------------------------------*
+
 
     log_trace("PTT <OFF>, Receiver mode");
     log_info("PTT(Off)");
@@ -342,13 +371,29 @@ void setPTT(bool statePTT) {
     f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? ritofs : 0);
     log_trace("setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
 
-    if (keyer_brk==0) {
-       (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
-      log_trace("Break-In Timer not set");
-    } else {
-      TBRK=keyer_brk;
-      log_trace("Break-In Timer set");
+    switch(mode) {
+
+       case MCW:
+       case MCWR:
+            {
+            if (keyer_brk==0) {
+               (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
+               log_trace("Break-In Timer not set");
+            } else {
+               TBRK=keyer_brk;
+               log_trace("Break-In Timer set");
+            }
+            break;
+            }
+       case MUSB:
+       case MLSB:
+            {
+            (txonly==0 ? dds->set((float)(vx.get(vx.vfoAB))) : (void) _NOP );
+            ssb->close();
+            break;
+            }
     }
+
     //(getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
 
     return;
