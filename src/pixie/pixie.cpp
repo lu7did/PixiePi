@@ -1317,6 +1317,8 @@ int main(int argc, char* argv[])
                    //(getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
                 }
              }
+         } else {
+           ssb->process();
          }
          CMD_FSM();
          lcd.backlight(true);
@@ -1337,11 +1339,17 @@ int main(int argc, char* argv[])
 
 //*--- Stop the DDS function
 
+    fprintf(stderr,"Closing DDS txonly(%d)\n",txonly);
     log_info("Closing DDS");
+
     (txonly==0 ? dds->close() : void(_NOP));
     delete(dds);
+    fprintf(stderr,"Closing SSB\n");
 
+    log_info("Clossing SSB");
+    delete(ssb);
 //*---- Saving configuration
+    fprintf(stderr,"Saving configuration\n");
 
     log_info("Saving configuration");
     sprintf(iniStr,"%ld",vx.get(VFOA));

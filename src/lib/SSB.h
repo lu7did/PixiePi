@@ -45,7 +45,7 @@
 #include <stdlib.h>
 
 #define MAX_SAMPLERATE 200000
-#define IQBURST 4000
+#define IQBURST 63000
 
 typedef unsigned char byte;
 typedef bool boolean;
@@ -61,6 +61,8 @@ class SSB
   public: 
   
       SSB(CALLBACK c);
+      ~SSB();
+
       CALLBACK callSSB=NULL;
 
       void open(float f);
@@ -73,7 +75,7 @@ class SSB
       FILE        *iqfile=NULL;
       iqdmasync   *iqtest;
       bool        TX;
-      char FileName[80];
+      char        FileName[80];
       byte        TRACE;
       bool        enabled=false;
 
@@ -96,16 +98,25 @@ class SSB
 //*---------------------------------------------------------------------------------------------------
 //* SSB CLASS Implementation
 //*--------------------------------------------------------------------------------------------------
+SSB::~SSB() {
+    (TRACE>=0x00 ? fprintf(stderr,"SSB: Destructor called Enabled(%d)\n",enabled) : _NOP);
+    if (enabled==true) {
+       fclose(iqfile);
+    }
+    (TRACE>=0x00 ? fprintf(stderr,"SSB: Destructor terminated\n") : _NOP);
+} 
+
 SSB::SSB(CALLBACK c)
 {
-
+   TRACE=0x00;
    if (c!=NULL) {callSSB=c;}   //* Callback 
 
    sprintf(FileName,"%s","/tmp/ssbpipe");
+   fprintf(stderr,"SSB: Object creation file %s \n",FileName);
 
-   iqfile=fopen(FileName,"rb");
+   iqfile=fopen(FileName,"r");
    if (iqfile==NULL) {
-      (TRACE>=0x00 ? fprintf(stderr,"SSB: Pipeline error %s not opened\n",FileName) : _NOP);
+      fprintf(stderr,"SSB: ** ERROR ** file %s open failure\n",FileName);
       enabled=false;
    } else {
       enabled=true;
@@ -113,8 +124,7 @@ SSB::SSB(CALLBACK c)
    SR=48000;
    FifoSize=IQBURST*4;
    TX=false;
-   TRACE=0x00;
-   (TRACE>=0x00 ? fprintf(stderr,"SSB: Object created, pipe served %s FIFO(%d) SampleRate(%d)\n",FileName,FifoSize,SR) : _NOP);
+   fprintf(stderr,"SSB: Object created, pipe served %s FIFO(%d) SampleRate(%d)\n",FileName,FifoSize,SR);
 
 }
 //*------------------------------------------------------------------------
@@ -123,13 +133,11 @@ SSB::SSB(CALLBACK c)
 //*------------------------------------------------------------------------
 void SSB::open(float f) {
 
-
-   (TRACE>=0x00 ? fprintf(stderr,"SSB: SSB transmitter opened\n") : _NOP);
+   SetFrequency=f;
    iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
    iqtest->SetPLLMasterLoop(3,4,0);
    TX=true;
-   
-
+   fprintf(stderr,"SSB: SSB transmitter opened\n");
 
 }
 //*-----------------------------------------------------------------------
@@ -138,10 +146,12 @@ void SSB::open(float f) {
 //*-----------------------------------------------------------------------
 void SSB::close() {
 
-   (TRACE>=0x00 ? fprintf(stderr,"SSB: SSB transmitter closed\n") : _NOP);
+   fprintf(stderr,"SSB: SSB transmitter stopping\n") ;
    iqtest->stop();
    TX=false;
+   fprintf(stderr,"SSB: SSB transmitter deleted\n") ;
    delete(iqtest);
+   fprintf(stderr,"SSB: SSB transmitter closed completed\n") ;
 
 }
 //*-----------------------------------------------------------------------
@@ -159,15 +169,15 @@ void SSB::process() {
    if (TX==false || enabled==false) {
       return;
    }
-
    if(nbread>0) {
-     
+     fprintf(stderr,"SSB: Buffer received (%d) samples\n",nbread);   
      for(int i=0;i<nbread/2;i++) {
         if(i%Decimation==0) {       
           CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
         }
      }
    } else {
+     fprintf(stderr,"SSB: Buffer empty rc=(%d) \n",nbread);   
      return;
    }
 
