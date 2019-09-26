@@ -81,7 +81,6 @@
 #include "../lib/DDS.h"
 #include "../minIni/minIni.h"
 #include "../log.c/log.h"
-#include "../lib/SSB.h"
 
 #include <iostream>
 #include <cstdlib> // for std::rand() and std::srand()
@@ -120,7 +119,6 @@ void CATchangeFreq();
 void CATchangeStatus();
 void CATgetRX();
 void CATgetTX();
-void ssbCall();
 
 //*----------------------------------------------------------------------------
 //*  Program parameter definitions
@@ -145,9 +143,6 @@ DDS *dds=new DDS(changeFreq);
 
 //*--- CAT object
 CAT817 cat(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
-
-//*--- SSB object
-SSB *ssb=new SSB(ssbCall);
 
 //*--- Strutctures to hold menu definitions
 
@@ -343,8 +338,7 @@ void setPTT(bool statePTT) {
            case MUSB:
            case MLSB:
                    {
-                     (txonly==0 ? dds->close() : (void)_NOP );
-                     ssb->open(f);
+                     log_info("PTT: Invalid mode");
                      break;
                    }
        }
@@ -388,13 +382,10 @@ void setPTT(bool statePTT) {
        case MUSB:
        case MLSB:
             {
-            (txonly==0 ? dds->set((float)(vx.get(vx.vfoAB))) : (void) _NOP );
-            ssb->close();
+            log_trace("PTT: Invalid mode");
             break;
             }
     }
-
-    //(getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
 
     return;
 
@@ -436,11 +427,6 @@ void changeFreq() {
 
 }
 //*---------------------------------------------------------------------------
-//*
-//*---------------------------------------------------------------------------
-void ssbCall() {
-}
-//*---------------------------------------------------------------------------
 //* CATchangeFreq()
 //* CAT Callback when frequency changes
 //*---------------------------------------------------------------------------
@@ -468,12 +454,12 @@ void CATchangeMode() {
 
        log_trace("CATchangeMode(): cat.MODE(%d) MODE(%d)",cat.MODE,mode);
        log_info("CAT Change Mode()");
-       //if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
-       //   mode=cat.MODE;
-       //   log_info("CATchangeMode(): INVALID MODE");
-       //   showMode();
-       //   return;
-       //}
+       if (cat.MODE != MUSB && cat.MODE != MLSB && cat.MODE != MCW && cat.MODE != MCWR) {
+          mode=cat.MODE;
+          log_info("CATchangeMode(): INVALID MODE");
+          showMode();
+          return;
+       }
 
        mode=cat.MODE;
        mod.mItem=cat.MODE;
@@ -1067,11 +1053,6 @@ int main(int argc, char* argv[])
    cat.TRACE=trace;
 
 
-   log_fatal("SSB object initialized");
-   ssb->open(SetFrequency);
-   ssb->close();
-
-   
 //*---- Establish initial values of system variables
 
     setWord(&MSW,CMD,false);
@@ -1318,7 +1299,7 @@ int main(int argc, char* argv[])
                 }
              }
          } else {
-           ssb->process();
+           //ssb->process();
          }
          CMD_FSM();
          lcd.backlight(true);
@@ -1344,10 +1325,7 @@ int main(int argc, char* argv[])
 
     (txonly==0 ? dds->close() : void(_NOP));
     delete(dds);
-    fprintf(stderr,"Closing SSB\n");
 
-    log_info("Clossing SSB");
-    delete(ssb);
 //*---- Saving configuration
     fprintf(stderr,"Saving configuration\n");
 

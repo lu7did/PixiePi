@@ -262,15 +262,7 @@ When programmed as modes other than CW or CWR the keyer will basically become a 
 
 # Operating as a SSB transceiver
 
-Implemented a DSP processing chain using ALSA and CSDR, the result is piped into the iqdmasync entry of librpitx for
-transmission.
-First implementation has the DSP processing external but incoming modifications would drive them into the code as a
-SSB processor adaptor.
-Remember the Pixie Transceiver has a class C amplifier, therefore is unable to reproduce any sort of AM modulation
-(AM, DSB, SSB, etc) without greater distorsion, however for any mode with a constant amplitud (such as AFSK, FSK, etc)
-it should work perfectly well.
-This will allow an external program such as FLDigi, WSJT-X, MixW or others to be used. 
-An ALSA compatible soundcard is needed to operate this mode.
+To be implemented.
 
 # Operating as a FM transceiver
 
