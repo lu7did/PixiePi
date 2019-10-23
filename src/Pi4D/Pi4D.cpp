@@ -5,6 +5,11 @@
 #include <signal.h>
 #include <stdlib.h>
 
+//--------------------------------------------------------------------------------------------------
+// Pi4D
+// Experimental version largely modelled after sendiq from the rpitx package
+//
+//--------------------------------------------------------------------------------------------------
 bool running=true;
 
 #define PROGRAM_VERSION "0.1"
@@ -18,8 +23,8 @@ void print_usage(void)
 {
 
 fprintf(stderr,\
-"\nssbvox -%s\n\
-Usage:\nssbvox [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n\
+"\nPi4Dx -%s\n\
+Usage:\nPi4Dx [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n\
 -i            path to File Input \n\
 -s            SampleRate 10000-250000 \n\
 -f float      central frequency Hz(50 kHz to 1500 MHz),\n\
@@ -53,7 +58,7 @@ int main(int argc, char* argv[])
 	int Harmonic=1;
 	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
 	int InputType=typeiq_i16;
-	int Decimation=1;
+	int Decimation=0;
 	while(1)
 	{
 		a = getopt(argc, argv, "i:f:s:h:lt:");
@@ -226,14 +231,16 @@ int main(int argc, char* argv[])
 				{
   					bool vox=false;
 					static float IQBuffer[IQBURST*2];
+					//static float IQBuffer[16000*2];
 					int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
+					//int nbread=fread(IQBuffer,sizeof(float),512*2,iqfile);
 					//if(nbread==0) continue;
 					if(nbread>0)
 					{
                                                 //printf("Read float nbread(%i)\n",nbread);
-                                                float s=0.0;
-                                                float m=1.0;
- 						float M=0.0;
+                                                //float s=0.0;
+                                                //float m=1.0;
+ 						//float M=0.0;
                       				for(int i=0;i<nbread/2;i++)
 						{
 							if(i%Decimation==0)
