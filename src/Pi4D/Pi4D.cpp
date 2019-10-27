@@ -305,6 +305,9 @@ int main(int argc, char* argv[])
         //  return -1;
         //}
 
+        //gpioSetPullUpDown(GPIO12,PI_PUD_UP);
+        //usleep(100000);
+
         printf("%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
 	FILE *iqfile=NULL;
@@ -368,6 +371,8 @@ int main(int argc, char* argv[])
 	   	   }
 		} else 	{
 		   printf("End of file\n");
+                   setWord(&MSW,VOX,false);
+		   setWord(&MSW,RUN,false);
 		}
 	        }
 		break;	
