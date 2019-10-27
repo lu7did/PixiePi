@@ -293,17 +293,13 @@ int main(int argc, char* argv[])
                       				for(int i=0;i<nbread/2;i++)
 						{
 							if(i%Decimation==0)
-							{
-								if (vox==true) {
- 								   CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
-								} else {
-						  		   CIQBuffer[CplxSampleNumber++]=std::complex<float>(1.0,1.0);
-								}
- 	  		   					float Ai=(IQBuffer[i*2]*IQBuffer[i*2])+(IQBuffer[i*2+1]*IQBuffer[i*2+1]);
+							{	
+								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
+ 								float Ai=(IQBuffer[i*2]*IQBuffer[i*2])+(IQBuffer[i*2+1]*IQBuffer[i*2+1]);
 								Ai=log10(Ai);
 								Ai=10.0*Ai;
 								s=s+Ai;
-							}
+							}		 
 
 						}
  						s=s/(1.0*nbread/2);
@@ -318,10 +314,10 @@ int main(int argc, char* argv[])
 					else 
 					{
 						printf("End of file\n");
-						//if(loop_mode_flag)
-						//fseek ( iqfile , 0 , SEEK_SET );
-						//else
-						//	running=false;
+						if(loop_mode_flag)
+						fseek ( iqfile , 0 , SEEK_SET );
+						else
+							running=false;
 					}
 				}
 				break;	
@@ -354,7 +350,7 @@ int main(int argc, char* argv[])
 				break;	
 			
 		}
-		if (vox==true) {iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);}
+		iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
 	}
 
 	iqtest.stop();

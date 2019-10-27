@@ -1,0 +1,436 @@
+/*
+ * Pi4D.cpp
+ * Raspberry Pi based SSB transceiver controller
+ * Experimental version largely modelled after sendiq from the rpitx package
+ *---------------------------------------------------------------------
+ * This program operates as a controller for a Raspberry Pi to control
+ * a Pixie transceiver hardware.
+ * Project at http://www.github.com/lu7did/PixiePi
+ *---------------------------------------------------------------------
+ *
+ * Created by Pedro E. Colla (lu7did@gmail.com)
+ * Code excerpts from several packages:
+ *    Adafruit's python code for CharLCDPlate
+ *    tune.cpp from rpitx package by Evariste Courjaud F5OEO
+ *    sendiq.cpp from rpitx package (also) by Evariste Coujaud (F5EOE)
+ *    wiringPi library (git clone git://git.drogon.net/wiringPi)
+ *    iambic-keyer (https://github.com/n1gp/iambic-keyer)
+ *    log.c logging facility by  rxi https://github.com/rxi/log.c
+ *    minIni configuration management package by Compuphase https://github.com/compuphase/minIni/tree/master/dev
+ *    tinyalsa https://github.com/tinyalsa/tinyalsa
+ * Also libraries
+ *    librpitx by  Evariste Courjaud (F5EOE)
+ *    libcsdr by Karol Simonyi (HA7ILM) https://github.com/compuphase/minIni/tree/master/dev
+ *
+ * ---------------------------------------------------------------------
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ */
+
+#include <unistd.h>
+#include "/home/pi/librpitx/src/librpitx.h"
+#include "stdio.h"
+#include <cstring>
+#include <signal.h>
+#include <stdlib.h>
+#include <iostream>
+#include <cstdlib> // for std::rand() and std::srand()
+#include <ctime> // for std::time()
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sched.h>
+#include <time.h>
+#include <sys/mman.h>
+#include <pthread.h>
+#include <signal.h>
+#include <semaphore.h>
+#include <pigpio.h>
+#include <wiringPiI2C.h>
+#include <unistd.h>
+#include "/home/pi/librpitx/src/librpitx.h"
+#include <cstring>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include "../lib/DDS.h"
+//==*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+//
+//==*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+#define MAX_SAMPLERATE 200000
+#define MSEC100 100
+#define IQBURST 4000
+#define VOXMIN -25.0
+#define SAMPLERATE 48000
+#define KEYER_OUT_GPIO 12
+#define VOXBREAK 15
+#define GPIO04 4
+#define PTT_ON 1
+#define PTT_OFF 0
+
+#define PTT 0B00000001
+#define VOX 0B00000010
+#define RUN 0B00000100
+
+//-------------------- GLOBAL VARIABLES ----------------------------
+const char   *PROGRAMID="Pi4D";
+const char   *PROG_VERSION="1.0";
+const char   *PROG_BUILD="00";
+const char   *COPYRIGHT="(c) LU7DID 2019";
+
+bool running=true;
+bool vox=false;
+long Tvox=0;
+byte trace=0x00;
+byte ptt=KEYER_OUT_GPIO;
+char hi[80];
+byte MSW = 0;
+int  SR=SAMPLERATE;
+int  FifoSize=IQBURST*4;
+std::complex<float> CIQBuffer[IQBURST];	
+static float IQBuffer[IQBURST*2];
+float SetFrequency=7074000;
+float SampleRate=48000;
+//bool loop_mode_flag=false;
+char* FileName=NULL;
+int Harmonic=1;
+enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
+int InputType=typeiq_i16;
+int Decimation=1;
+
+//--------------------------[System Word Handler]---------------------------------------------------
+// getSSW Return status according with the setting of the argument bit onto the SW
+//--------------------------------------------------------------------------------------------------
+bool getWord (unsigned char SysWord, unsigned char v) {
+
+  return SysWord & v;
+
+}
+//--------------------------------------------------------------------------------------------------
+// setSSW Sets a given bit of the system status Word (SSW)
+//--------------------------------------------------------------------------------------------------
+void setWord(unsigned char* SysWord,unsigned char v, bool val) {
+
+  *SysWord = ~v & *SysWord;
+  if (val == true) {
+    *SysWord = *SysWord | v;
+  }
+
+}
+//-------------------------------------------------------------------------------------------
+// setPTT
+// Manage PTT
+//-------------------------------------------------------------------------------------------
+//void setPTT(bool state) {
+//
+//   if (state==true) {
+//      setWord(&MSW,PTT,true);
+//      gpioWrite(ptt,PTT_ON);
+//      if (*dds!=NULL) {dds->close();delete(*dds);}
+
+//      printf("PTT: PTT(on)\n");
+//      return;
+//   }
+
+//   if (*iqtest!=NULL) {iqtest->stop();delete(*iqtest);}
+//
+//   setWord(&MSW,PTT,false);
+
+//   *dds=new DDS(NULL);
+//   dds->gpio=byte(GPIO04);
+//   dds->power=byte(MAXLEVEL);
+//   dds->set(SetFrequency);
+   //dds->open("VFOA");
+
+//   printf("PTT: PTT(off)\n");
+//
+//   return;
+//}
+//------------------------------------------------------------------------------------------
+// timer_exec
+// Timer management hook
+//-----------------------------------------------------------------------------------------
+void timer_exec()
+{
+
+  if (Tvox!=0) {
+     Tvox--;
+     if(Tvox==0) {
+       setWord(&MSW,VOX,false);
+       printf("VOX turned off\n");
+     }
+  }
+}
+
+//---------------------------------------------------------------------------
+// Timer handler function
+//---------------------------------------------------------------------------
+void timer_start(std::function<void(void)> func, unsigned int interval)
+{
+  std::thread([func, interval]()
+  {
+    while (running==true)
+    {
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+      func();
+      std::this_thread::sleep_until(x);
+    }
+  }).detach();
+}
+//---------------------------------------------------------------------------------
+// Legacy code
+//---------------------------------------------------------------------------------
+void SimpleTestFileIQ(uint64_t Freq)
+{
+	
+}
+//---------------------------------------------------------------------------------
+// Print usage
+//---------------------------------------------------------------------------------
+void print_usage(void)
+{
+fprintf(stderr,"%s %s [%s]\n\
+Usage: [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n\
+-i            path to File Input \n\
+-s            SampleRate 10000-250000 \n\
+-f float      central frequency Hz(50 kHz to 1500 MHz),\n\
+-l            loop mode for file input\n\
+-h            Use harmonic number n\n\
+-t            IQ type (i16 default) {i16,u8,float,double}\n\
+-?            help (this help).\n\
+\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+
+
+} /* end function print_usage */
+//---------------------------------------------------------------------------
+// Capture and manage SIG 
+//---------------------------------------------------------------------------
+static void terminate(int num)
+{
+    setWord(&MSW,RUN,false);
+    //running=false;
+    fprintf(stderr,"Caught signal - Terminating %x\n",num);
+   
+}
+//----------------------------------------------------------------------------
+// main execution
+//----------------------------------------------------------------------------
+int main(int argc, char* argv[])
+{
+	int a;
+	int anyargs = 1;
+//---- Define timer tick latency (100 mSecs)
+        timer_start(timer_exec,MSEC100);
+
+//---- Argument processing loop
+	while(1)
+	{
+		a = getopt(argc, argv, "i:f:s:h:lt:");
+	
+		if(a == -1) 
+		{
+  		   if(anyargs) break;
+		   else a='h'; //print usage and exit
+		}
+		anyargs = 1;	
+
+		switch(a)
+		{
+		case 'i': // File name
+			FileName = optarg;
+			break;
+		case 'f': // Frequency
+			SetFrequency = atof(optarg);
+			break;
+		case 's': // SampleRate (Only needeed in IQ mode)
+			SampleRate = atoi(optarg);
+			if(SampleRate>MAX_SAMPLERATE) 
+			{
+ 	 		   for(int i=2;i<12;i++) //Max 10 times samplerate
+		   	   {
+			      if(SampleRate/i<MAX_SAMPLERATE) {
+				SampleRate=SampleRate/i;
+				Decimation=i;
+				break;
+ 			      }	
+			   }
+			   if(Decimation==1) {
+			      fprintf(stderr,"SampleRate too high : >%d sample/s",10*MAX_SAMPLERATE);
+			      exit(1);
+			   } else {	
+	  		      fprintf(stderr,"Warning samplerate too high, decimation by %d will be performed",Decimation);
+			   }
+			};
+			break;
+		case 'h': // help
+			Harmonic=atoi(optarg);
+			break;
+		case 'l': // loop mode
+			//loop_mode_flag = true;
+			break;
+		case 't': // inout type
+			//if(strcmp(optarg,"i16")==0) InputType=typeiq_i16;
+			//if(strcmp(optarg,"u8")==0) InputType=typeiq_u8;
+			if(strcmp(optarg,"float")==0) InputType=typeiq_float;
+			//if(strcmp(optarg,"double")==0) InputType=typeiq_double;
+			break;
+		case -1:
+         	        break;
+		case '?':
+			if (isprint(optopt) )
+ 			{
+ 			   fprintf(stderr, "Pi4D: unknown option `-%c'.\n", optopt);
+ 			}
+			else
+			{
+			   fprintf(stderr, "Pi4D: unknown option character `\\x%x'.\n", optopt);
+			}
+			print_usage();
+			exit(1);
+			break;			
+		default:
+			print_usage();
+			exit(1);
+			break;
+		}/* end switch a */
+	}/* end while getopt() */
+
+	if(FileName==NULL) {fprintf(stderr,"Need an input\n");exit(1);}
+
+//------------------------------------------------------------------------------------
+// Completed processing arguments, now execute main function based on configuration
+//------------------------------------------------------------------------------------
+//---- Install handlers for all relevant SIG 
+
+        for (int i = 0; i < 64; i++) {
+           struct sigaction sa;
+           std::memset(&sa, 0, sizeof(sa));
+           sa.sa_handler = terminate;
+           sigaction(i, &sa, NULL);
+        }
+
+        setWord(&MSW,PTT,false);
+	setWord(&MSW,RUN,true);
+	setWord(&MSW,VOX,false);
+
+//----------- Initialize GPIO interface
+        if(gpioInitialise()<0) {
+          printf("Cannot initialize GPIO\n");
+          return -1;
+        }
+
+        printf(hi,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+
+        //setPTT(false);
+
+	FILE *iqfile=NULL;
+	if(strcmp(FileName,"-")==0)
+   	  iqfile=fopen("/dev/stdin","rb");
+	else
+	  iqfile=fopen(FileName	,"rb");
+	if (iqfile==NULL) 
+	{
+	   printf("input file issue\n");
+	   exit(0);
+	}
+
+        //DDS *dds=new DDS(NULL);
+	//dds->power=MAXLEVEL;
+        //dds->gpio=GPIO04;
+        //dds->open(SetFrequency);
+
+        iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+        iqtest.SetPLLMasterLoop(3,4,0);
+
+//iqdmasync iqtest;
+
+	while(getWord(MSW,RUN))
+	{
+	int CplxSampleNumber=0;
+	int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
+        float s=0.0;
+//--- Some reading done
+	if(nbread>0) {
+
+//--- Process the signal and make it conforming
+
+           for(int i=0;i<nbread/2;i++) {
+	      if(i%Decimation==0) {
+		CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
+ 	        float Ai=(IQBuffer[i*2]*IQBuffer[i*2])+(IQBuffer[i*2+1]*IQBuffer[i*2+1]);
+		Ai=log10(Ai);
+		Ai=10.0*Ai;
+		s=s+Ai;
+	      }
+	   }
+
+//--- Compute if the power exceeds the VOX threshold
+ 	   s=s/(1.0*nbread/2);
+	   if (s>=VOXMIN) {
+              if(getWord(MSW,VOX)==false) {
+	        printf("Vox Activated Avg(%f)\n",s);
+	      }
+	      Tvox=VOXBREAK;
+	      setWord(&MSW,VOX,true);
+           }
+	} else 	{
+	    printf("End of file\n");
+        }
+        
+//---- Send if VOX activated 
+	if (getWord(MSW,PTT)==true) {    //If PTT=On transmit
+           iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+        }
+
+        if ((getWord(MSW,VOX)==true) && (getWord(MSW,PTT)==false)) {    //VOX=On PTT=Off turn transmitter On
+           //printf("Turning transmitter ON, closing dds\n");
+           //dds->close();
+           //printf("Turning transmitter ON, deleting dds object\n");
+	   //delete(dds);
+           printf("Turning transmitter ON, GPIO4 on\n");
+           gpioWrite(ptt,PTT_ON);
+           //iqdmasync iq= iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+           //printf("Turning transmitter ON, setPLLMasterloop\n");
+           //iqtest.SetPLLMasterLoop(3,4,0);
+           setWord(&MSW,PTT,true);
+           //iqtest->print_clock_tree();
+           //iqtest->SetPLLMasterLoop(5,6,0);
+
+
+        }
+        if ((getWord(MSW,VOX)==false) && (getWord(MSW,PTT)==true)) {    //VOX=Off PTT=On turn transmitter Off
+           //printf("Turning transmitter OFF, stopping PLL\n");
+           //iqtest.stop();
+           printf("Turning transmitter OFF, PTT Off\n");
+           gpioWrite(ptt,PTT_OFF);
+           //printf("Turning transmitter OFF, create DDS again\n");
+
+           //dds=new DDS(NULL);
+   	   //dds->power=MAXLEVEL;
+           //dds->gpio=GPIO04;
+           //printf("Turning transmitter OFF, opening DDS\n");
+           //dds->set(SetFrequency);
+           setWord(&MSW,PTT,false);
+        }
+
+	}
+
+        iqtest.stop();
+        //delete(dds);
+        //if (iqtest!=NULL) {iqtest->stop(); delete(iqtest);}
+        //if (dds!=NULL) {dds->close(); delete(dds);}
+
+}
+
