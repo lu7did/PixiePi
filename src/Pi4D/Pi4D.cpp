@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
 	int Harmonic=1;
 	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
 	int InputType=typeiq_i16;
-	int Decimation=0;
+	int Decimation=1;
 	while(1)
 	{
 		a = getopt(argc, argv, "i:f:s:h:lt:");
@@ -229,37 +229,17 @@ int main(int argc, char* argv[])
 				break;
 				case typeiq_float:
 				{
-  					bool vox=false;
 					static float IQBuffer[IQBURST*2];
-					//static float IQBuffer[16000*2];
 					int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
-					//int nbread=fread(IQBuffer,sizeof(float),512*2,iqfile);
-					//if(nbread==0) continue;
 					if(nbread>0)
 					{
-                                                //printf("Read float nbread(%i)\n",nbread);
-                                                //float s=0.0;
-                                                //float m=1.0;
- 						//float M=0.0;
                       				for(int i=0;i<nbread/2;i++)
 						{
 							if(i%Decimation==0)
 							{	
-          							//float Ai=IQBuffer[i*2];
-								//float Aq=IQBuffer[i*2+1];
-								//float A=(Ai*Ai)+(Aq*Aq);
-								//float x=log10(A)*10;	
-                                                                //s=s+A;
-               							//if (x<=m) {m=x;}
-								//if (x>=M) {M=x;}
 								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
 							}		 
-							//printf("%f %f\n",(IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
 						}
-             					//float a=s/nbread;
-                                                //if (vox==false && a >= 0.02) { vox = true; printf ("VOX ON\n");}
-                                                //if (vox==true &&  a <= 0.01) { vox = false; printf ("VOX ---- OFF\n");}
-                                                //printf("Number of samples (%d) average(%f)\n",nbread,(float)(s/(nbread*1.0)));
 					}
 					else 
 					{
