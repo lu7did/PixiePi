@@ -4,15 +4,67 @@
 #include <cstring>
 #include <signal.h>
 #include <stdlib.h>
+#include <iostream>
+#include <cstdlib> // for std::rand() and std::srand()
+#include <ctime> // for std::time()
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sched.h>
+#include <time.h>
+#include <sys/mman.h>
+#include <pthread.h>
+#include <signal.h>
+#include <semaphore.h>
+#include <pigpio.h>
+#include <wiringPiI2C.h>
+#include <unistd.h>
+#include "/home/pi/librpitx/src/librpitx.h"
+#include <cstring>
+#include <iostream>
+#include <chrono>
+#include <thread>
 
 //--------------------------------------------------------------------------------------------------
 // Pi4D
 // Experimental version largely modelled after sendiq from the rpitx package
 //
 //--------------------------------------------------------------------------------------------------
-bool running=true;
 
 #define PROGRAM_VERSION "0.1"
+bool running=true;
+bool vox=false;
+long Tvox=0;
+
+void timer_exec()
+{
+
+  if (Tvox!=0) {
+     Tvox--;
+     if(Tvox==0) {
+       vox=false;
+       printf("VOX turned off\n");
+     }
+  }
+}
+
+//---------------------------------------------------------------------------
+// Timer handler function
+//---------------------------------------------------------------------------
+void timer_start(std::function<void(void)> func, unsigned int interval)
+{
+  std::thread([func, interval]()
+  {
+    while (true)
+    {
+      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+      func();
+      std::this_thread::sleep_until(x);
+    }
+  }).detach();
+}
 
 void SimpleTestFileIQ(uint64_t Freq)
 {
@@ -59,6 +111,9 @@ int main(int argc, char* argv[])
 	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
 	int InputType=typeiq_i16;
 	int Decimation=1;
+        timer_start(timer_exec,100);
+
+
 	while(1)
 	{
 		a = getopt(argc, argv, "i:f:s:h:lt:");
@@ -166,11 +221,9 @@ int main(int argc, char* argv[])
 	iqtest.SetPLLMasterLoop(3,4,0);
 	//iqtest.print_clock_tree();
 	//iqtest.SetPLLMasterLoop(5,6,0);
-	
 	std::complex<float> CIQBuffer[IQBURST];	
 	while(running)
 	{
-		
 			int CplxSampleNumber=0;
 			switch(InputType)
 			{
@@ -227,10 +280,14 @@ int main(int argc, char* argv[])
 					}
 				}
 				break;
+//*---------------------------------------------------------------------------------------------------------
+//* Float Queue
+//*---------------------------------------------------------------------------------------------------------
 				case typeiq_float:
 				{
 					static float IQBuffer[IQBURST*2];
 					int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
+                                        float s=0.0;
 					if(nbread>0)
 					{
                       				for(int i=0;i<nbread/2;i++)
@@ -238,7 +295,20 @@ int main(int argc, char* argv[])
 							if(i%Decimation==0)
 							{	
 								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
+ 								float Ai=(IQBuffer[i*2]*IQBuffer[i*2])+(IQBuffer[i*2+1]*IQBuffer[i*2+1]);
+								Ai=log10(Ai);
+								Ai=10.0*Ai;
+								s=s+Ai;
 							}		 
+
+						}
+ 						s=s/(1.0*nbread/2);
+						if (s>=-25.0) {
+            					   if(vox==false) {
+						     printf("Vox Activated Avg(%f)\n",s);
+						   }
+						   Tvox=15;
+						   vox=true;
 						}
 					}
 					else 
