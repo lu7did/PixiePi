@@ -105,6 +105,7 @@ typedef bool boolean;
 //bool vox=false;
 long Tvox=0;
 byte MSW=0;
+iqdmasync *iqtest=NULL;
 
 //--------------------------[System Word Handler]---------------------------------------------------
 // getSSW Return status according with the setting of the argument bit onto the SW
@@ -136,6 +137,9 @@ void timer_exec()
      Tvox--;
      if(Tvox==0) {
        //gpioWrite(GPIO12,PTT_OFF);
+       iqtest->stop();
+       delete(iqtest);
+       iqtest=NULL;
        setWord(&MSW,VOX,false);
        printf("VOX turned off\n");
      }
@@ -324,8 +328,7 @@ int main(int argc, char* argv[])
 	int SR=48000;
 	int FifoSize=IQBURST*4;
 
-	iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-	iqtest.SetPLLMasterLoop(3,4,0);
+	//iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
 	//iqtest.print_clock_tree();
 	//iqtest.SetPLLMasterLoop(5,6,0);
 
@@ -364,6 +367,8 @@ int main(int argc, char* argv[])
 		   if (s>=-25.0) {
             	      if(getWord(MSW,VOX)==false) {
 		         printf("Vox Activated Avg(%f)\n",s);
+     			 iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+      	 		 iqtest->SetPLLMasterLoop(3,4,0);
 		      }
 		      Tvox=15;
                       //gpioWrite(GPIO12,PTT_ON);
@@ -377,9 +382,12 @@ int main(int argc, char* argv[])
 	        }
 		break;	
 	      }
-   	      if (getWord(MSW,VOX)==true) {iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);}
+   	      if (getWord(MSW,VOX)==true) {iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);}
 	}
 
-	iqtest.stop();
+        iqtest->stop();
+        delete(iqtest);
+        iqtest=NULL;
+
 }
 
