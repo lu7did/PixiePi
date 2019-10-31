@@ -122,7 +122,7 @@ The following components needs not to be placed when building the kit
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect negative side of D3 diode to the interface board PTT line
 
-![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
+![Alt Text](docs/PixiePi_V2.0.jpg?raw=true "PixiePi PCB mods")
 
 
 ## Broadcast Interference (BCI)
