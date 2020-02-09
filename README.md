@@ -152,11 +152,11 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
 
 The preliminar 3D design for a project case (with LCD) can be seen as follows
 
-[PixiePi 3D Case Design](docs/PixiePi_with_LCD.stl)
+[PixiePi 3D Case Design](https://www.thingiverse.com/thing:4153649)
 
 **Warning**
 
-Current 3D STL file has material width, height, size and STL integrity issues and requires rework (see pending at issues)
+3D STL file is an unfinished work in progress (see pending at issues)
 
 
 # Package requirements
