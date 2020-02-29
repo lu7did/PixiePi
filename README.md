@@ -90,11 +90,6 @@ When used in Headless mode the transceiver behaviour can still be controlled by 
 see FLRig  and RigCtl usage in the incoming sections.
 
 
-**Warning**
-Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal sink is needed in both PA final and keyer
-Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
-the sidetone.
-
 ## Raspberry Pi Zero Pinout
 
 The Raspberry Pi Zero pinout assignments are:
@@ -134,8 +129,14 @@ The following components needs not to be placed when building the kit
 * Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect negative side of D3 diode to the interface board PTT line
+* Cut trace from R5 to KEY socket, connect both keyer legs to the socket going into GPIO15 and GPIO13.
+* Assure all three boards (interface, Pixie and Raspberry Pi) share a common ground.
+* Extract +12V from the Pixie +12V socket, feed LM7805 with it.
 
-![Alt Text](docs/PixiePi_V2.0.jpg?raw=true "PixiePi PCB mods")
+![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
+
+All additional interface circuitry might be constructed on a prototype perfboard or using the Manhattan
+technique.
 
 ## Pixie Final PA heat sink
 
@@ -143,6 +144,9 @@ Operating with a 12V supply the final transistor might become quite hot and inde
 (as it might be with FT8 or WSPR, even for slow CW). A small heatsink is recommended.
 Space is very limited on typical kits but a small piece of aluminum might be enough, be aware not to short either L1 nor L3
 with it.
+
+The keyer transistor Q1 will benefit from a heat sink as well if long keying times are expected.
+
 
 ## Broadcast Interference (BCI)
 
