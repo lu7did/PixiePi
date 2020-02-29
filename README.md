@@ -92,9 +92,11 @@ the sidetone.
 
 ## Hardware prototype
 
-This is a snapshot of the very early prototype used to develop and debug this project:
+This is a snapshot of the current prototype used to develop and debug this project:
 
-![Alt Text](docs/PixiePi_Hardware.jpg?raw=true "PixiePi Hardware Prototype")
+![Alt Text](docs/PixiePi_Build_001.jpg?raw=true "PixiePi Hardware Prototype")
+![Alt Text](docs/PixiePi_Build_002.jpg?raw=true "PixiePi Hardware Prototype")
+
 
 
 # Chinese Pixie MODS
