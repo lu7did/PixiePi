@@ -77,18 +77,29 @@ Remember that most national regulations requires the armonics and other spurious
 
 # Schematics
 
-## With 16x2 LCD and Rotary Encoder
+## Complete with 16x2 LCD and Rotary Encoder
 
 ![Alt Text](docs/PixiePi.jpg?raw=true "PixiePi Schematics with 16x2 LCD Display and Rotary Encoder")
 
 ## Headless operation (all controls thru CAT) 
 
-![Alt Text](docs/PixiePiHL.jpg?raw=true "PixiePi Schematics operating headless without 16x2 LCD Display and Rotary Encoder")
+Headless operation is feasible by not connecting the Encoder, AUX switch and LCD display, however the power supply and keyer
+circuit are still required for proper operation.
+
+When used in Headless mode the transceiver behaviour can still be controlled by using CAT commands
+see FLRig  and RigCtl usage in the incoming sections.
+
 
 **Warning**
 Basic Pixie Chinese DIY kits are not prepared for continuous operation thermal sink is needed in both PA final and keyer
 Pin VOL+ of the Pixie board connects to pin 7 of the IC LM386 which is usually left open without connection as a way to feed
 the sidetone.
+
+## Raspberry Pi Zero Pinout
+
+The Raspberry Pi Zero pinout assignments are:
+
+![Alt Text](docs/RaspberryPiZero_Pinout_anotado.jpg?raw=true "Raspberry Pi Zero Pinout")
 
 ## Hardware prototype
 
@@ -126,6 +137,12 @@ The following components needs not to be placed when building the kit
 
 ![Alt Text](docs/PixiePi_V2.0.jpg?raw=true "PixiePi PCB mods")
 
+## Pixie Final PA heat sink
+
+Operating with a 12V supply the final transistor might become quite hot and indeed fail if the keydown period is long enough
+(as it might be with FT8 or WSPR, even for slow CW). A small heatsink is recommended.
+Space is very limited on typical kits but a small piece of aluminum might be enough, be aware not to short either L1 nor L3
+with it.
 
 ## Broadcast Interference (BCI)
 
