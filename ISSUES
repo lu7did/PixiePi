@@ -5,7 +5,24 @@ Issues:
 
 Implementation Backlog
 
-X [Bug] Debounce push and encoder
+* [Bug] Debounce push and encoder
+
+* [Feature] Update documentation README.md
+* [Feature] Upload case .STL to thingiverse
+* [Feature] Control Cooler
+* [Feature] Incorporate AUX control into GUI
+* [Feature] Change GUI layout
+* [Feature] Implement big letters
+* [Feature] Incorporate AD/DA controller
+* [HW] Implement Cooler Control
+* [HW] Implement AD/DA controller
+* [HW] Implement AF Gain
+* [Feature] USB Serial Interface (for remote CAT)
+* [Feature] Implement VOX control
+* [HW] Implement RF Power sensor
+* [HW] Implement temp sensor
+* [HW] Implement Vbat sensor
+* [Feature] Incorporate sensor reading into GUI
 * [Feature] USB mode
 * [Feature] FSK (RTTY) mode
 * [Feature] PSK (PSK31) mode
