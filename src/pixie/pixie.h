@@ -51,6 +51,8 @@ typedef void (*CALLBACK)();
 #define KEYER_OUT_GPIO 12
 #define LEFT_PADDLE_GPIO 13
 #define RIGHT_PADDLE_GPIO 15
+#define COOLER_GPIO 24
+#define AUX_GPIO 21
 #define KEY_DOWN 0x01
 #define KEY_UP 0x00
 

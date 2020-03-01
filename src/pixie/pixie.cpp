@@ -127,7 +127,7 @@ void CATgetTX();
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="45";
-const char   *COPYRIGHT="(c) LU7DID 2019";
+const char   *COPYRIGHT="(c) LU7DID 2020";
 
 char *strsignal(int sig);
 extern const char * const sys_siglist[];
@@ -172,6 +172,9 @@ auto endEncoder=std::chrono::system_clock::now();
 
 auto startPush=std::chrono::system_clock::now();
 auto endPush=std::chrono::system_clock::now();
+
+auto startAux=std::chrono::system_clock::now();
+auto endAux=std::chrono::system_clock::now();
  
 //*--- LCD custom character definitions
 //* TX -- char(0)     <T>
@@ -640,6 +643,34 @@ void timer_exec()
    }
     
 }
+//*-------------------------------------------------------------------------------------------
+//* aux_event
+//* Detects whether the aux button has been activated
+//*-------------------------------------------------------------------------------------------
+void aux_event(int gpio, int level, uint32_t tick) {
+
+        log_trace("Event AUX level(%d)",level);
+        fprintf(stderr,"<AUX> Event level(%d) \n",level);
+
+        if (level != 0) {
+           endAux = std::chrono::system_clock::now();
+           int lapAux=std::chrono::duration_cast<std::chrono::milliseconds>(endAux - startAux).count();
+           if (lapAux < MINSWPUSH) {
+              log_trace("<AUX> pulse too short! ignored!");
+              fprintf(stderr,"<AUX> too short! ignored! lap(%d)\n",lapAux);
+           } else {
+             log_trace("AUX Event detected");   
+             fprintf(stderr,"<AUX> event detected lap(%d)\n",lapAux);
+             return;
+           }
+        }
+        startAux = std::chrono::system_clock::now();
+        //int pushSW=gpioRead(ENCODER_SW);
+        lcd.backlight(true);
+        TBCK=backlight;;
+
+}
+
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler routine for Rotary Encoder Push button
 //*--------------------------------------------------------------------------------------------------
@@ -1026,6 +1057,7 @@ int main(int argc, char* argv[])
    log_fatal("DDS configuration");
    log_fatal("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
 
+
 //*--- Configuration: CAT
    nIni=ini_gets("CAT", "PORT", "/tmp/ttyv1", port, sizearray(port), inifile);
    catbaud=ini_getl("CAT","BAUD",CATBAUD,inifile);
@@ -1148,12 +1180,30 @@ int main(int argc, char* argv[])
     spd.refresh();
 
 
-//*---- Initialize Rotary Encoder
+//*---- Initialize GPIO
 
     if(gpioInitialise()<0) {
         log_fatal("Cannot initialize GPIO");
         return -1;
     }
+
+
+//*---- Turn cooler on
+
+    gpioSetMode(COOLER_GPIO, PI_OUTPUT);
+    gpioWrite(COOLER_GPIO, 1);
+    usleep(100000);
+ 
+//*---- Manage AUX key
+
+    gpioSetMode(AUX_GPIO, PI_INPUT);
+    gpioSetPullUpDown(AUX_GPIO,PI_PUD_UP);
+    usleep(100000);
+    gpioSetISRFunc(AUX_GPIO, FALLING_EDGE,0,aux_event);
+
+    //gpioSetAlertFunc(AUX_GPIO, aux_event);
+
+//*---- Configure Encoder
 
     gpioSetMode(ENCODER_CLK, PI_INPUT);
     gpioSetPullUpDown(ENCODER_CLK,PI_PUD_UP);
@@ -1354,6 +1404,10 @@ int main(int argc, char* argv[])
     sprintf(iniStr,"%d",getWord(FT817,VFO));
     nIni = ini_puts("VFO", "AB",iniStr,inifile);
 
+
+//*---- Turn cooler off 
+
+    gpioWrite(COOLER_GPIO, 0);
 
 
 //*--- turn LCD off
