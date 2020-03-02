@@ -66,7 +66,7 @@ void showSMeter(int S) {
 //* Show the VFO being used (A or B)
 //*----------------------------------------------------------------------------$
 void showVFO() {
-   lcd.setCursor(0,0);
+   lcd.setCursor(6,1);
    (vx.vfoAB==VFOA ? lcd.print("A") : lcd.print("B"));
 }
 
@@ -86,8 +86,8 @@ void showRit() {
 //*----------------------------------------------------------------------------$
 
 void showPTT() {
-   lcd.setCursor(2,0);
-   (getWord(FT817,PTT)==true ? lcd.write(0) : lcd.print(" "));
+   lcd.setCursor(7,0);
+   (getWord(FT817,PTT)==true ? lcd.write(255) : lcd.write(219));
 
 }
 //*----------------------------------------------------------------------------$
@@ -153,16 +153,16 @@ void showGUI() {
    showFreq();
    showVFO();
    showPTT();
-   showSplit();
-   showKeyer();
-   showMode();
+   //showSplit();
+   //showKeyer();
+   //showMode();
 
-   if (getWord(MSW,PTT)==false) {
-      showSMeter(0);
-   } else {
-      showSMeter(2*dds->power);
-   }
-   showRit();
+   //if (getWord(MSW,PTT)==false) {
+   //   showSMeter(0);
+   //} else {
+   //   showSMeter(2*dds->power);
+  // }
+   //showRit();
 }
 //*--------------------------------------------------------------------------------------------
 //* showPanel

@@ -102,6 +102,7 @@ int  keyer_brk=KEYER_BRK;
 byte sidetone_gpio=SIDETONE_GPIO;
 
 int i=0;
+byte auxcnt=128;
 extern "C" {
 bool running=true;
 bool ready=false;
@@ -185,6 +186,77 @@ auto endAux=std::chrono::system_clock::now();
 //* S4 -- char(5)     ||||
 //* S5 -- char(6)     |||||
 //* SL -- char(7)     
+
+byte top_line[8]    = {0b11111, 0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000};
+byte bottom_line[8] = {0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111};
+byte both_lines[8]  = {0b11111, 0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111};
+byte dot[8]         = {0b00000, 0b00000, 0b00011, 0b00011, 0b00011, 0b00011, 0b00000, 0b00000};
+
+byte C00[8] = {0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011} ;
+byte C01[8] = {0B11111,
+               0B00001,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B11111} ;
+
+byte C02[8] = {0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11111} ;
+byte C03[8] = {0B11111,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11111} ;
+byte C04[8] = {0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11000,
+               0B11111} ;
+byte C05[8] = {0B11111,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011,
+               0B00011} ;
+byte C06[8] = {0B11111,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11111} ;
+byte C07[8] = {0B11111,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011,
+               0B11011} ;
 
 byte TX[8] = {0B11111,0B10001,0B11011,0B11011,0B11011,0B11011,0B11111}; // Inverted T (Transmission Mode)
 byte S1[8] = {0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000}; // S1 Signal
@@ -661,6 +733,14 @@ void aux_event(int gpio, int level, uint32_t tick) {
            } else {
              log_trace("AUX Event detected");   
              fprintf(stderr,"<AUX> event detected lap(%d)\n",lapAux);
+             auxcnt=(auxcnt+1) & 0xff;
+             lcd.clear();
+             lcd.setCursor(0,0);
+             sprintf(hi,"Valor %d",auxcnt);
+             lcd.print(string(hi));
+             lcd.setCursor(0,1);
+             lcd.write(auxcnt);
+         
              return;
            }
         }
@@ -788,6 +868,246 @@ string do_console_command_get_result (char* command)
         log_trace("External command result: %s",result);
 	return(result);
 }
+//*-----------------------------------------------------------------------------
+//* Convert number to large font
+//**-----------------------------------------------------------------------------
+void display_LargeNumberA(byte number,int position) {
+
+     switch(number) {
+     case 1 : {
+               lcd.setCursor(position,0);
+               lcd.write(0);
+               lcd.write(255);
+               lcd.write(254);
+               lcd.setCursor(position,1);
+               lcd.write(1);
+               lcd.write(255);
+               lcd.write(1);
+               break;
+               }
+     case 2 : {
+               lcd.setCursor(position,0);
+               lcd.write(2);
+               lcd.write(2);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(255);
+               lcd.write(1);
+               lcd.write(1);
+               break;
+               }
+     case 3 : {
+               lcd.setCursor(position,0);
+               lcd.write(0);
+               lcd.write(2);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(1);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     case 4 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(1);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(254);
+               lcd.write(254);
+               lcd.write(255);
+               break;
+               }
+     case 5 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(2);
+               lcd.write(2);
+               lcd.setCursor(position,1);
+               lcd.write(1);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     case 6 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(2);
+               lcd.write(2);
+               lcd.setCursor(position,1);
+               lcd.write(255);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     case 7 : {
+               lcd.setCursor(position,0);
+               lcd.write(0);
+               lcd.write(0);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(254);
+               lcd.write(254);
+               lcd.write(255);
+               break;
+               }
+     case 8 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(2);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(255);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     case 9 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(2);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(1);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     case 0 : {
+               lcd.setCursor(position,0);
+               lcd.write(255);
+               lcd.write(0);
+               lcd.write(255);
+               lcd.setCursor(position,1);
+               lcd.write(255);
+               lcd.write(1);
+               lcd.write(255);
+               break;
+               }
+     default : {
+               lcd.setCursor(position,0);
+               lcd.write(0);
+               lcd.write(255);
+               lcd.write(254);
+               lcd.setCursor(position,1);
+               lcd.write(1);
+               lcd.write(255);
+               lcd.write(1);
+               break;
+               }
+        
+
+     }
+}
+void display_LargeNumber(byte number,int position) {
+
+        //fprintf(stderr,"Received number(%d) position (%d)\n",number,position);
+
+        //lcd.setCursor(8,0);
+        //lcd.print("0123456789");
+        //lcd.setCursor(8,1);
+        //lcd.write(0);
+        //lcd.write(1);
+        //lcd.write(2);
+        //lcd.write(3);
+        //lcd.write(4);
+        //lcd.write(5);
+        //lcd.write(6);
+        //lcd.write(7);
+
+        switch(number)  {
+           case 1 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(0);
+                     lcd.setCursor(position,1);
+                     lcd.write(0);
+		     break;
+                    }
+           case 2 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(1);
+                     lcd.setCursor(position,1);
+                     lcd.write(3);
+		     break;
+
+                    }
+           case 3 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(1);
+                     lcd.setCursor(position,1);
+                     lcd.write(1);
+		     break;
+
+                    }
+           case 4 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(2);
+                     lcd.setCursor(position,1);
+                     lcd.write(5);
+		     break;
+
+                    }
+           case 5 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(3);
+                     lcd.setCursor(position,1);
+                     lcd.write(1);
+		     break;
+
+                    }
+           case 6 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(4);
+                     lcd.setCursor(position,1);
+                     lcd.write(6);
+		     break;
+
+                    }
+           case 7 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(5);
+                     lcd.setCursor(position,1);
+                     lcd.write(0);
+		     break;
+
+                    }
+           case 8 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(6);
+                     lcd.setCursor(position,1);
+                     lcd.write(6);
+		     break;
+
+                    }
+           case 9 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(6);
+                     lcd.setCursor(position,1);
+                     lcd.write(5);
+		     break;
+
+                    }
+           case 0 : {
+                     lcd.setCursor(position,0);
+                     lcd.write(7);
+                     lcd.setCursor(position,1);
+                     lcd.write(2);
+		     break;
+
+                    }
+           default :     {
+                     lcd.setCursor(position,7);
+                     lcd.write(7);
+                     lcd.setCursor(position,2);
+                     lcd.write(7);
+		     break;
+
+                    }
+  
+
+        }
+
+}
 //*--------------------------------------------------------------------------------------------
 //* showFreq
 //* manage the presentation of frequency to the LCD display
@@ -798,25 +1118,37 @@ void showFreq() {
   long int f=vx.get(vx.vfoAB); 
   vx.computeVFO(f,&v);
 
-  if (v.millions < 10) {
-     sprintf(hi," %d.%d%d%d %d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands,v.hundreds,v.tens);
+  if (v.millions >= 10) {
+     byte m=v.millions/10;
+     display_LargeNumber(m,0);
+
   } else {
-     sprintf(hi,"%d.%d%d%d %d%d",v.millions,v.hundredthousands,v.tenthousands,v.thousands,v.hundreds,v.tens);
+     lcd.setCursor(0,0);
+     lcd.print(" ");
+     lcd.setCursor(0,1);
+     lcd.print(" ");
   }
-  lcd.setCursor(0,1);
+
+  display_LargeNumber(v.millions,1);
+  display_LargeNumber(v.hundredthousands,2);
+  display_LargeNumber(v.tenthousands,3);
+  display_LargeNumber(v.thousands,4);
+
+  sprintf(hi,"%d%d",v.hundreds,v.tens);
+  lcd.setCursor(5,0);
   lcd.print(string(hi));
 
   if (getWord(TSW,FTU)==true) {
-     lcd.setCursor(9,1);
+     lcd.setCursor(5,1);
      lcd.typeChar((char)126);
   } 
   if (getWord(TSW,FTD)==true) {
-     lcd.setCursor(9,1);
+     lcd.setCursor(5,1);
      lcd.typeChar((char)127);
-
   }
+
   if (getWord(TSW,FVFO)==true) {
-     lcd.setCursor(9,1);
+     lcd.setCursor(5,1);
      lcd.typeChar((char)0x20);
      setWord(&TSW,FVFO,false);
   }
@@ -1226,6 +1558,7 @@ int main(int argc, char* argv[])
     lcd.begin(16,2);
     lcd.clear();
 
+
     lcd.createChar(0,TX);
     lcd.createChar(1,S1);
     lcd.createChar(2,S2);
@@ -1235,6 +1568,24 @@ int main(int argc, char* argv[])
 
     lcd.createChar(6,B2);   // Potentially
     lcd.createChar(7,B4);   // Erasable
+
+//*---- TEST bit letters
+
+
+    //lcd.createChar(0,top_line);
+    //lcd.createChar(1,bottom_line);
+    //lcd.createChar(2,both_lines);
+    //lcd.createChar(3,dot);
+
+    lcd.createChar(0,C00);
+    lcd.createChar(1,C01);
+    lcd.createChar(2,C02);
+    lcd.createChar(3,C03);
+    lcd.createChar(4,C04);
+    lcd.createChar(5,C05);
+    lcd.createChar(6,C06);
+    lcd.createChar(7,C07);
+
 
     lcd.backlight(true);
 
