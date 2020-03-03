@@ -5,6 +5,7 @@
 
 
 
+
     10/12/2016, Rick Koch / N1GP, I adapted Phil's verilog code from
                 the openHPSDR Hermes iambic.v implementation to build
                 and run on a raspberry PI 3.
@@ -139,9 +140,11 @@ void keyer_event(int gpio, int level, uint32_t tick) {
 
     if (gpio == LEFT_PADDLE_GPIO) {
         kcwl = state;
+        fprintf(stderr,"LEFT_PADDLE event detected\n");
     }
     else  // RIGHT_PADDLE_GPIO
      {   kcwr = state;
+         fprintf(stderr,"RIGHT_PADDLE event detected\n");
      }
 
     if (state || cw_keyer_mode == KEYER_STRAIGHT)
