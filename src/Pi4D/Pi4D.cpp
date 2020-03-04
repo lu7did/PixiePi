@@ -368,7 +368,9 @@ int main(int argc, char* argv[])
             	      if(getWord(MSW,VOX)==false) {
 		         printf("Vox Activated Avg(%f)\n",s);
      			 iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-      	 		 iqtest->SetPLLMasterLoop(3,4,0);
+      	 		 iqtest->SetPLLMasterLoop(5,6,0);
+                         usleep(10000);
+
 		      }
 		      Tvox=15;
                       //gpioWrite(GPIO12,PTT_ON);
