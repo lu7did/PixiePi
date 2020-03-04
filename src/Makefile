@@ -28,10 +28,10 @@ clean:
 	rm -r  ../bin/pixie
 	rm -r  ../bin/PiWSPR
 	rm -r  ../bin/PiRTTY
-	rm -r  ../bin/ssbvox
+	rm -r  ../bin/Pi4D
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
-	install -m 0755 ../bin/ssbvox /usr/bin
+	install -m 0755 ../bin/Pi4D   /usr/bin

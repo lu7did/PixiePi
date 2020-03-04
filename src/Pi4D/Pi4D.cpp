@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <cstdlib> // for std::rand() and std::srand()
-#include <ctime> // for std::time()
+#include <ctime>   // for std::time()
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -90,7 +90,7 @@
 const char   *PROGRAMID="Pi4D";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
-const char   *COPYRIGHT="(c) LU7DID 2019";
+const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 
 typedef unsigned char byte;
 typedef bool boolean;
@@ -203,8 +203,8 @@ int main(int argc, char* argv[])
 
 	int a;
 	int anyargs = 1;
-	float SetFrequency=434e6;
-	float SampleRate=48000;
+	float SetFrequency=7074000;
+	float SampleRate=12000;
 	char* FileName=NULL;
 	int Harmonic=1;
 	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
@@ -325,7 +325,7 @@ int main(int argc, char* argv[])
 	   exit(0);
 	}
 
-	int SR=48000;
+	int SR=12000;
 	int FifoSize=IQBURST*4;
 
 	//iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
@@ -382,8 +382,14 @@ int main(int argc, char* argv[])
 	        }
 		break;	
 	      }
-   	      if (getWord(MSW,VOX)==true) {iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);}
+   	      if (getWord(MSW,VOX)==true) {
+                  iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+              }
 	}
+
+        if (getWord(MSW,VOX)==false) {
+           gpioWrite(GPIO12,PTT_OFF);
+        }
 
         iqtest->stop();
         delete(iqtest);
