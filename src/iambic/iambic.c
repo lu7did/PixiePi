@@ -140,15 +140,17 @@ void keyer_event(int gpio, int level, uint32_t tick) {
 
     if (gpio == LEFT_PADDLE_GPIO) {
         kcwl = state;
-        fprintf(stderr,"LEFT_PADDLE event detected\n");
+        //fprintf(stderr,"LEFT_PADDLE event detected\n");
     }
     else  // RIGHT_PADDLE_GPIO
      {   kcwr = state;
-         fprintf(stderr,"RIGHT_PADDLE event detected\n");
+         //fprintf(stderr,"RIGHT_PADDLE event detected\n");
      }
 
-    if (state || cw_keyer_mode == KEYER_STRAIGHT)
+    if (state || cw_keyer_mode == KEYER_STRAIGHT) {
         sem_post(&cw_event);
+        //fprintf(stderr,"STRAIGHT Condition\n");
+    }
 }
 //*---------------------------------------------------------------------------------------------
 //* clear_memory
