@@ -1,3 +1,4 @@
+
 /*
  * pixie.c
  * Raspberry Pi based transceiver controller
@@ -385,6 +386,7 @@ void setPTT(bool statePTT) {
        if (getWord(FT817,SPLIT)==true  && fSwap==false) {
           fSwap=true;
           vx.vfoAB=(vx.vfoAB==VFOA ? VFOB : VFOA);
+          showGUI();
        }
 
        if (mode==MCW) {
@@ -407,7 +409,7 @@ void setPTT(bool statePTT) {
            case MCWR: 
                    {
                      (txonly==1 ? dds->open(f) : dds->set(f)) ;
-                     softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
+                     //softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
                      break;
                    }
            case MUSB:
@@ -429,11 +431,12 @@ void setPTT(bool statePTT) {
 
     log_trace("PTT <OFF>, Receiver mode");
     log_info("PTT(Off)");
-    softToneWrite (sidetone_gpio, 0);
+    //softToneWrite (sidetone_gpio, 0);
     gpioWrite(ptt, PTT_OFF);
 
     if (getWord(FT817,SPLIT)==true && fSwap==true){
        (vx.vfoAB==VFOA ? vx.vfoAB=VFOB : vx.vfoAB = VFOA);
+       showGUI();
     }
 
     fSwap=false;  
@@ -507,16 +510,25 @@ void changeFreq() {
 //*---------------------------------------------------------------------------
 void CATchangeFreq() {
 
+  //
+  //fprintf(stderr,"CATchangeFreq() {BEFORE} cat.SetFrequency(%d) SetFrequency(%d) vx.get(vx.vfoAB)(%d) vx.vfoAB(%d)\n",(int)cat.SetFrequency,(int)SetFrequency,(int)vx.get(vx.vfoAB),(int)vx.vfoAB);
   log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)SetFrequency);
   SetFrequency=cat.SetFrequency;
   log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
   long int f=(long int)SetFrequency;
   log_trace("changeFreq: Frequency set to f(%d)",f);
   dds->power=ddspower;
-
   cat.POWER=dds->power;
+  if (vx.vfoAB==VFOA) {
+     setWord(&FT817,VFO,false);
+     setWord(&cat.FT817,VFO,false);
+  } else {
+     setWord(&FT817,VFO,true);
+     setWord(&cat.FT817,VFO,true);
+  }
   dds->set(SetFrequency);
   vx.set(vx.vfoAB,f);
+  //fprintf(stderr,"CATchangeFreq() {AFTER} cat.SetFrequency(%d) SetFrequency(%d) vx.get(vx.vfoAB)(%d) vx.vfoAB(%d)\n",(int)cat.SetFrequency,(int)SetFrequency,(int)vx.get(vx.vfoAB),(int)vx.vfoAB);
   
 
 }
@@ -586,7 +598,8 @@ void CATchangeStatus() {
        }
 
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
-          log_trace("CATchangeStatus():VFO Change VFO(%d) cat.VFO(%d)",getWord(FT817,VFO),getWord(cat.FT817,VFO));
+         //fprintf(stderr,"CATchangestatus() detecta cambio de VFO\n"); 
+         log_trace("CATchangeStatus():VFO Change VFO(%d) cat.VFO(%d)",getWord(FT817,VFO),getWord(cat.FT817,VFO));
           setWord(&FT817,VFO,getWord(cat.FT817,VFO));
           if(getWord(FT817,VFO)==false){
             vfo.mItem=1;
@@ -597,6 +610,8 @@ void CATchangeStatus() {
           }
           VfoUpdate();
           log_info("VFO Changed now VFOAB(%d) f(%li)",vx.vfoAB,vx.get(vx.vfoAB)); 
+          //fprintf(stderr,"CATchangestatus() VFO Changed now to VFOAB(%d) f(%li)\n",vx.vfoAB,vx.get(vx.vfoAB)); 
+
        }
 
        switch(step) {
@@ -722,17 +737,17 @@ void timer_exec()
 void aux_event(int gpio, int level, uint32_t tick) {
 
         log_trace("Event AUX level(%d)",level);
-        fprintf(stderr,"<AUX> Event level(%d) \n",level);
+        //fprintf(stderr,"<AUX> Event level(%d) \n",level);
 
         if (level != 0) {
            endAux = std::chrono::system_clock::now();
            int lapAux=std::chrono::duration_cast<std::chrono::milliseconds>(endAux - startAux).count();
            if (lapAux < MINSWPUSH) {
               log_trace("<AUX> pulse too short! ignored!");
-              fprintf(stderr,"<AUX> too short! ignored! lap(%d)\n",lapAux);
+              //fprintf(stderr,"<AUX> too short! ignored! lap(%d)\n",lapAux);
            } else {
              log_trace("AUX Event detected");   
-             fprintf(stderr,"<AUX> event detected lap(%d)\n",lapAux);
+             //fprintf(stderr,"<AUX> event detected lap(%d)\n",lapAux);
              auxcnt=(auxcnt+1) & 0xff;
              lcd.clear();
              lcd.setCursor(0,0);
@@ -808,7 +823,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 
         endEncoder = std::chrono::system_clock::now();
         int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
-        std::cout << "Rotary Encoder lap " << lapEncoder << "ms.\n";
+        //std::cout << "Rotary Encoder lap " << lapEncoder << "ms.\n";
 
         if ( lapEncoder  < MINENCLAP )  {
              log_trace("Encoder: ignore pulse too close from last");
@@ -1001,20 +1016,6 @@ void display_LargeNumberA(byte number,int position) {
 }
 void display_LargeNumber(byte number,int position) {
 
-        //fprintf(stderr,"Received number(%d) position (%d)\n",number,position);
-
-        //lcd.setCursor(8,0);
-        //lcd.print("0123456789");
-        //lcd.setCursor(8,1);
-        //lcd.write(0);
-        //lcd.write(1);
-        //lcd.write(2);
-        //lcd.write(3);
-        //lcd.write(4);
-        //lcd.write(5);
-        //lcd.write(6);
-        //lcd.write(7);
-
         switch(number)  {
            case 1 : {
                      lcd.setCursor(position,0);
@@ -1116,6 +1117,7 @@ void showFreq() {
 
   FSTR v;  
   long int f=vx.get(vx.vfoAB); 
+  //fprintf(stderr,"<showFreq()> VFO(%d) freq(%d)\n",vx.vfoAB,(int)f);
   vx.computeVFO(f,&v);
 
   if (v.millions >= 10) {
@@ -1186,6 +1188,7 @@ void processVFO() {
          setWord(&JSW,XVFO,true);
          setWord(&TSW,FTU,true);
          TVFO=ONESECS;
+         //fprintf(stderr,"<processVFO> TVFO=ONESECS calling showFreq()\n");
          showFreq();
       }
       setWord(&USW,BCW,false);
@@ -1205,6 +1208,7 @@ void processVFO() {
          TVFO=ONESECS;
          setWord(&TSW,FTD,true);
          setWord(&JSW,XVFO,true);
+         //fprintf(stderr,"<processVFO> TSW,JSW calling showFreq()\n");
          showFreq();
       }
       setWord(&USW,BCCW,false);
@@ -1227,6 +1231,7 @@ int main(int argc, char* argv[])
 
     log_set_quiet(0);
     log_set_level(LOG_INFO);
+
 
 
 
@@ -1357,6 +1362,7 @@ int main(int argc, char* argv[])
 //*--- Configuration: VFO
 
    (ini_getl("VFO","AB",VFOA,inifile)==VFOA ? SetFrequency=ini_getl("VFO","VFOA",VFO_START,inifile)*1.0 : SetFrequency=ini_getl("VFO","VFOB",VFO_START,inifile)*1.0);  
+
    mode=ini_getl("VFO","MODE",MCW,inifile);
    step=ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile);
    shift=ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile);
@@ -1495,8 +1501,9 @@ int main(int argc, char* argv[])
 
 
     mod.add((char*)"CW ",NULL);
-    mod.set(MCW);
-    mode=MCW;
+    //mod.set(MCW);
+    mod.set(mode);
+    //mode=MCW;
     mod.refresh();
 
     lck.add((char*)"Off",NULL);  
@@ -1577,6 +1584,7 @@ int main(int argc, char* argv[])
     //lcd.createChar(2,both_lines);
     //lcd.createChar(3,dot);
 
+    
     lcd.createChar(0,C00);
     lcd.createChar(1,C01);
     lcd.createChar(2,C02);
@@ -1616,15 +1624,15 @@ int main(int argc, char* argv[])
   vx.setVFOShift(VFOA,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
 
   vx.setVFOBand(VFOB,ini_getl("VFO","VFO_BAND_START",VFO_BAND_START,inifile));
-  vx.set(VFOB,ini_getl("VFO","VFO_START",VFO_START,inifile));
+  vx.set(VFOB,ini_getl("VFO","VFOB",VFO_START,inifile));
   vx.setVFOStep(VFOB,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
   vx.setVFOLimit(VFOB,ini_getl("VFO","VFO_START",VFO_START,inifile),ini_getl("VFO","VFO_END",VFO_END,inifile));
   vx.setVFOShift(VFOB,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
 
   vx.setVFO(ini_getl("VFO","AB",VFOA,inifile));
 
-  vx.set(vx.vfoAB,SetFrequency);
-  vx.set(vx.vfoAB,SetFrequency);
+  //vx.set(vx.vfoAB,SetFrequency);
+  //vx.set(vx.vfoAB,SetFrequency);
 
 //*--- After the initializacion clear the LCD and show panel in VFOMode
 
@@ -1670,6 +1678,7 @@ int main(int argc, char* argv[])
 
     alarm(ONESECS);  // set an alarm for 1 seconds from now to clear all values
     showPanel();
+    //fprintf(stderr,"<main> init sequence calling showFreq()\n");
     showFreq();
 
 //*----------------------------------------------------------------------------
@@ -1731,6 +1740,16 @@ int main(int argc, char* argv[])
     fprintf(stderr,"Saving configuration\n");
 
     log_info("Saving configuration");
+
+    sprintf(iniStr,"%d",mode);
+    nIni=ini_puts("VFO","MODE",iniStr,inifile);
+
+    sprintf(iniStr,"%d",step);
+    nIni=ini_puts("VFO","VFO_STEP",iniStr,inifile);
+
+    sprintf(iniStr,"%d",shift);
+    nIni=ini_puts("VFO","VFO_SHIFT",iniStr,inifile);
+
     sprintf(iniStr,"%ld",vx.get(VFOA));
     nIni = ini_puts("VFO","VFOA",iniStr, inifile);
 
@@ -1752,9 +1771,35 @@ int main(int argc, char* argv[])
     sprintf(iniStr,"%d",getWord(FT817,SPLIT));
     nIni = ini_puts("VFO", "SPLIT",iniStr,inifile);
 
-    sprintf(iniStr,"%d",getWord(FT817,VFO));
-    nIni = ini_puts("VFO", "AB",iniStr,inifile);
+    sprintf(iniStr,"%d",cw_keyer_mode);
+    nIni = ini_puts("KEYER","KEYER_MODE",iniStr,inifile);
 
+    sprintf(iniStr,"%d",backlight);
+    nIni = ini_puts("MISC","BACKLIGHT",iniStr,inifile);
+
+//*---- Configuration: DDS 
+    sprintf(iniStr,"%d",gpio);
+    nIni = ini_puts("DDS","GPIO",iniStr,inifile);
+    sprintf(iniStr,"%d",ptt);
+    nIni = ini_puts("DDS","PTT",iniStr,inifile);
+    sprintf(iniStr,"%d",txonly);
+    nIni = ini_puts("DDS","TXONLY",iniStr,inifile);
+    sprintf(iniStr,"%d",ddspower);
+    nIni = ini_puts("DDS","MAXLEVEL",iniStr,inifile);
+    sprintf(iniStr,"%s",port);
+    nIni = ini_puts("CAT","PORT",iniStr,inifile);
+    sprintf(iniStr,"%li",catbaud);
+    nIni = ini_puts("CAT","BAUD",iniStr,inifile);
+    sprintf(iniStr,"%d",cw_keyer_speed);
+    nIni = ini_puts("KEYER","KEYER_SPEED",iniStr,inifile);
+    sprintf(iniStr,"%d",cw_keyer_spacing);
+    nIni = ini_puts("KEYER","KEYER_SPACING",iniStr,inifile);
+    sprintf(iniStr,"%d",cw_active_state);
+    nIni = ini_puts("KEYER","KEYER_ACTIVE",iniStr,inifile);
+    sprintf(iniStr,"%s",snd_dev);
+    nIni = ini_puts("KEYER","SND_DEV",iniStr,inifile);
+    sprintf(iniStr,"%d",keyer_brk);
+    nIni = ini_puts("KEYER","KEYER_BRK",iniStr,inifile);
 
 //*---- Turn cooler off 
 

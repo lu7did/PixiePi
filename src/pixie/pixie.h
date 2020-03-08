@@ -107,8 +107,8 @@ enum {
 #define VFO_SHIFT             600
 #define ONESEC               1000
 
-#define MINRIT              -1000
-#define MAXRIT               1000
+#define MINRIT               -900
+#define MAXRIT                900
 #define RITSTEP               100
 #define RITSTEPD             -100
 
@@ -168,11 +168,6 @@ enum {
 #define TWOSECS     2
 #define ONESECS     1
 #define MSEC100  1000
-
-#define MAXRIT     1000
-#define MINRIT    -1000
-#define RITSTEP    100
-#define RITSTEPD  -100
 
 #define CATBAUD    4800
 

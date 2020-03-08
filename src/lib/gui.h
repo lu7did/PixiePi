@@ -41,24 +41,24 @@ void showSMeter(int S) {
         S=15;
      }
    }
-   lcd.setCursor(13,0);
+   lcd.setCursor(12,1);
    switch(S) {
-     case 0 : {lcd.print(" ");lcd.print(" ");lcd.print(" "); break;}
-     case 1 : {lcd.write(1);lcd.print(" ");lcd.print(" "); break;}
-     case 2 : {lcd.write(2);lcd.print(" ");lcd.print(" "); break;}
-     case 3 : {lcd.write(3);lcd.print(" ");lcd.print(" "); break;}
-     case 4 : {lcd.write(4);lcd.print(" ");lcd.print(" "); break;}
-     case 5 : {lcd.write(5);lcd.print(" ");lcd.print(" "); break;}
-     case 6 : {lcd.write(5);lcd.write(1);lcd.print(" "); break;}
-     case 7 : {lcd.write(5);lcd.write(2);lcd.print(" "); break;}
-     case 8 : {lcd.write(5);lcd.write(3);lcd.print(" "); break;}
-     case 9 : {lcd.write(5);lcd.write(4);lcd.print(" "); break;}
-     case 10: {lcd.write(5);lcd.write(5);lcd.print(" "); break;}
-     case 11: {lcd.write(5);lcd.write(5);lcd.write(1); break;}
-     case 12: {lcd.write(5);lcd.write(5);lcd.write(2); break;}
-     case 13: {lcd.write(5);lcd.write(5);lcd.write(3); break;}
-     case 14: {lcd.write(5);lcd.write(5);lcd.write(4); break;}
-     case 15: {lcd.write(5);lcd.write(5);lcd.write(5); break;}
+     case 0 :
+     case 1 :
+     case 2 :
+     case 3 : {lcd.print(" ");lcd.print(" ");lcd.print(" "); break;}
+     case 4 :
+     case 5 :
+     case 6 :
+     case 7 : {lcd.write(255);lcd.print(" ");lcd.print(" "); break;}
+     case 8 :
+     case 9 :
+     case 10:
+     case 11: {lcd.write(255);lcd.write(255);lcd.print(" "); break;}
+     case 12:
+     case 13:
+     case 14:
+     case 15: {lcd.write(255);lcd.write(255);lcd.write(255); break;}
    }
    return;
 }
@@ -66,7 +66,7 @@ void showSMeter(int S) {
 //* Show the VFO being used (A or B)
 //*----------------------------------------------------------------------------$
 void showVFO() {
-   lcd.setCursor(6,1);
+   lcd.setCursor(8,0);
    (vx.vfoAB==VFOA ? lcd.print("A") : lcd.print("B"));
 }
 
@@ -74,10 +74,10 @@ void showVFO() {
 //* Show the RIT offset
 //*----------------------------------------------------------------------------$
 void showRit() {
-   if (rit.mItem==0) {return;}
+   lcd.setCursor(6,1);
+   if (rit.mItem==0) {lcd.print("   "); return;}
 
-   sprintf(gui,"%+04d",ritofs);
-   lcd.setCursor(11,1);
+   sprintf(gui,"%0+3d",ritofs/10);
    lcd.print(gui);
 
 }
@@ -86,8 +86,8 @@ void showRit() {
 //*----------------------------------------------------------------------------$
 
 void showPTT() {
-   lcd.setCursor(7,0);
-   (getWord(FT817,PTT)==true ? lcd.write(255) : lcd.write(219));
+   lcd.setCursor(5,1);
+   (getWord(FT817,PTT)==true ? lcd.write(255) : lcd.print(" "));
 
 }
 //*----------------------------------------------------------------------------$
@@ -96,7 +96,7 @@ void showPTT() {
 
 void showKeyer() {
 
-   lcd.setCursor(4,0);
+   lcd.setCursor(10,0);
    switch(kyr.mItem) {
      case 0x00: {lcd.print("S"); break;}
      case 0x01: {lcd.print("1"); break;}
@@ -109,7 +109,7 @@ void showKeyer() {
 
 void showSplit() {
 
-   lcd.setCursor(6,0);
+   lcd.setCursor(9,0);
    (spl.mItem == 0 ? lcd.print(" ") : lcd.print("S"));
 
 
@@ -119,14 +119,34 @@ void showSplit() {
 //*----------------------------------------------------------------------------$
 void showMode(){
 
-   lcd.setCursor(8,0);
-   int i=mod.get();
-   
+   char* s=(char*)"*"; 
+
+   lcd.setCursor(11,0);
+   switch(mod.mItem) {
+    case  0:                          {s=(char*)"L";break;};
+    case  1:                          {s=(char*)"U";break;};
+    case  2:                          {s=(char*)"C ";break;};
+    case  3:                          {s=(char*)"C";break;};
+    case  4:                          {s=(char*)"A ";break;};
+    case  5:                          {s=(char*)"* ";break;};
+    case  6:                          {s=(char*)"W";break;};
+    case  7:                          {s=(char*)"*";break;};
+    case  8:                          {s=(char*)"F ";break;};
+    case  9:                          {s=(char*)"*";break;};
+    case 10:                          {s=(char*)"D";break;};
+    case 11:                          {s=(char*)"*";break;};
+    case 12:                          {s=(char*)"P";break;};
+   }
+
    if (mod.init==true) {
-      lcd.print((char*)mod.getText(0)); 
+      lcd.print((char*)s); 
+      //fprintf(stderr,"<showMode> init(%d) mode(%d) mode: %s print(%s)\n",mod.init,mod.mItem,(char*)mod.l.get(0)->mText,(char*)s);  
    } else {
       lcd.print(" ");
+      //fprintf(stderr,"<showMode> init(%d) mode: \n",mod.init);  
    }
+  
+
 }
 //*----------------------------------------------------------------------------$
 //* Show the Wifi connection status
@@ -150,19 +170,20 @@ void showWlan0() {
 //*----------------------------------------------------------------------------$
 void showGUI() {
 
+   //fprintf(stderr,"<showGUI() calling showFreq()\n");
    showFreq();
    showVFO();
    showPTT();
-   //showSplit();
-   //showKeyer();
-   //showMode();
+   showSplit();
+   showKeyer();
+   showMode();
 
-   //if (getWord(MSW,PTT)==false) {
-   //   showSMeter(0);
-   //} else {
-   //   showSMeter(2*dds->power);
-  // }
-   //showRit();
+   if (getWord(MSW,PTT)==false) {
+     showSMeter(0);
+   } else {
+     showSMeter(2*dds->power);
+   }
+   showRit();
 }
 //*--------------------------------------------------------------------------------------------
 //* showPanel
@@ -240,10 +261,13 @@ void saveMenu() {
       byte j=z->mItem;
       byte k=z->mItemBackup;
 
+      //fprintf(stderr,"<doSave> vfo.mItem(%d) vx.vfoAB(%d)\n",vfo.mItem,vx.vfoAB); 
       if (vx.vfoAB != vfo.mItem) {      //Switch from VFO A to B or viceversa
          vx.vfoAB=vfo.mItem;
+         //fprintf(stderr,"Detecto cambio VFO ahora vfoAB(%d)\n",vx.vfoAB);
          //vx.set(vx.vfoAB,vx.get(vx.vfoAB));
          cat.SetFrequency=(float)vx.get(vx.vfoAB);
+         //fprintf(stderr,"<saveMenu> Cambio cat.SetFrequency ahora %10.2f vx.get(%li)\n",cat.SetFrequency,vx.get(vx.vfoAB));
          (vx.vfoAB==VFOA ? setWord(&cat.FT817,VFO,false) : setWord(&cat.FT817,VFO,true));
          CATchangeFreq();
          CATchangeStatus();         
@@ -285,7 +309,7 @@ void saveMenu() {
      }
      if (drv.mItem != ddspower) {
         ddspower=drv.mItem;
-        CATchangeFreq();
+        CATchangeStatus();
      }
 }
 //*-------------------------------------------------------------------------------------------
@@ -361,6 +385,9 @@ void CMD_FSM() {
 //*--- Handle rotation of the Encoder
 
       if(getWord(TSW,FVFO)==true){
+      //
+      //fprintf(stderr,"<CMD_FSM() {TSW,FVFO} calling showFreq()\n");
+
          showFreq();
          setWord(&TSW,FVFO,false);
       }
@@ -391,6 +418,8 @@ void CMD_FSM() {
        setWord(&USW,KDOWN,false);
        setWord(&MSW,CMD,false);
        showPanel();
+       //fprintf(stderr,"<showGUI() CMD_FSM {USW,BMULTI KDOWN} calling showFreq()\n");
+
        showFreq();
        return;
      }
@@ -538,6 +567,7 @@ void ModeUpdate() {
     case 12:                          {s=(char*)"PKT";break;};
   }
   
+  //fprintf(stderr,"<modeUpdate> mItem(%d) mText(%s)\n",mod.mItem,s);
   mod.l.get(0)->mText=s;
   showPanel();
   

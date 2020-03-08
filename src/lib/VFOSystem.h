@@ -378,15 +378,7 @@ boolean VFOSystem::isVFOChanged(byte bVFO) {
 void VFOSystem::updateVFO(byte bVFO,long int vstep) {
    
    vfo[bVFO]=vfo[bVFO]+vstep;
-
-
-#if DEBUG
-
-   char hi[80];   
-   sprintf(hi,"updateVFO VFO(%d) vfo=%ld rxa=%ld min=%ld max=%ld",bVFO,vfo[bVFO],_rxa[bVFO],vfomin[bVFO],vfomax[bVFO]);
-   Serial.println(hi);
-
-#endif
+   fprintf(stderr,"updateVFO() VFO(%d) vfo=%ld rxa=%ld min=%ld max=%ld",bVFO,vfo[bVFO],_rxa[bVFO],vfomin[bVFO],vfomax[bVFO]);
 
    
    if (vfo[bVFO] > vfomax[bVFO]) {
