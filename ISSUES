@@ -6,6 +6,7 @@ Issues:
 Implementation Backlog
 
 
+
 X [Bug] Split no anda correctamente
 X [Bug] Cuando cambia el VFO A a B no actualiza display
 X [Bug] SPLIT siempre toma A primario y B secundario
@@ -23,6 +24,8 @@ X [Bug] No recuerda estado de Keyer
 X [Bug] No recuerda estado de MODO
 X [HW] Implement Cooler Control
 
+* [Bug] Falla catastrófica 
+* [Bug] No responde al encoder cuando freq=frecmin
 * [Bug] Problemas al actualizar el modo
 * [Bug] Debounce push and encoder
 * [Bug] Break-In no implementado
