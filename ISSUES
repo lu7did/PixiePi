@@ -7,35 +7,35 @@ Implementation Backlog
 
 
 
-X [Bug] Split no anda correctamente
-X [Bug] Cuando cambia el VFO A a B no actualiza display
-X [Bug] SPLIT siempre toma A primario y B secundario
-X [Bug] RIT no muestra correctamente
-X [Bug] RIT no respeta limites
-X [Bug] VFO difiere display con real en arranque (no establece el configurado)
+X [Bug] Split doesn't work
+X [Bug] Switch between VFO A and B is performed but the display is not updated
+X [Bug] SPLIT issue, always VFO A is took as primary
+X [Bug] RIT isn't working properly, no limits are enforced, wrong display
+X [Bug] RIT isn't bound to upper and lower limits
+X [Bug] VFO differs the presented at display with the start one, configuration ignored
 X [Feature] Update documentation README.md
 X [Feature] Upload case .STL to thingiverse
 X [Feature] Control Cooler
 X [Feature] Change GUI layout
-X [Bug] Modo no refleja correctamente
+X [Bug] MODE isn't properly reflected
 X [Feature] Implement big letters
-X [Bug] Eliminar mensajes de trace inorganicos
-X [Bug] No recuerda estado de Keyer
-X [Bug] No recuerda estado de MODO
+X [Bug] Purge inorganit trace messages
+X [Bug] Keyer status not remembered
+X [Bug] MODE state not remembered
 X [HW] Implement Cooler Control
 
-* [Bug] Falla catastrófica 
-* [Bug] No responde al encoder cuando freq=frecmin
-* [Bug] Problemas al actualizar el modo
+* [Bug] Catasthropic failure (currently under investigation)
+* [Bug] Non-responsive encoder when freq=freq(min) at start
+* [Bug] Issues to update mode (USB selected, LSB is left)
 * [Bug] Debounce push and encoder
-* [Bug] Break-In no implementado
-* [Bug] Implementar Lock
-* [Bug] Implementar control de Valor
-* [Bug] Implementar variacion de velocidad
-* [Bug] Implementar nivel de POWER
-* [Bug] Implementar Señal Random y Potencia=POWER
-* [Bug] Backlight no anda
-* [Bug] Implementar State machine usando AUX
+* [Bug] Break-In not implemented
+* [Bug] Lock not implemented
+* [Bug] Parameter update thru continuous value change
+* [Bug] Speed change control
+* [Bug] Power level change control
+* [Bug] Implement S-Meter and power meter
+* [Bug] Backlight timer doesn't work
+* [Bug] Quick hack for VFO A/B, MODE and SPEED using AUX pushbutton
 * [Feature] Incorporate AUX control into GUI {State Machine}
 * [Feature] Incorporate AD/DA controller
 * [HW] Implement AD/DA controller
