@@ -6,6 +6,18 @@ Issues:
 Implementation Backlog
 
 X [Bug] Debounce push and encoder
+* [Bug] Backlight timeout doesn't work
+* [Bug] Wrong message on GUI at first use
+* [Bug] Lock doesn't work
+* [Bug] Implement driver level
+* [Bug] Representation for S-Meter and Power
+* [Bug] Extend S-Meter to 5 blocks
+* [Bug] Check keyer speed update
+* [Bug] Debounce AUX
+* [Bug] Keyer type not persistent
+* [Doc] Update README.md with several changes
+* [Feature] External CAT line
+* [Feature] Implement AUX line as long push
 * [Feature] USB mode
 * [Feature] FSK (RTTY) mode
 * [Feature] PSK (PSK31) mode
