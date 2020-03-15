@@ -23,6 +23,29 @@ using namespace std;
                 } }
 
 char gui[80];
+char bar[]="     ";
+//*-----------------------------------------------------------------------------------------------------
+//*--- guiDrawBar
+//*-----------------------------------------------------------------------------------------------------
+void guiDrawBar(char *s,int v, int vmax) {
+
+  fprintf(stderr,"guiDrawBar() value=%d max=%d\n",v,vmax);
+  if (vmax==0) { return; }
+  if (v>vmax)  { v=vmax; }
+  float r=(float)v/(float)vmax;
+  r=r*5;
+  int  l=(int)r;
+  fprintf(stderr,"guiDrawBar() r=%.3f l=%d segments\n",r,l);
+  for (int i=0;i<5;i++) {
+   if (l>i) {
+     s[i]=char(255);
+   } else {
+     s[i]=' ';
+   }
+  }
+  return;
+}
+
 //*---------------------------------------------------------------------------
 //* showSMeter
 //* represents a linear SMeter composed by 3 segments with 0..5 bars each
@@ -74,6 +97,7 @@ void showVFO() {
 //* Show the RIT offset
 //*----------------------------------------------------------------------------$
 void showRit() {
+
    lcd.setCursor(6,1);
    if (rit.mItem==0) {lcd.print("   "); return;}
 
@@ -487,6 +511,7 @@ void CMD_FSM() {
 //*--- Keyer content
 void KeyerUpdate() {
 
+  fprintf(stderr,"KeyerUpdate()\n");
   if (kyr.mItem < 2 && kyr.CW == true) {
       kyr.mItem++;
   }
@@ -508,8 +533,9 @@ void KeyerUpdate() {
 //*--------------------------------------------------------------------------------------------------
 //*---- Split options
 //*--------------------------------------------------------------------------------------------------
-
 void SplitUpdate() {
+  fprintf(stderr,"SplitUpdate()\n");
+
   if (spl.mItem < 1 && spl.CW == true) {
       spl.mItem++;
   }
@@ -532,6 +558,8 @@ void SplitUpdate() {
 //*---- Mode update
 //*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
+
+  fprintf(stderr,"ModeUpdate()\n");
 
   if (mod.mItem < 12 && mod.CW == true) {
       mod.mItem++;
@@ -579,6 +607,8 @@ void ModeUpdate() {
 //*-----------------------------------------------------------------------------------
 void WatchDogUpdate() {
 
+  fprintf(stderr,"WatchdogUpdate()\n");
+
   if (wtd.mItem < 1 && wtd.CW == true) {
       wtd.mItem++;
   }
@@ -601,6 +631,8 @@ void WatchDogUpdate() {
 //*---- VFO update
 //*----------------------------------------------------------------------------------------
 void VfoUpdate() {
+
+  fprintf(stderr,"VfoUpdate()\n");
 
   if (vfo.mItem < 1 && vfo.CW == true) {
       vfo.mItem++;
@@ -625,6 +657,9 @@ void VfoUpdate() {
 //*-------------------------------------------------------------------------------------------
 void BackLightUpdate() {
 
+
+  fprintf(stderr,"BackLightUpdate()\n");
+
   if (bck.CW == true) {
      if (bck.mItem < 60) {
         bck.mItem++;
@@ -639,9 +674,17 @@ void BackLightUpdate() {
         bck.mItem = 60;
      }
   }
-   
-  sprintf(gui,"%i secs",bck.mItem);
+  //char g[80];
+
+  guiDrawBar(bar,bck.mItem,60);
+  sprintf(gui,"%3d[%5s]%3s",bck.mItem,bar,(char*)" % ");
   bck.setText(0,(char*)gui);
+
+   
+  //sprintf(gui,"%i secs",bck.mItem);
+  //bck.setText(0,(char*)gui);
+  bck.l.get(0)->mText=(char*)gui;
+  showPanel();
 
   bck.CW=false;
   bck.CCW=false;
@@ -654,6 +697,8 @@ void BackLightUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void SpeedUpdate() {
 
+  fprintf(stderr,"SpeedUpdate()\n");
+
   if (spd.init == false) {return;}
 
   if (spd.CW == true && spd.mItem < 40) {
@@ -663,8 +708,14 @@ void SpeedUpdate() {
   if (spd.CCW==true && spd.mItem > 0) {
      spd.mItem--;
   }
-  sprintf(gui," %d wpm",spd.mItem);
+  //char g[80];
+
+  guiDrawBar(bar,spd.mItem,40);
+  sprintf(gui,"%3d[%5s]%3s",spd.mItem,bar,(char*)"WPM");
   spd.setText(0,(char*)gui);
+
+  spd.l.get(0)->mText=gui;
+  showPanel();
 
   spd.CW=false;
   spd.CCW=false;
@@ -697,6 +748,8 @@ void RitUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void DriverUpdate() {
 
+  fprintf(stderr,"DriverUpdate()\n");
+
   if (drv.init == false) {return;}
 
   if (drv.CW == true && drv.mItem < 7) {
@@ -706,18 +759,29 @@ void DriverUpdate() {
      drv.mItem--;
   }
 
-  switch(drv.mItem) {
-     case 0 : {sprintf(gui," Off"); break;} 
-     case 1 : {sprintf(gui," 1/7"); break;} 
-     case 2 : {sprintf(gui," 2/7"); break;} 
-     case 3 : {sprintf(gui," 3/7"); break;} 
-     case 4 : {sprintf(gui," 4/7"); break;} 
-     case 5 : {sprintf(gui," 5/7"); break;} 
-     case 6 : {sprintf(gui," 6/7"); break;} 
-     case 7 : {sprintf(gui," Max"); break;} 
-  }
+  fprintf(stderr,"driverUpdate()\n");
+  //char g[80];
 
+  float r=(float)drv.mItem/7.0;
+  guiDrawBar(bar,drv.mItem,7);
+  sprintf(gui,"%3d[%5s]%3s",(int)r,bar,(char*)" % ");
   drv.setText(0,(char*)gui);
+
+  drv.l.get(0)->mText=gui;
+  showPanel();
+
+
+//  switch(drv.mItem) {
+//     case 0 : {sprintf(gui," Off"); break;} 
+//     case 1 : {sprintf(gui," 1/7"); break;} 
+//     case 2 : {sprintf(gui," 2/7"); break;} 
+//     case 3 : {sprintf(gui," 3/7"); break;} 
+//     case 4 : {sprintf(gui," 4/7"); break;} 
+//     case 5 : {sprintf(gui," 5/7"); break;} 
+//     case 6 : {sprintf(gui," 6/7"); break;} 
+//     case 7 : {sprintf(gui," Max"); break;} 
+//  }
+//  drv.setText(0,(char*)gui);
 
   drv.CW=false;
   drv.CCW=false;
@@ -730,6 +794,7 @@ void DriverUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void ShiftUpdate() {
 
+  fprintf(stderr,"ShiftUpdate()\n");
   if (shf.CW == true) {         //* Varies Tone shift between 500 and 800 Hz
      if (shf.mItem < 6) {
         shf.mItem++;
@@ -745,16 +810,26 @@ void ShiftUpdate() {
      }
   }
   char* s=(char*)"           ";
-  switch(shf.mItem) {
-    case 0:                          {s=(char*)"500 Hz ";break;};                            
-    case 1:                          {s=(char*)"550 Hz ";break;};                            
-    case 2:                          {s=(char*)"600 Hz";break;};                            
-    case 3:                          {s=(char*)"650 Hz";break;};                            
-    case 4:                          {s=(char*)"700 Hz";break;};                            
-    case 5:                          {s=(char*)"750 Hz";break;};                            
-    case 6:                          {s=(char*)"800 Hz";break;};                            
-  }
-  shf.setText(0,(char*)s);
+  //switch(shf.mItem) {
+  //  case 0:                          {s=(char*)"500 Hz ";break;};                            
+  //  case 1:                          {s=(char*)"550 Hz ";break;};                            
+  //  case 2:                          {s=(char*)"600 Hz";break;};                            
+  //  case 3:                          {s=(char*)"650 Hz";break;};                            
+  //  case 4:                          {s=(char*)"700 Hz";break;};                            
+  //  case 5:                          {s=(char*)"750 Hz";break;};                            
+  //  case 6:                          {s=(char*)"800 Hz";break;};                            
+  //}
+  //char g[80];
+
+  fprintf(stderr,"shiftUpdate()\n");
+  int k=shf.mItem*50+500;
+  guiDrawBar(bar,shf.mItem,6);
+  sprintf(gui,"%3d[%5s]%3s",k,bar,(char*)" Hz");
+  shf.setText(0,(char*)gui);
+  //shf.setText(0,(char*)s);
+  shf.l.get(0)->mText=gui;
+  showPanel();
+
   shf.CW=false;
   shf.CCW=false;
  
@@ -785,6 +860,8 @@ void StepUpdate() {
     case 6 : {s=(char*)" 100 KHz"; break;}
   } 
 
+
+
   stp.setText(0,(char*)s);
   stp.CW=false;
   stp.CCW=false;
@@ -793,6 +870,21 @@ void StepUpdate() {
 //*---- NOT IMPLEMENTED YET
 
 void LockUpdate() {
+
+  if (lck.mItem < 1 && lck.CW == true) {
+      lck.mItem++;
+  }
+  if (lck.mItem > 0 && lck.CCW == true) {
+      lck.mItem--;
+  }
+  char* s=(char*)"                  "; 
+  switch(lck.mItem) {
+    case 0:                          {s=(char*)"Off ";break;};                            
+    case 1:                          {s=(char*)"On  ";break;};
+  }
+
+  lck.l.get(0)->mText=s;
+  showPanel();
 
 }
 void setDDSFreq() {

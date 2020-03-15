@@ -378,27 +378,27 @@ boolean VFOSystem::isVFOChanged(byte bVFO) {
 void VFOSystem::updateVFO(byte bVFO,long int vstep) {
    
    vfo[bVFO]=vfo[bVFO]+vstep;
-   fprintf(stderr,"updateVFO() VFO(%d) vfo=%ld rxa=%ld min=%ld max=%ld",bVFO,vfo[bVFO],_rxa[bVFO],vfomin[bVFO],vfomax[bVFO]);
 
+   fprintf(stderr,"updateVFO() VFO(%d) vfo=%ld rxa=%ld\n",bVFO,vfo[bVFO],_rxa[bVFO]);
+   fprintf(stderr,"updateVFO() min=%ld max=%ld step(%ld)\n",vfomin[bVFO],vfomax[bVFO],vstep);
    
    if (vfo[bVFO] > vfomax[bVFO]) {
        vfo[bVFO] = vfomax[bVFO];
+       fprintf(stderr,"Hit Upper VFO limit\n");
    } // UPPER VFO LIMIT
        
    if (vfo[bVFO] < vfomin[bVFO]) {
        vfo[bVFO] = vfomin[bVFO];
+       fprintf(stderr,"Hit Lower VFO limit\n");
    } // LOWER VFO LIMIT
 
    getStr(bVFO);
 
    if (vfo[bVFO]!=_rxa[bVFO]) {
       resetVFO(bVFO); 
-
-
       if (changeDDS!=NULL) {
          changeDDS();
       }
-   
    }
 
    if (changeVFO!=NULL) {

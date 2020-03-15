@@ -26,10 +26,10 @@ X [HW] Implement Cooler Control
 * [Bug] Problemas al actualizar el modo
 * [Bug] Debounce push and encoder
 * [Bug] Break-In no implementado
-* [Bug] Implementar Lock
-* [Bug] Implementar control de Valor
-* [Bug] Implementar variacion de velocidad
-* [Bug] Implementar nivel de POWER
+X [Bug] Implementar Lock
+X [Bug] Implementar control de Valor
+X [Bug] Implementar variacion de velocidad
+X [Bug] Implementar nivel de POWER
 * [Bug] Implementar Señal Random y Potencia=POWER
 * [Bug] Backlight no anda
 * [Bug] Implementar State machine usando AUX

@@ -374,6 +374,7 @@ void setPTT(bool statePTT) {
     float f=0;
     int i=0;
 
+    //fprintf(stderr,"setPTT() entering setPTT statePTT(%d)\n",statePTT);
 //*---------------------------------*
 //*          PTT Activated          *
 //*---------------------------------*
@@ -384,6 +385,7 @@ void setPTT(bool statePTT) {
         
 
        if (getWord(FT817,SPLIT)==true  && fSwap==false) {
+          //fprintf(stderr,"setPTT() SPLIT=true, swap VFO\n");
           fSwap=true;
           vx.vfoAB=(vx.vfoAB==VFOA ? VFOB : VFOA);
           showGUI();
@@ -391,18 +393,23 @@ void setPTT(bool statePTT) {
 
        if (mode==MCW) {
           df=(float)vx.vfoshift[vx.vfoAB];
+          //fprintf(stderr,"setPTT() MCW mode df=%f10.0\n",df);
        }
 
        if (mode==MCWR) {
           df=-(float)vx.vfoshift[vx.vfoAB];
+          //fprintf(stderr,"setPTT() MCWR mode df=%f10.0\n",df);
+
        }
 
        f=(float)(vx.vfo[vx.vfoAB]+(mode==MCW || mode==MCWR ? df : 0));
        log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->SetFrequency,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
+       //fprintf(stderr,"setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)\n",(int)f,(int)dds->SetFrequency,(int)df,mode,(int)vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
 
 //*--- Now turn the transmitter at the frequency f based on the mode
 
        log_info("PTT(On)");
+       //fprintf(stderr,"PTT(On)\n");
 
        switch(mode) {
            case MCW:
@@ -420,6 +427,7 @@ void setPTT(bool statePTT) {
                    }
        }
 
+       //fprintf(stderr,"PTT() gpioWrite: PTT_ON\n");
        gpioWrite(ptt, PTT_ON);
        return;
     } 
@@ -432,6 +440,7 @@ void setPTT(bool statePTT) {
     log_trace("PTT <OFF>, Receiver mode");
     log_info("PTT(Off)");
     //softToneWrite (sidetone_gpio, 0);
+    //fprintf(stderr,"setPTT(OFF)\n");
     gpioWrite(ptt, PTT_OFF);
 
     if (getWord(FT817,SPLIT)==true && fSwap==true){
@@ -442,6 +451,7 @@ void setPTT(bool statePTT) {
     fSwap=false;  
     f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? ritofs : 0);
     log_trace("setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
+    //fprintf(stderr,"setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)\n",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
 
     switch(mode) {
 
@@ -511,7 +521,6 @@ void changeFreq() {
 void CATchangeFreq() {
 
   //
-  //fprintf(stderr,"CATchangeFreq() {BEFORE} cat.SetFrequency(%d) SetFrequency(%d) vx.get(vx.vfoAB)(%d) vx.vfoAB(%d)\n",(int)cat.SetFrequency,(int)SetFrequency,(int)vx.get(vx.vfoAB),(int)vx.vfoAB);
   log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)SetFrequency);
   SetFrequency=cat.SetFrequency;
   log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
@@ -528,7 +537,6 @@ void CATchangeFreq() {
   }
   dds->set(SetFrequency);
   vx.set(vx.vfoAB,f);
-  //fprintf(stderr,"CATchangeFreq() {AFTER} cat.SetFrequency(%d) SetFrequency(%d) vx.get(vx.vfoAB)(%d) vx.vfoAB(%d)\n",(int)cat.SetFrequency,(int)SetFrequency,(int)vx.get(vx.vfoAB),(int)vx.vfoAB);
   
 
 }
@@ -554,6 +562,24 @@ void CATchangeMode() {
        return;
 
 }
+//*------------------------------------------------------------------------------------------------------------
+//* updatestep
+//* update step for a given VFO
+//*------------------------------------------------------------------------------------------------------------
+void updatestep(byte v, int step) {
+
+       switch(step) {
+          case 0 : {vx.vfostep[v]=VFO_STEP_100Hz; break;}
+          case 1 : {vx.vfostep[v]=VFO_STEP_500Hz; break;}
+          case 2 : {vx.vfostep[v]=VFO_STEP_1KHz; break;}
+          case 3 : {vx.vfostep[v]=VFO_STEP_5KHz; break;}
+          case 4 : {vx.vfostep[v]=VFO_STEP_10KHz; break;}
+          case 5 : {vx.vfostep[v]=VFO_STEP_50KHz; break;}
+          case 6 : {vx.vfostep[v]=VFO_STEP_100KHz; break;}
+       }
+       return;
+}
+
 //*------------------------------------------------------------------------------------------------------------
 //* CATchangeStatus
 //* Detect which change has been produced and operate accordingly
@@ -598,7 +624,6 @@ void CATchangeStatus() {
        }
 
        if (getWord(cat.FT817,VFO) != getWord(FT817,VFO)) {        //* VFO Changed
-         //fprintf(stderr,"CATchangestatus() detecta cambio de VFO\n"); 
          log_trace("CATchangeStatus():VFO Change VFO(%d) cat.VFO(%d)",getWord(FT817,VFO),getWord(cat.FT817,VFO));
           setWord(&FT817,VFO,getWord(cat.FT817,VFO));
           if(getWord(FT817,VFO)==false){
@@ -610,19 +635,9 @@ void CATchangeStatus() {
           }
           VfoUpdate();
           log_info("VFO Changed now VFOAB(%d) f(%li)",vx.vfoAB,vx.get(vx.vfoAB)); 
-          //fprintf(stderr,"CATchangestatus() VFO Changed now to VFOAB(%d) f(%li)\n",vx.vfoAB,vx.get(vx.vfoAB)); 
 
        }
 
-       switch(step) {
-          case 0 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100Hz; break;}
-          case 1 : {vx.vfostep[vx.vfoAB]=VFO_STEP_500Hz; break;}
-          case 2 : {vx.vfostep[vx.vfoAB]=VFO_STEP_1KHz; break;}
-          case 3 : {vx.vfostep[vx.vfoAB]=VFO_STEP_5KHz; break;}
-          case 4 : {vx.vfostep[vx.vfoAB]=VFO_STEP_10KHz; break;}
-          case 5 : {vx.vfostep[vx.vfoAB]=VFO_STEP_50KHz; break;}
-          case 6 : {vx.vfostep[vx.vfoAB]=VFO_STEP_100KHz; break;}
-       }
        vx.setVFOShift(VFOA,shift);
        vx.setVFOShift(VFOB,shift);
        return;
@@ -737,17 +752,14 @@ void timer_exec()
 void aux_event(int gpio, int level, uint32_t tick) {
 
         log_trace("Event AUX level(%d)",level);
-        //fprintf(stderr,"<AUX> Event level(%d) \n",level);
 
         if (level != 0) {
            endAux = std::chrono::system_clock::now();
            int lapAux=std::chrono::duration_cast<std::chrono::milliseconds>(endAux - startAux).count();
            if (lapAux < MINSWPUSH) {
               log_trace("<AUX> pulse too short! ignored!");
-              //fprintf(stderr,"<AUX> too short! ignored! lap(%d)\n",lapAux);
            } else {
              log_trace("AUX Event detected");   
-             //fprintf(stderr,"<AUX> event detected lap(%d)\n",lapAux);
              auxcnt=(auxcnt+1) & 0xff;
              lcd.clear();
              lcd.setCursor(0,0);
@@ -1117,7 +1129,6 @@ void showFreq() {
 
   FSTR v;  
   long int f=vx.get(vx.vfoAB); 
-  //fprintf(stderr,"<showFreq()> VFO(%d) freq(%d)\n",vx.vfoAB,(int)f);
   vx.computeVFO(f,&v);
 
   if (v.millions >= 10) {
@@ -1188,7 +1199,6 @@ void processVFO() {
          setWord(&JSW,XVFO,true);
          setWord(&TSW,FTU,true);
          TVFO=ONESECS;
-         //fprintf(stderr,"<processVFO> TVFO=ONESECS calling showFreq()\n");
          showFreq();
       }
       setWord(&USW,BCW,false);
@@ -1208,7 +1218,6 @@ void processVFO() {
          TVFO=ONESECS;
          setWord(&TSW,FTD,true);
          setWord(&JSW,XVFO,true);
-         //fprintf(stderr,"<processVFO> TSW,JSW calling showFreq()\n");
          showFreq();
       }
       setWord(&USW,BCCW,false);
@@ -1364,7 +1373,12 @@ int main(int argc, char* argv[])
    (ini_getl("VFO","AB",VFOA,inifile)==VFOA ? SetFrequency=ini_getl("VFO","VFOA",VFO_START,inifile)*1.0 : SetFrequency=ini_getl("VFO","VFOB",VFO_START,inifile)*1.0);  
 
    mode=ini_getl("VFO","MODE",MCW,inifile);
+
    step=ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile);
+   updatestep(VFOA,step);
+   updatestep(VFOB,step);
+   fprintf(stderr,"main() STEP(%d) step A(%li) step B(%li)\n",step,vx.vfostep[VFOA],vx.vfostep[VFOB]);
+
    shift=ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile);
 
    setWord(&FT817,SPLIT,ini_getl("VFO","SPLIT",0,inifile));
@@ -1462,7 +1476,7 @@ int main(int argc, char* argv[])
     menuRoot.add((char*)"BackLight",&bck);
     menuRoot.add((char*)"Lock",&lck);
     menuRoot.add((char*)"Speed",&spd);
-    menuRoot.add((char*)"DDS Drive",&drv);
+    menuRoot.add((char*)"Power",&drv);
 
 
 //*--- Setup child LCD menues
@@ -1619,20 +1633,18 @@ int main(int argc, char* argv[])
 
   vx.setVFOBand(VFOA,ini_getl("VFO","VFO_BAND_START",VFO_BAND_START,inifile));
   vx.set(VFOA,ini_getl("VFO","VFOA",VFO_START,inifile));
-  vx.setVFOStep(VFOA,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
+  //vx.setVFOStep(VFOA,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
   vx.setVFOLimit(VFOA,ini_getl("VFO","VFO_START",VFO_START,inifile),ini_getl("VFO","VFO_END",VFO_END,inifile));
   vx.setVFOShift(VFOA,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
 
   vx.setVFOBand(VFOB,ini_getl("VFO","VFO_BAND_START",VFO_BAND_START,inifile));
   vx.set(VFOB,ini_getl("VFO","VFOB",VFO_START,inifile));
-  vx.setVFOStep(VFOB,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
+  //vx.setVFOStep(VFOB,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
   vx.setVFOLimit(VFOB,ini_getl("VFO","VFO_START",VFO_START,inifile),ini_getl("VFO","VFO_END",VFO_END,inifile));
   vx.setVFOShift(VFOB,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
 
   vx.setVFO(ini_getl("VFO","AB",VFOA,inifile));
 
-  //vx.set(vx.vfoAB,SetFrequency);
-  //vx.set(vx.vfoAB,SetFrequency);
 
 //*--- After the initializacion clear the LCD and show panel in VFOMode
 
@@ -1678,8 +1690,21 @@ int main(int argc, char* argv[])
 
     alarm(ONESECS);  // set an alarm for 1 seconds from now to clear all values
     showPanel();
-    //fprintf(stderr,"<main> init sequence calling showFreq()\n");
     showFreq();
+
+
+    vfo.refresh();
+    spl.refresh();
+    rit.refresh();
+    stp.refresh();
+    kyr.refresh();
+    wtd.refresh();
+    bck.refresh();
+    mod.refresh();
+    lck.refresh();
+    drv.refresh();
+    spd.refresh();
+
 
 //*----------------------------------------------------------------------------
 //*--- Firmware initialization completed
@@ -1744,7 +1769,7 @@ int main(int argc, char* argv[])
     sprintf(iniStr,"%d",mode);
     nIni=ini_puts("VFO","MODE",iniStr,inifile);
 
-    sprintf(iniStr,"%d",step);
+    sprintf(iniStr,"%li",vx.vfostep[vx.vfoAB]);
     nIni=ini_puts("VFO","VFO_STEP",iniStr,inifile);
 
     sprintf(iniStr,"%d",shift);
