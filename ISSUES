@@ -1,0 +1,12 @@
+Issues:
+
+    No issues logged at this time
+    No support or requests to be honored while the project is being built
+
+Implementation Backlog
+
+X [Bug] Debounce push and encoder
+* [Feature] USB mode
+* [Feature] FSK (RTTY) mode
+* [Feature] PSK (PSK31) mode
+* [Feature] FT8 mode
