@@ -18,7 +18,7 @@ class MenuClass
   public:
   typedef void (*CALLBACK)();
   typedef struct {
-         char* mText;
+         char* mText=(char*)"                    ";
          MenuClass* mChild;
          } List;
 
@@ -57,6 +57,7 @@ class MenuClass
       //List* getmem();
       
       CALLBACK update;
+      char* g=(char*)"                    ";
 
       
   private:    
@@ -134,6 +135,10 @@ char* MenuClass::getText(unsigned char i) {
 //*------------------------------------------------------------------------------------------------ 
 void MenuClass::setText(unsigned char i,char* c) {
 
+  fprintf(stderr,"MenuClass::setText i=%d,char* %s\n",i,c);
+  //free(l.get(i)->mText);
+  //char* l.get(i)->mText=malloc(strlen(c)+1);
+  //strcpy(l.get(i)->mText,c);
   l.get(i)->mText=c;
   return;
 }
@@ -183,6 +188,7 @@ void MenuClass::move(bool cCW,bool cCCW){
 char* MenuClass::getCurrentText(){
 
   if (update!=NULL){
+    refresh();
     return getText(0);
   }
   return getText(mItem);

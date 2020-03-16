@@ -332,7 +332,26 @@ void showPTT();
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*                              ROUTINE STRUCTURE
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+//*------------------------------------------------------------------------------------------------------------
+//* updatestep
+//* update step for a given VFO
+//*------------------------------------------------------------------------------------------------------------
+void updatestep(byte v, int step) {
+
+       switch(step) {
+          case 0 : {vx.vfostep[v]=VFO_STEP_100Hz; break;}
+          case 1 : {vx.vfostep[v]=VFO_STEP_500Hz; break;}
+          case 2 : {vx.vfostep[v]=VFO_STEP_1KHz; break;}
+          case 3 : {vx.vfostep[v]=VFO_STEP_5KHz; break;}
+          case 4 : {vx.vfostep[v]=VFO_STEP_10KHz; break;}
+          case 5 : {vx.vfostep[v]=VFO_STEP_50KHz; break;}
+          case 6 : {vx.vfostep[v]=VFO_STEP_100KHz; break;}
+       }
+       return;
+}
+
 #include "../lib/gui.h"
+
 
 //*--------------------------[minIni callback]---------------------------------------------------
 //* call back to manage configuration data from .cfg file
@@ -561,23 +580,6 @@ void CATchangeMode() {
        ModeUpdate();
        return;
 
-}
-//*------------------------------------------------------------------------------------------------------------
-//* updatestep
-//* update step for a given VFO
-//*------------------------------------------------------------------------------------------------------------
-void updatestep(byte v, int step) {
-
-       switch(step) {
-          case 0 : {vx.vfostep[v]=VFO_STEP_100Hz; break;}
-          case 1 : {vx.vfostep[v]=VFO_STEP_500Hz; break;}
-          case 2 : {vx.vfostep[v]=VFO_STEP_1KHz; break;}
-          case 3 : {vx.vfostep[v]=VFO_STEP_5KHz; break;}
-          case 4 : {vx.vfostep[v]=VFO_STEP_10KHz; break;}
-          case 5 : {vx.vfostep[v]=VFO_STEP_50KHz; break;}
-          case 6 : {vx.vfostep[v]=VFO_STEP_100KHz; break;}
-       }
-       return;
 }
 
 //*------------------------------------------------------------------------------------------------------------
@@ -1242,6 +1244,22 @@ int main(int argc, char* argv[])
     log_set_level(LOG_INFO);
 
 
+//----------------------------
+	//----- CREATE SEMAPHORE -----
+	//----------------------------
+	//fprintf(stderr,"Creating semaphore...\n");
+	//semaphore1_id = semget((key_t)12345, 1, 0666 | IPC_CREAT);		//<<<<< SET THE SEMPAHORE KEY   (Semaphore key, number of semaphores required, flags)
+	//	Semaphore key
+	//		Unique non zero integer (usually 32 bit).  Needs to avoid clashing with another other processes semaphores (you just have to pick a random value and hope - ftok() can help with this but it still doesn't guarantee to avoid colision)
+
+	//Initialize the semaphore using the SETVAL command in a semctl call (required before it can be used)
+	//union semun sem_union_init;
+	//sem_union_init.val = 1;
+	//if (semctl(semaphore1_id, 0, SETVAL, sem_union_init) == -1)
+	//{
+	//	fprintf(stderr, "Creating semaphore failed to initialize\n");
+	//	exit(EXIT_FAILURE);
+	//}
 
 
 //*--- Process arguments (mostly an excerpt from tune.cpp)
@@ -1835,6 +1853,16 @@ int main(int argc, char* argv[])
 
     lcd.backlight(false);
     lcd.clear();
+
+//----------------------------
+	//----- DELETE SEMAPHORE -----
+	//----------------------------
+	//It's important not to unintentionally leave semaphores existing after program execution. It also may cause problems next time you run the program.
+    //union semun sem_union_delete;
+    //if (semctl(semaphore1_id, 0, IPC_RMID, sem_union_delete) == -1)
+    //	fprintf(stderr, "Failed to delete semaphore\n");
+    //
+
     fprintf(stderr,"\nProgram terminated....\n");
     exit(0);
 }

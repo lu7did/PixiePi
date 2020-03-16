@@ -24,19 +24,21 @@ using namespace std;
 
 char gui[80];
 char bar[]="     ";
+bool rFlag=false;
+
 //*-----------------------------------------------------------------------------------------------------
 //*--- guiDrawBar
 //*-----------------------------------------------------------------------------------------------------
+
 void guiDrawBar(char *s,int v, int vmax) {
 
-  fprintf(stderr,"guiDrawBar() value=%d max=%d\n",v,vmax);
   if (vmax==0) { return; }
   if (v>vmax)  { v=vmax; }
   float r=(float)v/(float)vmax;
-  r=r*5;
+  r=r*MAXBAR;
   int  l=(int)r;
-  fprintf(stderr,"guiDrawBar() r=%.3f l=%d segments\n",r,l);
-  for (int i=0;i<5;i++) {
+  fprintf(stderr,"guiDrawBar() value=%d max=%d r=%.3f l=%d segments\n",v,vmax,r,l);
+  for (int i=0;i<MAXBAR;i++) {
    if (l>i) {
      s[i]=char(255);
    } else {
@@ -175,20 +177,20 @@ void showMode(){
 //*----------------------------------------------------------------------------$
 //* Show the Wifi connection status
 //*----------------------------------------------------------------------------$
-void showWlan0() {
-
-   lcd.setCursor(14,1);
-   if (wtd.mItem != 0) {
-       if (wlan0 == true) {
-         lcd.print("*");
-      } else {
-         lcd.print(" ");
-      }
-   } else {
-     lcd.print("-");
-   }
-
-}
+//void showWlan0() {
+//
+//   lcd.setCursor(14,1);
+//   if (wtd.mItem != 0) {
+//       if (wlan0 == true) {
+//         lcd.print("*");
+//      } else {
+//         lcd.print(" ");
+//      }
+//   } else {
+//     lcd.print("-");
+//   }
+//
+//}
 //*----------------------------------------------------------------------------$
 //* Show the standard panel in VFO mode (CLI=false)
 //*----------------------------------------------------------------------------$
@@ -215,6 +217,14 @@ void showGUI() {
 //*--------------------------------------------------------------------------------------------
 void showPanel() {
 
+//----- SEMAPHORE GET ACCESS -----
+   //if (!semaphore1_get_access())
+   //   return;
+
+   if (rFlag != false) {
+      return;
+   }
+   rFlag=true;
    
 //*---- Panel when in VFO mode (CMD=false)
 
@@ -222,6 +232,8 @@ void showPanel() {
       lcd.clear();
       lcd.setCursor(0,0);
       showGUI();
+      //semaphore1_release_access();
+      rFlag=false;
       return;
    }
 
@@ -229,6 +241,8 @@ void showPanel() {
 
    byte i=menuRoot.get();
    MenuClass* z=menuRoot.getChild(i);
+   fprintf(stderr,"showPanel() i=%d getCurrentText=%s getText(0)=%s\n",i,menuRoot.getCurrentText(),(char*)z->l.get(0)->mText);
+
    char gui[80];
 
 //*--- GUI=false (meaning parameter read and navigation)
@@ -238,10 +252,17 @@ void showPanel() {
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getCurrentText());
       lcd.print((char*)gui);
-
+      //z->refresh();
       lcd.setCursor(1,1);
-      sprintf(gui,"  %s ",(char*)z->getText(0));
+      if (z->update != NULL) {
+         z->update();
+         sprintf(gui,"  %s ",(char*)z->g);
+      } else {
+         sprintf(gui,"  %s ",(char*)z->getText(z->mItem));
+      }
       lcd.print((char*)gui);
+      //semaphore1_release_access();
+      rFlag=false;
       return;
    } else {
 
@@ -251,12 +272,23 @@ void showPanel() {
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getText(menuRoot.get()));
       lcd.print(gui);
+      //z->refresh();
       lcd.setCursor(0,1);
-      sprintf(gui,"> %s<",(char*)z->getText(0));
+      if (z->update != NULL) {
+         z->update();
+         sprintf(gui,">  %s >",(char*)gui);
+      } else {
+         sprintf(gui,"> %s <",(char*)z->getText(z->mItem));
+      }
+      //sprintf(gui,"> %s<",(char*)z->getText(0));
       lcd.print(gui);
+      //semaphore1_release_access();
+      rFlag=false;
       return;
    }
-
+   //semaphore1_release_access();
+   rFlag=false;
+   return;
 }
 //*--------------------------------------------------------------------------------------------
 //* showSave
@@ -524,7 +556,7 @@ void KeyerUpdate() {
     case 1:                          {s=(char*)"Iambic A";break;};
     case 2:                          {s=(char*)"Iambic B";break;};
   }
-  kyr.l.get(0)->mText=s;
+  kyr.g=s;
   showPanel();
   return;
 
@@ -548,7 +580,7 @@ void SplitUpdate() {
     case 1:                          {s=(char*)"On";break;};
   }
   
-  spl.l.get(0)->mText=s;
+  spl.g=s;
   showPanel();
   
   return;
@@ -596,7 +628,8 @@ void ModeUpdate() {
   }
   
   //fprintf(stderr,"<modeUpdate> mItem(%d) mText(%s)\n",mod.mItem,s);
-  mod.l.get(0)->mText=s;
+  //mod.l.get(0)->mText=s;
+  mod.g=s;
   showPanel();
   
   return;
@@ -621,7 +654,7 @@ void WatchDogUpdate() {
     case 1:                          {s=(char*)"On";break;};
   }
   
-  wtd.l.get(0)->mText=s;
+  wtd.g=s;
   showPanel();
   
   return;
@@ -646,7 +679,7 @@ void VfoUpdate() {
     case 1:                          {s=(char*)"Vfo B";break;};
   }
 
-  vfo.l.get(0)->mText=s;
+  vfo.g=s;
   showPanel();
  
   return;
@@ -676,15 +709,16 @@ void BackLightUpdate() {
   }
   //char g[80];
 
+  //char g[17];
   guiDrawBar(bar,bck.mItem,60);
   sprintf(gui,"%3d[%5s]%3s",bck.mItem,bar,(char*)" % ");
-  bck.setText(0,(char*)gui);
-
+  bck.g=(char*)gui;
+  showPanel();
    
   //sprintf(gui,"%i secs",bck.mItem);
   //bck.setText(0,(char*)gui);
-  bck.l.get(0)->mText=(char*)gui;
-  showPanel();
+  //bck.l.get(0)->mText=(char*)gui;
+  //showPanel();
 
   bck.CW=false;
   bck.CCW=false;
@@ -709,13 +743,18 @@ void SpeedUpdate() {
      spd.mItem--;
   }
   //char g[80];
+  //char g[17];
+  char s[17]; 
 
   guiDrawBar(bar,spd.mItem,40);
   sprintf(gui,"%3d[%5s]%3s",spd.mItem,bar,(char*)"WPM");
-  spd.setText(0,(char*)gui);
-
-  spd.l.get(0)->mText=gui;
+  spd.g=(char*)gui;
   showPanel();
+  //spd.setText(0,(char*)gui);
+  //strcpy((char*)g,(char*)gui);
+  //spd.setText(0,(char*)g);
+
+  //showPanel();
 
   spd.CW=false;
   spd.CCW=false;
@@ -739,8 +778,11 @@ void RitUpdate() {
     case 1:                          {s=(char*)"On  ";break;};
   }
 
-  rit.l.get(0)->mText=s;
+  rit.g=s;
   showPanel();
+
+  //rit.l.get(0)->mText=s;
+  //showPanel();
 
 }
 //*-----------------------------------------------------------------------------------------------------
@@ -761,14 +803,23 @@ void DriverUpdate() {
 
   fprintf(stderr,"driverUpdate()\n");
   //char g[80];
-
-  float r=(float)drv.mItem/7.0;
+  //char gui[80];
+  //char bar[16];
+  float r=100.0*((float)drv.mItem/7.0);
   guiDrawBar(bar,drv.mItem,7);
-  sprintf(gui,"%3d[%5s]%3s",(int)r,bar,(char*)" % ");
-  drv.setText(0,(char*)gui);
-
-  drv.l.get(0)->mText=gui;
+  sprintf(gui,"%3d[%5s]%3s",(int)r,(char*)bar,(char*)" % ");
+  
+  //fprintf(stderr,"DriverUpdate(): PREV %d %s %s\n",(int)r,(char*)bar,(char*)g);
+  //strcpy(s,(char*)g);
+  drv.g=(char*)gui;
   showPanel();
+
+  fprintf(stderr,"DriverUpdate(): POST %d %s %s\n",(int)r,(char*)bar,(char*)drv.l.get(0)->mText);
+
+  //drv.setText(0,(char*)g);
+
+  //drv.l.get(0)->mText=g;
+  //showPanel();
 
 
 //  switch(drv.mItem) {
@@ -821,14 +872,17 @@ void ShiftUpdate() {
   //}
   //char g[80];
 
+  //char g[17];
   fprintf(stderr,"shiftUpdate()\n");
   int k=shf.mItem*50+500;
   guiDrawBar(bar,shf.mItem,6);
   sprintf(gui,"%3d[%5s]%3s",k,bar,(char*)" Hz");
-  shf.setText(0,(char*)gui);
+  shf.g=(char*)gui;
+  
+  //shf.setText(0,(char*)g);
   //shf.setText(0,(char*)s);
-  shf.l.get(0)->mText=gui;
-  showPanel();
+  //shf.l.get(0)->mText=gui;
+  //showPanel();
 
   shf.CW=false;
   shf.CCW=false;
@@ -841,6 +895,7 @@ void ShiftUpdate() {
 //*-------------------------------------------------------------------------
 void StepUpdate() {
 
+  fprintf(stderr,"StepUpdate()\n");
   if (stp.CW == true && stp.mItem < 6) {         //* Varies Tone shift between 500 and 800 Hz
       stp.mItem++;
   }
@@ -849,6 +904,7 @@ void StepUpdate() {
       stp.mItem--;
   }
 
+  fprintf(stderr,"StepUpdate() step=%d\n",stp.mItem);
   char* s=(char*)"                  ";
   switch(stp.mItem) {
     case 0 : {s=(char*)" 100 Hz "; break;}
@@ -860,15 +916,21 @@ void StepUpdate() {
     case 6 : {s=(char*)" 100 KHz"; break;}
   } 
 
+  stp.g=(char*)s;
+  showPanel();
 
+  updatestep(VFOA,stp.mItem);
+  updatestep(VFOB,stp.mItem);
 
-  stp.setText(0,(char*)s);
   stp.CW=false;
   stp.CCW=false;
   return;
 }
+//*----------------------------------------------------------------------------
+//* LockUpdate
+//*
 //*---- NOT IMPLEMENTED YET
-
+//*----------------------------------------------------------------------------
 void LockUpdate() {
 
   if (lck.mItem < 1 && lck.CW == true) {
@@ -883,7 +945,8 @@ void LockUpdate() {
     case 1:                          {s=(char*)"On  ";break;};
   }
 
-  lck.l.get(0)->mText=s;
+  lck.g=s;
+  //lck.l.get(0)->mText=s;
   showPanel();
 
 }

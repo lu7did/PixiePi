@@ -1,3 +1,4 @@
+
 Issues:
 
     No issues logged at this time
@@ -7,11 +8,11 @@ Implementation Backlog
 
 X [Bug] Debounce push and encoder
 * [Bug] Backlight timeout doesn't work
-* [Bug] Wrong message on GUI at first use
+X [Bug] Wrong message on GUI at first use
 * [Bug] Lock doesn't work
 * [Bug] Implement driver level
 * [Bug] Representation for S-Meter and Power
-* [Bug] Extend S-Meter to 5 blocks
+X [Bug] Extend S-Meter to 5 blocks
 * [Bug] Check keyer speed update
 * [Bug] Debounce AUX
 * [Bug] Keyer type not persistent

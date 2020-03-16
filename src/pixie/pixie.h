@@ -55,7 +55,7 @@ typedef void (*CALLBACK)();
 #define AUX_GPIO 21
 #define KEY_DOWN 0x01
 #define KEY_UP 0x00
-
+#define MAXBAR 5
 //*----------- Define Keyer related constants
 
 #define KEYER_STRAIGHT 0
