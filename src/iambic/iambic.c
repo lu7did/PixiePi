@@ -81,7 +81,7 @@ Boston, MA  02110-1301, USA.
 #include <semaphore.h>
 
 #include <wiringPi.h>
-#include <softTone.h>
+//#include <softTone.h>
 #include <pigpio.h>
 //#include "../lib/keyed_tone.h"
 
@@ -450,7 +450,7 @@ int iambic_init()  {
     int i=0;
     fprintf(stderr,"iambic.c: Ready to operate\n");
     if (SIDETONE_GPIO) {
-        softToneCreate(SIDETONE_GPIO);
+        //softToneCreate(SIDETONE_GPIO);
     }
 
     i = sem_init(&cw_event, 0, 0);

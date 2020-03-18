@@ -136,7 +136,6 @@ extern const char * const sys_siglist[];
 //*-------------------------------------------------------------------------------------------------
 //* Main structures
 //*-------------------------------------------------------------------------------------------------
-
 //*--- VFO object
 VFOSystem vx(showFreq,NULL,NULL,NULL);
 
@@ -391,6 +390,7 @@ void setPTT(bool statePTT) {
 
     float df=0;
     float f=0;
+
     int i=0;
 
     //fprintf(stderr,"setPTT() entering setPTT statePTT(%d)\n",statePTT);
@@ -732,9 +732,12 @@ void timer_exec()
 
   if (TBCK>0){
      TBCK--;
+     //fprintf(stderr,"timer_exe(): TBCK(%d)\n",TBCK);
      if (TBCK==0){
+        //fprintf(stderr,"timer_exe():TBCK llego a cero\n");
         if (backlight !=0) {
            setWord(&TSW,FBCK,true);
+	   //fprintf(stderr,"timer_exe(): FBCK set to true\n");
         }
      }
   }
@@ -776,6 +779,7 @@ void aux_event(int gpio, int level, uint32_t tick) {
         startAux = std::chrono::system_clock::now();
         //int pushSW=gpioRead(ENCODER_SW);
         lcd.backlight(true);
+        //fprintf(stderr,"aux_event(): TBCK=%d backlight(true)\n",TBCK);
         TBCK=backlight;;
 
 }
@@ -810,6 +814,7 @@ void updateSW(int gpio, int level, uint32_t tick)
         startPush = std::chrono::system_clock::now();
         int pushSW=gpioRead(ENCODER_SW);
         lcd.backlight(true);
+	//fprintf(stderr,"updateSW(): TBCK set to backlight (true)\n");
         TBCK=backlight;;
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
@@ -834,6 +839,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 
         TBCK=backlight;
         lcd.backlight(true);
+	//fprintf(stderr,"main(): Set TBCK(%d) backlight(true)\n",TBCK);
 
         endEncoder = std::chrono::system_clock::now();
         int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
@@ -1395,7 +1401,7 @@ int main(int argc, char* argv[])
    step=ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile);
    updatestep(VFOA,step);
    updatestep(VFOB,step);
-   fprintf(stderr,"main() STEP(%d) step A(%li) step B(%li)\n",step,vx.vfostep[VFOA],vx.vfostep[VFOB]);
+   //fprintf(stderr,"main() STEP(%d) step A(%li) step B(%li)\n",step,vx.vfostep[VFOA],vx.vfostep[VFOB]);
 
    shift=ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile);
 
@@ -1418,6 +1424,7 @@ int main(int argc, char* argv[])
    backlight=ini_getl("MISC","BACKLIGHT",BACKLIGHT_DELAY,inifile);
    log_fatal("Transceiver misc. configuration");
    log_fatal("Misc Trace(%d) Backlight Timeout(%d)",trace,backlight);
+   TBCK=backlight;
 
 //*---- Configuration: DDS 
    gpio=ini_getl("DDS","GPIO",GPIO04,inifile);
@@ -1628,7 +1635,7 @@ int main(int argc, char* argv[])
 
 
     lcd.backlight(true);
-
+    //fprintf(stderr,"main() initial backlight(true)\n");
 //*--- Show banner briefly (1 sec)
 
     lcd.lcdLoc(LINE1);
@@ -1755,12 +1762,17 @@ int main(int argc, char* argv[])
            //ssb->process();
          }
          CMD_FSM();
-         lcd.backlight(true);
-
+         if (TBCK!=0 && backlight !=0 && getWord(MSW,CMD)==false) {
+            //fprintf(stderr,"loop(): TBCK!=0(%d) and backlight(%d) lights on\n",TBCK,backlight);
+            lcd.backlight(true);
+         }
 //*--- Clear the frequency moved marker from the display once the delay expires
 
-         if (getWord(TSW,FBCK)==true && backlight != 0) {
+         if (getWord(TSW,FBCK)==true && backlight != 0 && getWord(MSW,CMD)==false) {
+            //fprintf(stderr,"loop(): turn the lights off\n");
             setWord(&TSW,FBCK,false);
+	    lcd.backlight(false);
+            showSMeter(0);
          }
       }
 //*-------------------------------------------------------------------------------------------
@@ -1844,6 +1856,9 @@ int main(int argc, char* argv[])
     sprintf(iniStr,"%d",keyer_brk);
     nIni = ini_puts("KEYER","KEYER_BRK",iniStr,inifile);
 
+    sprintf(iniStr,"%d",backlight);
+    nIni = ini_puts("MISC","BACKLIGHT",iniStr,inifile);
+
 //*---- Turn cooler off 
 
     gpioWrite(COOLER_GPIO, 0);
@@ -1851,6 +1866,7 @@ int main(int argc, char* argv[])
 
 //*--- turn LCD off
 
+    fprintf(stderr,"main(): Turn off LCD light\n");
     lcd.backlight(false);
     lcd.clear();
 

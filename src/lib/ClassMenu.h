@@ -86,7 +86,7 @@ MenuClass::MenuClass(CALLBACK u) {
 //*-------------------------------------------------------------------------------------------------
 void MenuClass::refresh() {
   if (update!=NULL){
-     fprintf(stderr,"MenuClass::refresh()\n");
+     //fprintf(stderr,"MenuClass::refresh()\n");
      update();
   }
   return;

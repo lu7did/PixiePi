@@ -1,4 +1,5 @@
 
+
 #include <string.h>
 #include <cstring>
 using namespace std;
@@ -37,7 +38,7 @@ void guiDrawBar(char *s,int v, int vmax) {
   float r=(float)v/(float)vmax;
   r=r*MAXBAR;
   int  l=(int)r;
-  fprintf(stderr,"guiDrawBar() value=%d max=%d r=%.3f l=%d segments\n",v,vmax,r,l);
+  //fprintf(stderr,"guiDrawBar() value=%d max=%d r=%.3f l=%d segments\n",v,vmax,r,l);
   for (int i=0;i<MAXBAR;i++) {
    if (l>i) {
      s[i]=char(255);
@@ -119,7 +120,6 @@ void showPTT() {
 //*----------------------------------------------------------------------------$
 //* Show the keyer status
 //*----------------------------------------------------------------------------$
-
 void showKeyer() {
 
    lcd.setCursor(10,0);
@@ -132,7 +132,6 @@ void showKeyer() {
 //*----------------------------------------------------------------------------$
 //* Show the split status
 //*----------------------------------------------------------------------------$
-
 void showSplit() {
 
    lcd.setCursor(9,0);
@@ -166,37 +165,17 @@ void showMode(){
 
    if (mod.init==true) {
       lcd.print((char*)s); 
-      //fprintf(stderr,"<showMode> init(%d) mode(%d) mode: %s print(%s)\n",mod.init,mod.mItem,(char*)mod.l.get(0)->mText,(char*)s);  
    } else {
       lcd.print(" ");
-      //fprintf(stderr,"<showMode> init(%d) mode: \n",mod.init);  
    }
   
 
 }
 //*----------------------------------------------------------------------------$
-//* Show the Wifi connection status
-//*----------------------------------------------------------------------------$
-//void showWlan0() {
-//
-//   lcd.setCursor(14,1);
-//   if (wtd.mItem != 0) {
-//       if (wlan0 == true) {
-//         lcd.print("*");
-//      } else {
-//         lcd.print(" ");
-//      }
-//   } else {
-//     lcd.print("-");
-//   }
-//
-//}
-//*----------------------------------------------------------------------------$
 //* Show the standard panel in VFO mode (CLI=false)
 //*----------------------------------------------------------------------------$
 void showGUI() {
 
-   //fprintf(stderr,"<showGUI() calling showFreq()\n");
    showFreq();
    showVFO();
    showPTT();
@@ -217,10 +196,6 @@ void showGUI() {
 //*--------------------------------------------------------------------------------------------
 void showPanel() {
 
-//----- SEMAPHORE GET ACCESS -----
-   //if (!semaphore1_get_access())
-   //   return;
-
    if (rFlag != false) {
       return;
    }
@@ -232,7 +207,6 @@ void showPanel() {
       lcd.clear();
       lcd.setCursor(0,0);
       showGUI();
-      //semaphore1_release_access();
       rFlag=false;
       return;
    }
@@ -241,7 +215,7 @@ void showPanel() {
 
    byte i=menuRoot.get();
    MenuClass* z=menuRoot.getChild(i);
-   fprintf(stderr,"showPanel() i=%d getCurrentText=%s getText(0)=%s\n",i,menuRoot.getCurrentText(),(char*)z->l.get(0)->mText);
+   //fprintf(stderr,"showPanel() i=%d getCurrentText=%s getText(0)=%s\n",i,menuRoot.getCurrentText(),(char*)z->l.get(0)->mText);
 
    char gui[80];
 
@@ -252,16 +226,14 @@ void showPanel() {
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getCurrentText());
       lcd.print((char*)gui);
-      //z->refresh();
       lcd.setCursor(1,1);
       if (z->update != NULL) {
          z->update();
-         sprintf(gui,"  %s ",(char*)z->g);
+         sprintf(gui,"  %-12s ",(char*)z->g);
       } else {
-         sprintf(gui,"  %s ",(char*)z->getText(z->mItem));
+         sprintf(gui,"  %-12s ",(char*)z->getText(z->mItem));
       }
       lcd.print((char*)gui);
-      //semaphore1_release_access();
       rFlag=false;
       return;
    } else {
@@ -272,21 +244,17 @@ void showPanel() {
       lcd.setCursor(0,0);
       sprintf(gui,"<%d> %s",i,menuRoot.getText(menuRoot.get()));
       lcd.print(gui);
-      //z->refresh();
       lcd.setCursor(0,1);
       if (z->update != NULL) {
          z->update();
-         sprintf(gui,">  %s >",(char*)gui);
+         sprintf(gui,"> %-12s<",(char*)z->g);
       } else {
-         sprintf(gui,"> %s <",(char*)z->getText(z->mItem));
+         sprintf(gui,"> %-12s<",(char*)z->getText(z->mItem));
       }
-      //sprintf(gui,"> %s<",(char*)z->getText(0));
       lcd.print(gui);
-      //semaphore1_release_access();
       rFlag=false;
       return;
    }
-   //semaphore1_release_access();
    rFlag=false;
    return;
 }
@@ -312,18 +280,15 @@ void showMark(){
 //*-------------------------------------------------------------------------------------------
 void saveMenu() {
 
+      //fprintf(stderr,"saveMenu(): Analyzing");
       byte i=menuRoot.get();
       MenuClass* z=menuRoot.l.get(i)->mChild;
       byte j=z->mItem;
       byte k=z->mItemBackup;
 
-      //fprintf(stderr,"<doSave> vfo.mItem(%d) vx.vfoAB(%d)\n",vfo.mItem,vx.vfoAB); 
       if (vx.vfoAB != vfo.mItem) {      //Switch from VFO A to B or viceversa
          vx.vfoAB=vfo.mItem;
-         //fprintf(stderr,"Detecto cambio VFO ahora vfoAB(%d)\n",vx.vfoAB);
-         //vx.set(vx.vfoAB,vx.get(vx.vfoAB));
          cat.SetFrequency=(float)vx.get(vx.vfoAB);
-         //fprintf(stderr,"<saveMenu> Cambio cat.SetFrequency ahora %10.2f vx.get(%li)\n",cat.SetFrequency,vx.get(vx.vfoAB));
          (vx.vfoAB==VFOA ? setWord(&cat.FT817,VFO,false) : setWord(&cat.FT817,VFO,true));
          CATchangeFreq();
          CATchangeStatus();         
@@ -336,8 +301,13 @@ void saveMenu() {
          CATchangeStatus();
       }
 
+      //fprintf(stderr,"saveMenu(): mItem(%d) backlight(%d)\n",bck.mItem,backlight);
       if (bck.mItem != backlight) {     //Change in backlight condition
          backlight=bck.mItem;
+         if (backlight != 0) {
+            TBCK=backlight;
+         }
+         //fprintf(stderr,"saveMenu(): Backlight changed to %d\n",backlight);
       }
       
       if (kyr.mItem != cw_keyer_mode) { //Change in keyer mode
@@ -543,7 +513,7 @@ void CMD_FSM() {
 //*--- Keyer content
 void KeyerUpdate() {
 
-  fprintf(stderr,"KeyerUpdate()\n");
+  //fprintf(stderr,"KeyerUpdate()\n");
   if (kyr.mItem < 2 && kyr.CW == true) {
       kyr.mItem++;
   }
@@ -566,7 +536,7 @@ void KeyerUpdate() {
 //*---- Split options
 //*--------------------------------------------------------------------------------------------------
 void SplitUpdate() {
-  fprintf(stderr,"SplitUpdate()\n");
+  //fprintf(stderr,"SplitUpdate()\n");
 
   if (spl.mItem < 1 && spl.CW == true) {
       spl.mItem++;
@@ -591,7 +561,7 @@ void SplitUpdate() {
 //*-------------------------------------------------------------------------------------------
 void ModeUpdate() {
 
-  fprintf(stderr,"ModeUpdate()\n");
+  //fprintf(stderr,"ModeUpdate()\n");
 
   if (mod.mItem < 12 && mod.CW == true) {
       mod.mItem++;
@@ -640,7 +610,7 @@ void ModeUpdate() {
 //*-----------------------------------------------------------------------------------
 void WatchDogUpdate() {
 
-  fprintf(stderr,"WatchdogUpdate()\n");
+  //fprintf(stderr,"WatchdogUpdate()\n");
 
   if (wtd.mItem < 1 && wtd.CW == true) {
       wtd.mItem++;
@@ -665,7 +635,7 @@ void WatchDogUpdate() {
 //*----------------------------------------------------------------------------------------
 void VfoUpdate() {
 
-  fprintf(stderr,"VfoUpdate()\n");
+  //fprintf(stderr,"VfoUpdate()\n");
 
   if (vfo.mItem < 1 && vfo.CW == true) {
       vfo.mItem++;
@@ -691,7 +661,7 @@ void VfoUpdate() {
 void BackLightUpdate() {
 
 
-  fprintf(stderr,"BackLightUpdate()\n");
+  //fprintf(stderr,"BackLightUpdate()\n");
 
   if (bck.CW == true) {
      if (bck.mItem < 60) {
@@ -707,18 +677,12 @@ void BackLightUpdate() {
         bck.mItem = 60;
      }
   }
-  //char g[80];
-
-  //char g[17];
   guiDrawBar(bar,bck.mItem,60);
   sprintf(gui,"%3d[%5s]%3s",bck.mItem,bar,(char*)" % ");
   bck.g=(char*)gui;
   showPanel();
-   
-  //sprintf(gui,"%i secs",bck.mItem);
-  //bck.setText(0,(char*)gui);
-  //bck.l.get(0)->mText=(char*)gui;
-  //showPanel();
+
+  //fprintf(stderr,"BackLightUpdate(): bck.mItem(%d) backlight(%d)\n",bck.mItem,backlight);
 
   bck.CW=false;
   bck.CCW=false;
@@ -731,7 +695,7 @@ void BackLightUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void SpeedUpdate() {
 
-  fprintf(stderr,"SpeedUpdate()\n");
+  //fprintf(stderr,"SpeedUpdate()\n");
 
   if (spd.init == false) {return;}
 
@@ -790,7 +754,7 @@ void RitUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void DriverUpdate() {
 
-  fprintf(stderr,"DriverUpdate()\n");
+  //fprintf(stderr,"DriverUpdate()\n");
 
   if (drv.init == false) {return;}
 
@@ -801,7 +765,7 @@ void DriverUpdate() {
      drv.mItem--;
   }
 
-  fprintf(stderr,"driverUpdate()\n");
+  //fprintf(stderr,"driverUpdate()\n");
   //char g[80];
   //char gui[80];
   //char bar[16];
@@ -814,7 +778,7 @@ void DriverUpdate() {
   drv.g=(char*)gui;
   showPanel();
 
-  fprintf(stderr,"DriverUpdate(): POST %d %s %s\n",(int)r,(char*)bar,(char*)drv.l.get(0)->mText);
+  //fprintf(stderr,"DriverUpdate(): POST %d %s %s\n",(int)r,(char*)bar,(char*)drv.l.get(0)->mText);
 
   //drv.setText(0,(char*)g);
 
@@ -845,7 +809,7 @@ void DriverUpdate() {
 //*-----------------------------------------------------------------------------------------------------
 void ShiftUpdate() {
 
-  fprintf(stderr,"ShiftUpdate()\n");
+  //fprintf(stderr,"ShiftUpdate()\n");
   if (shf.CW == true) {         //* Varies Tone shift between 500 and 800 Hz
      if (shf.mItem < 6) {
         shf.mItem++;
@@ -873,7 +837,7 @@ void ShiftUpdate() {
   //char g[80];
 
   //char g[17];
-  fprintf(stderr,"shiftUpdate()\n");
+  //fprintf(stderr,"shiftUpdate()\n");
   int k=shf.mItem*50+500;
   guiDrawBar(bar,shf.mItem,6);
   sprintf(gui,"%3d[%5s]%3s",k,bar,(char*)" Hz");
@@ -895,7 +859,7 @@ void ShiftUpdate() {
 //*-------------------------------------------------------------------------
 void StepUpdate() {
 
-  fprintf(stderr,"StepUpdate()\n");
+  //fprintf(stderr,"StepUpdate()\n");
   if (stp.CW == true && stp.mItem < 6) {         //* Varies Tone shift between 500 and 800 Hz
       stp.mItem++;
   }
@@ -904,7 +868,7 @@ void StepUpdate() {
       stp.mItem--;
   }
 
-  fprintf(stderr,"StepUpdate() step=%d\n",stp.mItem);
+  //fprintf(stderr,"StepUpdate() step=%d\n",stp.mItem);
   char* s=(char*)"                  ";
   switch(stp.mItem) {
     case 0 : {s=(char*)" 100 Hz "; break;}
@@ -928,8 +892,6 @@ void StepUpdate() {
 }
 //*----------------------------------------------------------------------------
 //* LockUpdate
-//*
-//*---- NOT IMPLEMENTED YET
 //*----------------------------------------------------------------------------
 void LockUpdate() {
 
