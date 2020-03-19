@@ -29,6 +29,7 @@ class MenuClass
       bool CW;
       bool CCW;
       bool init;
+      bool lock;
       List x;
       LinkedList<List*> l = LinkedList<List*>();      
 
@@ -42,7 +43,7 @@ class MenuClass
       unsigned char  get();
       unsigned char  getBackup();
       void  refresh();
-      
+      void  refresh(bool f);      
       void  setText(unsigned char i,char* c);
       bool  isUpdated();
       bool  last;
@@ -78,7 +79,7 @@ MenuClass::MenuClass(CALLBACK u) {
    CW=false;
    CCW=false;
    init=false;
-   
+   lock=false;   
    return;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -87,10 +88,25 @@ MenuClass::MenuClass(CALLBACK u) {
 void MenuClass::refresh() {
   if (update!=NULL){
      //fprintf(stderr,"MenuClass::refresh()\n");
+     lock=false;
      update();
   }
   return;
 }
+//*-------------------------------------------------------------------------------------------------
+//* Set current Index by force
+//*-------------------------------------------------------------------------------------------------
+void MenuClass::refresh(bool f) {
+  if (update!=NULL){
+     //fprintf(stderr,"MenuClass::refresh(bool)\n");
+     lock=f;
+     update();
+     lock=false;
+  }
+  return;
+}
+
+
 //*----------------------------------------------------------------------------
 //* Refresh content for actual value is dynamically created
 //*---------------------------------------------------------------------------

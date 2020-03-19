@@ -393,7 +393,6 @@ void setPTT(bool statePTT) {
 
     int i=0;
 
-    //fprintf(stderr,"setPTT() entering setPTT statePTT(%d)\n",statePTT);
 //*---------------------------------*
 //*          PTT Activated          *
 //*---------------------------------*
@@ -404,7 +403,6 @@ void setPTT(bool statePTT) {
         
 
        if (getWord(FT817,SPLIT)==true  && fSwap==false) {
-          //fprintf(stderr,"setPTT() SPLIT=true, swap VFO\n");
           fSwap=true;
           vx.vfoAB=(vx.vfoAB==VFOA ? VFOB : VFOA);
           showGUI();
@@ -412,23 +410,20 @@ void setPTT(bool statePTT) {
 
        if (mode==MCW) {
           df=(float)vx.vfoshift[vx.vfoAB];
-          //fprintf(stderr,"setPTT() MCW mode df=%f10.0\n",df);
        }
 
        if (mode==MCWR) {
           df=-(float)vx.vfoshift[vx.vfoAB];
-          //fprintf(stderr,"setPTT() MCWR mode df=%f10.0\n",df);
 
        }
 
        f=(float)(vx.vfo[vx.vfoAB]+(mode==MCW || mode==MCWR ? df : 0));
        log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->SetFrequency,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
-       //fprintf(stderr,"setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)\n",(int)f,(int)dds->SetFrequency,(int)df,mode,(int)vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
 
 //*--- Now turn the transmitter at the frequency f based on the mode
 
        log_info("PTT(On)");
-       //fprintf(stderr,"PTT(On)\n");
+       setWord(&FT817,PTT,true);
 
        switch(mode) {
            case MCW:
@@ -436,6 +431,7 @@ void setPTT(bool statePTT) {
                    {
                      (txonly==1 ? dds->open(f) : dds->set(f)) ;
                      //softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
+
                      break;
                    }
            case MUSB:
@@ -446,8 +442,8 @@ void setPTT(bool statePTT) {
                    }
        }
 
-       //fprintf(stderr,"PTT() gpioWrite: PTT_ON\n");
        gpioWrite(ptt, PTT_ON);
+       setWord(&FT817,PTT,true);
        return;
     } 
 
@@ -459,7 +455,6 @@ void setPTT(bool statePTT) {
     log_trace("PTT <OFF>, Receiver mode");
     log_info("PTT(Off)");
     //softToneWrite (sidetone_gpio, 0);
-    //fprintf(stderr,"setPTT(OFF)\n");
     gpioWrite(ptt, PTT_OFF);
 
     if (getWord(FT817,SPLIT)==true && fSwap==true){
@@ -470,7 +465,6 @@ void setPTT(bool statePTT) {
     fSwap=false;  
     f=vx.vfo[vx.vfoAB]+(rit.mItem!=0 ? ritofs : 0);
     log_trace("setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
-    //fprintf(stderr,"setPTT(): PTT Off setting DDS f=%d df=%d MODE=%d RIT(%d)\n",(int)f,(int)df,mode,(rit.mItem!=0 ? ritofs : 0));
 
     switch(mode) {
 
@@ -479,7 +473,7 @@ void setPTT(bool statePTT) {
             {
             if (keyer_brk==0) {
                (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
-               log_trace("Break-In Timer not set");
+               log_trace("Break-In Timer not set frequency");
             } else {
                TBRK=keyer_brk;
                log_trace("Break-In Timer set");
@@ -494,6 +488,7 @@ void setPTT(bool statePTT) {
             }
     }
 
+    setWord(&FT817,PTT,false);
     return;
 
 }
@@ -541,6 +536,7 @@ void CATchangeFreq() {
 
   //
   log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)SetFrequency);
+
   SetFrequency=cat.SetFrequency;
   log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
   long int f=(long int)SetFrequency;
@@ -732,12 +728,9 @@ void timer_exec()
 
   if (TBCK>0){
      TBCK--;
-     //fprintf(stderr,"timer_exe(): TBCK(%d)\n",TBCK);
      if (TBCK==0){
-        //fprintf(stderr,"timer_exe():TBCK llego a cero\n");
         if (backlight !=0) {
            setWord(&TSW,FBCK,true);
-	   //fprintf(stderr,"timer_exe(): FBCK set to true\n");
         }
      }
   }
@@ -761,25 +754,35 @@ void aux_event(int gpio, int level, uint32_t tick) {
         if (level != 0) {
            endAux = std::chrono::system_clock::now();
            int lapAux=std::chrono::duration_cast<std::chrono::milliseconds>(endAux - startAux).count();
+           if (getWord(USW,BAUX)==true) {
+              log_trace("Last aux pending processing, ignore!");
+              return;
+           }
+
            if (lapAux < MINSWPUSH) {
               log_trace("<AUX> pulse too short! ignored!");
            } else {
+ 	     setWord(&USW,BAUX,true);
              log_trace("AUX Event detected");   
-             auxcnt=(auxcnt+1) & 0xff;
-             lcd.clear();
-             lcd.setCursor(0,0);
-             sprintf(hi,"Valor %d",auxcnt);
-             lcd.print(string(hi));
-             lcd.setCursor(0,1);
-             lcd.write(auxcnt);
+             if (lapAux > MAXSWPUSH) {
+                log_trace("Aux pulse really long, %d ms. ",lapAux);
+             }
+             //auxcnt=(auxcnt+1) & 0xff;
+             //lcd.clear();
+             //lcd.setCursor(0,0);
+             //sprintf(hi,"Valor %d",auxcnt);
+             //lcd.print(string(hi));
+             //lcd.setCursor(0,1);
+             //lcd.write(auxcnt);
          
              return;
            }
+           return;
         }
         startAux = std::chrono::system_clock::now();
         //int pushSW=gpioRead(ENCODER_SW);
         lcd.backlight(true);
-        //fprintf(stderr,"aux_event(): TBCK=%d backlight(true)\n",TBCK);
+        lcd.setCursor(0,0);
         TBCK=backlight;;
 
 }
@@ -814,7 +817,6 @@ void updateSW(int gpio, int level, uint32_t tick)
         startPush = std::chrono::system_clock::now();
         int pushSW=gpioRead(ENCODER_SW);
         lcd.backlight(true);
-	//fprintf(stderr,"updateSW(): TBCK set to backlight (true)\n");
         TBCK=backlight;;
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
@@ -827,6 +829,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
         }
 
         if (getWord(USW,BCW)==true || getWord(USW,BCCW) ==true) { //exit if pending to service a previous one
+
            return;
         }
 
@@ -839,7 +842,6 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 
         TBCK=backlight;
         lcd.backlight(true);
-	//fprintf(stderr,"main(): Set TBCK(%d) backlight(true)\n",TBCK);
 
         endEncoder = std::chrono::system_clock::now();
         int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
@@ -1198,6 +1200,7 @@ void processVFO() {
 
 
    if (getWord(USW,BCW)==true) {
+
       if (rit.mItem != 0) {
          ritofs=ritofs+(ritofs<maxrit ? ritstep : 0);
          showRit();
@@ -1217,6 +1220,7 @@ void processVFO() {
 //*--- CCW frequency decrease
 
    if (getWord(USW,BCCW)==true) {
+
       if (rit.mItem != 0) {
          ritofs=ritofs+(ritofs>minrit ? ritstepd : 0);
          setWord(&JSW,XVFO,true);
@@ -1248,24 +1252,6 @@ int main(int argc, char* argv[])
 
     log_set_quiet(0);
     log_set_level(LOG_INFO);
-
-
-//----------------------------
-	//----- CREATE SEMAPHORE -----
-	//----------------------------
-	//fprintf(stderr,"Creating semaphore...\n");
-	//semaphore1_id = semget((key_t)12345, 1, 0666 | IPC_CREAT);		//<<<<< SET THE SEMPAHORE KEY   (Semaphore key, number of semaphores required, flags)
-	//	Semaphore key
-	//		Unique non zero integer (usually 32 bit).  Needs to avoid clashing with another other processes semaphores (you just have to pick a random value and hope - ftok() can help with this but it still doesn't guarantee to avoid colision)
-
-	//Initialize the semaphore using the SETVAL command in a semctl call (required before it can be used)
-	//union semun sem_union_init;
-	//sem_union_init.val = 1;
-	//if (semctl(semaphore1_id, 0, SETVAL, sem_union_init) == -1)
-	//{
-	//	fprintf(stderr, "Creating semaphore failed to initialize\n");
-	//	exit(EXIT_FAILURE);
-	//}
 
 
 //*--- Process arguments (mostly an excerpt from tune.cpp)
@@ -1401,7 +1387,6 @@ int main(int argc, char* argv[])
    step=ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile);
    updatestep(VFOA,step);
    updatestep(VFOB,step);
-   //fprintf(stderr,"main() STEP(%d) step A(%li) step B(%li)\n",step,vx.vfostep[VFOA],vx.vfostep[VFOB]);
 
    shift=ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile);
 
@@ -1576,12 +1561,17 @@ int main(int argc, char* argv[])
 
     gpioSetMode(AUX_GPIO, PI_INPUT);
     gpioSetPullUpDown(AUX_GPIO,PI_PUD_UP);
+    gpioSetAlertFunc(AUX_GPIO,aux_event);
     usleep(100000);
-    gpioSetISRFunc(AUX_GPIO, FALLING_EDGE,0,aux_event);
+    //gpioSetISRFunc(AUX_GPIO, FALLING_EDGE,0,aux_event);
 
     //gpioSetAlertFunc(AUX_GPIO, aux_event);
 
 //*---- Configure Encoder
+    gpioSetMode(ENCODER_SW, PI_INPUT);
+    gpioSetPullUpDown(ENCODER_SW,PI_PUD_UP);
+    gpioSetAlertFunc(ENCODER_SW,updateSW);
+    usleep(100000);
 
     gpioSetMode(ENCODER_CLK, PI_INPUT);
     gpioSetPullUpDown(ENCODER_CLK,PI_PUD_UP);
@@ -1592,10 +1582,6 @@ int main(int argc, char* argv[])
     gpioSetPullUpDown(ENCODER_DT,PI_PUD_UP);
     usleep(100000);
 
-    gpioSetMode(ENCODER_SW, PI_INPUT);
-    gpioSetPullUpDown(ENCODER_SW,PI_PUD_UP);
-    gpioSetAlertFunc(ENCODER_SW,updateSW);
-    usleep(100000);
 
     counter = 0;
 
@@ -1635,7 +1621,6 @@ int main(int argc, char* argv[])
 
 
     lcd.backlight(true);
-    //fprintf(stderr,"main() initial backlight(true)\n");
 //*--- Show banner briefly (1 sec)
 
     lcd.lcdLoc(LINE1);
@@ -1763,13 +1748,11 @@ int main(int argc, char* argv[])
          }
          CMD_FSM();
          if (TBCK!=0 && backlight !=0 && getWord(MSW,CMD)==false) {
-            //fprintf(stderr,"loop(): TBCK!=0(%d) and backlight(%d) lights on\n",TBCK,backlight);
             lcd.backlight(true);
          }
 //*--- Clear the frequency moved marker from the display once the delay expires
 
          if (getWord(TSW,FBCK)==true && backlight != 0 && getWord(MSW,CMD)==false) {
-            //fprintf(stderr,"loop(): turn the lights off\n");
             setWord(&TSW,FBCK,false);
 	    lcd.backlight(false);
             showSMeter(0);
@@ -1845,8 +1828,14 @@ int main(int argc, char* argv[])
     nIni = ini_puts("CAT","PORT",iniStr,inifile);
     sprintf(iniStr,"%li",catbaud);
     nIni = ini_puts("CAT","BAUD",iniStr,inifile);
+
     sprintf(iniStr,"%d",cw_keyer_speed);
     nIni = ini_puts("KEYER","KEYER_SPEED",iniStr,inifile);
+
+   cw_keyer_mode=ini_getl("KEYER","KEYER_MODE",KEYER_STRAIGHT,inifile);
+
+    sprintf(iniStr,"%d",cw_keyer_mode);
+    nIni = ini_puts("KEYER","KEYER_MODE",iniStr,inifile);
     sprintf(iniStr,"%d",cw_keyer_spacing);
     nIni = ini_puts("KEYER","KEYER_SPACING",iniStr,inifile);
     sprintf(iniStr,"%d",cw_active_state);
@@ -1869,15 +1858,6 @@ int main(int argc, char* argv[])
     fprintf(stderr,"main(): Turn off LCD light\n");
     lcd.backlight(false);
     lcd.clear();
-
-//----------------------------
-	//----- DELETE SEMAPHORE -----
-	//----------------------------
-	//It's important not to unintentionally leave semaphores existing after program execution. It also may cause problems next time you run the program.
-    //union semun sem_union_delete;
-    //if (semctl(semaphore1_id, 0, IPC_RMID, sem_union_delete) == -1)
-    //	fprintf(stderr, "Failed to delete semaphore\n");
-    //
 
     fprintf(stderr,"\nProgram terminated....\n");
     exit(0);

@@ -9,18 +9,24 @@ Implementation Backlog
 X [Bug] Debounce push and encoder
 X [Bug] Backlight timeout doesn't work
 X [Bug] Wrong message on GUI at first use
-* [Bug] Mode is not changing correctly
-* [Bug] Lock doesn't work
-* [Bug] Implement driver level
-* [Bug] Representation for S-Meter and Power
+X [Bug] Implement driver level
 X [Bug] Extend S-Meter to 5 blocks
-* [Bug] Check keyer speed update
-* [Bug] Debounce AUX
-* [Bug] Keyer type not persistent
-* [Doc] Update README.md with several changes
-* [Bug] Remove PWM for sidetone
+X [Bug] Keyer type not persistent
+X [Bug] Remove PWM for sidetone
+X [Bug] Initial refresh not repetitive
+X [Bug] Debounce AUX
+X [Bug] Mode is not changing correctly
+X [Feature] Implement AUX line as long push
+
+
+? [Bug] Check keyer speed update
+? [Doc] Update README.md with several changes
+? [Feature] Keyer act like encoder when in GUI mode
+
+* [Bug] Lock doesn't implemented
+* [Bug] Representation for S-Meter and Power
+
 * [Feature] External CAT line
-* [Feature] Implement AUX line as long push
 * [Feature] USB mode
 * [Feature] FSK (RTTY) mode
 * [Feature] PSK (PSK31) mode

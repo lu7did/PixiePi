@@ -151,6 +151,7 @@ enum {
 #define KDOWN     0B01000000
 #define BUSY      0B10000000       //Used for Squelch Open in picoFM and for connected to DDS on sinpleA
 #define CONX      0B10000000
+#define BAUX      0B00010000
 
 //*----- Joystick Control Word (JSW)
 
