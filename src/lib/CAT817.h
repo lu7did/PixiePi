@@ -317,7 +317,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,LOCK,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x00 ? fprintf(stderr,"Command 0x00 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x02 ? fprintf(stderr,"Command 0x00 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -330,7 +330,7 @@ void CAT817::processCAT(byte* rxBuffer) {
          BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x01 ? fprintf(stderr,"Command 0x02 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x02 ? fprintf(stderr,"Command 0x02 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -343,7 +343,7 @@ void CAT817::processCAT(byte* rxBuffer) {
          BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x01 ? fprintf(stderr,"Command 0x05 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x02 ? fprintf(stderr,"Command 0x05 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -357,7 +357,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        MODE=mode;
        BCDBuf[0]=0x00;
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x01 ? fprintf(stderr,"Command 0x07 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x02 ? fprintf(stderr,"Command 0x07 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendMode();
        return;}
@@ -369,7 +369,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,PTT,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x02 ? fprintf(stderr,"Command 0x08 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x01 ? fprintf(stderr,"Command 0x08 Resp(%s) PTT(On)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -418,7 +418,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
-      case 0x88: {      //* Turn the LOCK off
+      case 0x88: {      //* Turn the TX On
        if(getWord(FT817,PTT)==false) {
          BCDBuf[0]=0xF0;
        } else {
@@ -426,7 +426,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,PTT,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x02 ? fprintf(stderr,"Command 0x88 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x01 ? fprintf(stderr,"Command 0x88 Resp(%s) PTT(Off)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -525,7 +525,7 @@ void CAT817::processCAT(byte* rxBuffer) {
           BCDBuf[0]=0x00;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x00 ? fprintf(stderr,"Command 0xF7 Resp(%s)\n",buffer) : _NOP);
+       (TRACE>=0x02 ? fprintf(stderr,"Command 0xF7 Resp(%s)\n",buffer) : _NOP);
 
        sprintf(msg,"Command 0xF7 Resp(%s)\n",buffer);
        printDEBUG(0x01,msg);
@@ -550,7 +550,7 @@ void CAT817::processCAT(byte* rxBuffer) {
       default:    {
        hex2str(&buffer[0],&rxBuffer[4],1);
        sprintf(msg,"Invalid or unknown code %s\n",&buffer[0]);
-       (TRACE>=0X00 ? fprintf(stderr,msg) : _NOP);
+       (TRACE>=0X01 ? fprintf(stderr,msg) : _NOP);
        return;}
      } 
 

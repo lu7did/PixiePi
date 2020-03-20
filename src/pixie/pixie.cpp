@@ -591,13 +591,14 @@ void CATchangeStatus() {
           if (getWord(FT817,PTT)==true) {
              keyState=KEY_DOWN;
              showSMeter((int)2*dds->power & 0x0f);
+             fprintf(stderr,"CATchangeStatus() PTT(On)\n");
           } else {
              keyState=KEY_UP;
              showSMeter(0);
+             fprintf(stderr,"CATchangeStatus() PTT(Off)\n");
           }
           setPTT(getWord(FT817,PTT));
           showPTT();
-
        }
 
 //*---------------------

@@ -114,6 +114,7 @@ void showRit() {
 void showPTT() {
    lcd.setCursor(5,1);
    (getWord(FT817,PTT)==true ? lcd.write(255) : lcd.print(" "));
+   //(getWord(FT817,PTT)==true ? fprintf(stderr,"showPTT(On)\n") : fprintf(stderr,"showPTT(Off)\n"));
 
 }
 //*----------------------------------------------------------------------------$
