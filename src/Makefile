@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D 
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/Generator
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
@@ -10,6 +10,9 @@ CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
 CCP = c++
 CC = cc
 GCC = gcc
+
+../bin/Generator : Pi4D/Generator.cpp lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h /home/pi/librpitx/src/librpitx.a
+	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -c -o ../bin/Generator ./Pi4D/Generator.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h $(LDFLAGS)
 
 ../bin/pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/VFOSystem.h lib/CAT817.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h iambic/iambic.c minIni/minIni.c  minIni/minIni.h log.c/log.c iambic/iambic.c log.c/log.h 
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/pixie ./pixie/pixie.cpp ./minIni/minIni.c lib/CAT817.h ./log.c/log.c $(LDFLAGS)
@@ -29,9 +32,11 @@ clean:
 	rm -r  ../bin/PiWSPR
 	rm -r  ../bin/PiRTTY
 	rm -r  ../bin/Pi4D
+	rm -r  ../bin/Generator
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
 	install -m 0755 ../bin/Pi4D   /usr/bin
+	install -m 0755 ../bin/Generator  /usr/bin
