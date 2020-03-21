@@ -1,6 +1,6 @@
 /*
  * Pi4D.cpp
- * Raspberry Pi based SSB transceiver controller
+ * Raspberry Pi based USB transceiver controller
  * Experimental version largely modelled after sendiq from the rpitx package
  *---------------------------------------------------------------------
  * This program operates as a controller for a Raspberry Pi to control
@@ -43,9 +43,9 @@
 #include <cstring>
 #include <signal.h>
 #include <stdlib.h>
+#include <cstdlib>      // for std::rand() and std::srand()
+#include <ctime>        // for std::time()
 #include <iostream>
-#include <cstdlib> // for std::rand() and std::srand()
-#include <ctime>   // for std::time()
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -60,31 +60,17 @@
 #include <pigpio.h>
 #include <wiringPiI2C.h>
 #include <unistd.h>
-#include "/home/pi/librpitx/src/librpitx.h"
 #include <cstring>
 #include <iostream>
 #include <chrono>
 #include <thread>
-//==*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-//
-//==*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
-#define MAX_SAMPLERATE 200000
-#define MSEC100 100
-#define IQBURST 4000
-#define VOXMIN -25.0
-#define SAMPLERATE 48000
-#define KEYER_OUT_GPIO 12
-#define VOXBREAK 15
-#define GPIO04 4
-#define GPIO12 12
-#define PTT_ON 1
-#define PTT_OFF 0
-#define MAX_SAMPLERATE 200000
-#define IQBURST 4000
 
+#define PROGRAM_VERSION "1.0"
 #define PTT 0B00000001
 #define VOX 0B00000010
 #define RUN 0B00000100
+#define MAX_SAMPLERATE 200000
+#define IQBURST 4000
 
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Pi4D";
@@ -95,18 +81,9 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 typedef unsigned char byte;
 typedef bool boolean;
 
-//--------------------------------------------------------------------------------------------------
-// Pi4D
-// Experimental version largely modelled after sendiq from the rpitx package
-//
-//--------------------------------------------------------------------------------------------------
-
-//bool running=true;
-//bool vox=false;
-long Tvox=0;
+bool running=true;
+long int TVOX=0;
 byte MSW=0;
-iqdmasync *iqtest=NULL;
-
 //--------------------------[System Word Handler]---------------------------------------------------
 // getSSW Return status according with the setting of the argument bit onto the SW
 //--------------------------------------------------------------------------------------------------
@@ -132,15 +109,9 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 //--------------------------------------------------------------------------------------------------
 void timer_exec()
 {
-
-  if (Tvox!=0) {
-     Tvox--;
-     if(Tvox==0) {
-       //gpioWrite(GPIO12,PTT_OFF);
-       iqtest->stop();
-       delete(iqtest);
-       iqtest=NULL;
-       setWord(&MSW,VOX,false);
+  if (TVOX!=0) {
+     TVOX--;
+     if(TVOX==0) {
        printf("VOX turned off\n");
      }
   }
@@ -162,11 +133,6 @@ void timer_start(std::function<void(void)> func, unsigned int interval)
   }).detach();
 }
 
-void SimpleTestFileIQ(uint64_t Freq)
-{
-	
-}
-
 //---------------------------------------------------------------------------------
 // Print usage
 //---------------------------------------------------------------------------------
@@ -179,39 +145,39 @@ Usage: [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n
 -f float      central frequency Hz(50 kHz to 1500 MHz),\n\
 -l            loop mode for file input\n\
 -h            Use harmonic number n\n\
--t            IQ type (i16 default) {i16,u8,float,double}\n\
 -?            help (this help).\n\
 \n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
 
 } /* end function print_usage */
-//---------------------------------------------------------------------------
-// Capture and manage SIG
-//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------
+// terminate
+//---------------------------------------------------------------------------------
+
 static void terminate(int num)
 {
-    setWord(&MSW,RUN,false);
+    running=false;
     fprintf(stderr,"Caught signal - Terminating %x\n",num);
-
+   
 }
 
-//----------------------------------------------------------------------------
-// main execution
-//----------------------------------------------------------------------------
+//---------------------------------------------------------------------------------
+// main 
+//---------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-
 	int a;
 	int anyargs = 1;
-	float SetFrequency=7074000;
-	float SampleRate=12000;
+	float SetFrequency=434e6;
+	float SampleRate=48000;
+	bool loop_mode_flag=false;
 	char* FileName=NULL;
 	int Harmonic=1;
 	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
 	int InputType=typeiq_i16;
 	int Decimation=1;
         timer_start(timer_exec,100);
-
 
 	while(1)
 	{
@@ -236,6 +202,7 @@ int main(int argc, char* argv[])
 			SampleRate = atoi(optarg);
 			if(SampleRate>MAX_SAMPLERATE) 
 			{
+				
 				for(int i=2;i<12;i++) //Max 10 times samplerate
 				{
 					if(SampleRate/i<MAX_SAMPLERATE) 
@@ -243,30 +210,24 @@ int main(int argc, char* argv[])
 						SampleRate=SampleRate/i;
 						Decimation=i;
 						break;
-					}
+					}	
 				}
 				if(Decimation==1)
-				{
+				{	
 					 fprintf(stderr,"SampleRate too high : >%d sample/s",10*MAX_SAMPLERATE);
 					 exit(1);
-				}
+				}	 
 				else
-				{
-					fprintf(stderr,"Warning samplerate too high, decimation by %d will be performed",Decimation);
-				}
-			};
+				{	
+					fprintf(stderr,"Warning samplerate too high, decimation by %d will be performed",Decimation);	 
+				}		
+			};	
 			break;
 		case 'h': // help
 			Harmonic=atoi(optarg);
 			break;
 		case 'l': // loop mode
-			//loop_mode_flag = true;
-			break;
-		case 't': // inout type
-			if(strcmp(optarg,"i16")==0) InputType=typeiq_i16;
-			if(strcmp(optarg,"u8")==0) InputType=typeiq_u8;
-			if(strcmp(optarg,"float")==0) InputType=typeiq_float;
-			if(strcmp(optarg,"double")==0) InputType=typeiq_double;
+			loop_mode_flag = true;
 			break;
 		case -1:
         	break;
@@ -282,7 +243,7 @@ int main(int argc, char* argv[])
 			print_usage();
 
 			exit(1);
-			break;
+			break;			
 		default:
 			print_usage();
 			exit(1);
@@ -301,101 +262,152 @@ int main(int argc, char* argv[])
 
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
-
-//----------- Initialize GPIO interface
-
-        //if(gpioInitialise()<0) {
-        //  printf("Cannot initialize GPIO\n");
-        //  return -1;
-        //}
-
-        //gpioSetPullUpDown(GPIO12,PI_PUD_UP);
-        //usleep(100000);
-
-        printf("%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+        InputType=typeiq_float;
+	
+        for (int i = 0; i < 64; i++) {
+        struct sigaction sa;
+        std::memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = terminate;
+        sigaction(i, &sa, NULL);
+        }
 
 	FILE *iqfile=NULL;
 	if(strcmp(FileName,"-")==0)
 		iqfile=fopen("/dev/stdin","rb");
-	else
+	else	
 		iqfile=fopen(FileName	,"rb");
 	if (iqfile==NULL) 
-	{
-	   printf("input file issue\n");
-	   exit(0);
+	{	
+		printf("input file issue\n");
+		exit(0);
 	}
 
-	int SR=12000;
+	
+	int SR=48000;
 	int FifoSize=IQBURST*4;
-
-	//iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+	iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+	iqtest.SetPLLMasterLoop(3,4,0);
 	//iqtest.print_clock_tree();
 	//iqtest.SetPLLMasterLoop(5,6,0);
-
+	
 	std::complex<float> CIQBuffer[IQBURST];	
-
-	while(getWord(MSW,RUN)==true)
+	while(running)
 	{
-	   int CplxSampleNumber=0;
-           switch(InputType)
-	   {
-//*---------------------------------------------------------------------------------------------------------
-//* Float Queue
-//*---------------------------------------------------------------------------------------------------------
-	   case typeiq_float:
-	   {
-		static float IQBuffer[IQBURST*2];
-		int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
-                float s=0.0;
-		if(nbread>0)
-		{
-           	   for(int i=0;i<nbread/2;i++)
-		   {
-		     if(i%Decimation==0) {
-		       if (getWord(MSW,VOX)==true) {
- 		           CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
-		       } else {
-			   CIQBuffer[CplxSampleNumber++]=std::complex<float>(1.0,1.0);
-	               }
- 	  	       float Ai=(IQBuffer[i*2]*IQBuffer[i*2])+(IQBuffer[i*2+1]*IQBuffer[i*2+1]);
-		       Ai=log10(Ai);
-		       Ai=10.0*Ai;
-		       s=s+Ai;
-		     }
-		   }
-   		   s=s/(1.0*nbread/2);
-		   if (s>=-25.0) {
-            	      if(getWord(MSW,VOX)==false) {
-		         printf("Vox Activated Avg(%f)\n",s);
-     			 iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-      	 		 iqtest->SetPLLMasterLoop(5,6,0);
-                         usleep(10000);
-
-		      }
-		      Tvox=15;
-                      //gpioWrite(GPIO12,PTT_ON);
-		      setWord(&MSW,VOX,true);
-	   	   }
-		} else 	{
-		   printf("End of file\n");
-                   setWord(&MSW,VOX,false);
-		   setWord(&MSW,RUN,false);
+		
+			int CplxSampleNumber=0;
+			switch(InputType)
+			{
+//				case typeiq_i16:
+//				{
+//					static short IQBuffer[IQBURST*2];
+//					int nbread=fread(IQBuffer,sizeof(short),IQBURST*2,iqfile);
+//					//if(nbread==0) continue;
+//					if(nbread>0)
+//					{
+//						for(int i=0;i<nbread/2;i++)
+//						{
+//							if(i%Decimation==0)
+//							{		
+//								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2]/32768.0,IQBuffer[i*2+1]/32768.0); 
+//							}
+//						}
+//					}
+//					else 
+//					{
+//						printf("End of file\n");
+//						if(loop_mode_flag)
+//						fseek ( iqfile , 0 , SEEK_SET );
+//						else
+//							running=false;
+//					}
+//					
+//				}
+//				break;
+//				case typeiq_u8:
+//				{
+//					static unsigned char IQBuffer[IQBURST*2];
+//					int nbread=fread(IQBuffer,sizeof(unsigned char),IQBURST*2,iqfile);
+//					
+//					if(nbread>0)
+//					{
+//						for(int i=0;i<nbread/2;i++)
+//						{
+//							if(i%Decimation==0)
+//							{	
+//								CIQBuffer[CplxSampleNumber++]=std::complex<float>((IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
+//										
+//							}		 
+//							//printf("%f %f\n",(IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
+//						}
+//					}
+//					else 
+//					{
+//						printf("End of file\n");
+//						if(loop_mode_flag)
+//						fseek ( iqfile , 0 , SEEK_SET );
+//						else
+//							running=false;
+//					}
+//				}
+//				break;
+				case typeiq_float:
+				{
+					static float IQBuffer[IQBURST*2];
+					int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
+					//if(nbread==0) continue;
+					if(nbread>0)
+					{
+						for(int i=0;i<nbread/2;i++)
+						{
+							if(i%Decimation==0)
+							{	
+								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
+										
+							}		 
+							//printf("%f %f\n",(IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
+						}
+					}
+					else 
+					{
+						printf("End of file\n");
+						if(loop_mode_flag)
+						fseek ( iqfile , 0 , SEEK_SET );
+						else
+							running=false;
+					}
+				}
+				break;	
+//				case typeiq_double:
+//				{
+//					static double IQBuffer[IQBURST*2];
+//					int nbread=fread(IQBuffer,sizeof(double),IQBURST*2,iqfile);
+//					//if(nbread==0) continue;
+//					if(nbread>0)
+//					{
+//						for(int i=0;i<nbread/2;i++)
+//						{
+//							if(i%Decimation==0)
+//							{	
+//								CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
+//										
+//							}		 
+//							//printf("%f %f\n",(IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
+//						}
+//					}
+//					else 
+//					{
+//						printf("End of file\n");
+//						if(loop_mode_flag)
+//						fseek ( iqfile , 0 , SEEK_SET );
+//						else
+//							running=false;
+//					}
+//				}
+//				break;	
 		}
-	        }
-		break;	
-	      }
-   	      if (getWord(MSW,VOX)==true) {
-                  iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
-              }
+		iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
 	}
 
-        if (getWord(MSW,VOX)==false) {
-           gpioWrite(GPIO12,PTT_OFF);
-        }
-
-        iqtest->stop();
-        delete(iqtest);
-        iqtest=NULL;
-
+	iqtest.stop();
 }
 

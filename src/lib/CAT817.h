@@ -367,9 +367,10 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
          BCDBuf[0]=0x00;
        }
+       fprintf(stderr,"processCAT(): 0x08 received ----------->\n");
        setWord(&FT817,PTT,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x01 ? fprintf(stderr,"Command 0x08 Resp(%s) PTT(On)\n",buffer) : _NOP);
+       (TRACE>=0x01 ? fprintf(stderr,"Command 0x08 Resp(%s) PTT(On)********************\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return;}
@@ -426,7 +427,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        }
        setWord(&FT817,PTT,false);
        hex2str(&buffer[0],&BCDBuf[0],1);
-       (TRACE>=0x01 ? fprintf(stderr,"Command 0x88 Resp(%s) PTT(Off)\n",buffer) : _NOP);
+       (TRACE>=0x01 ? fprintf(stderr,"Command 0x88 Resp(%s) PTT(Off)***************\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        sendStatus();
        return; }
@@ -512,23 +513,29 @@ void CAT817::processCAT(byte* rxBuffer) {
        (TRACE>=0x02 ? fprintf(stderr,"Command 0xE7 Resp(%s)\n",buffer) : _NOP);
        sendSerial(&BCDBuf[0],1);
        return;}
+
       case 0xF7:  {     //* Transmitter status
+       BCDBuf[0]=0x00;
        if (getWord(FT817,PTT)==true) {
-          (getWord(FT817,PTT)==true ? BCDBuf[0]=BCDBuf[0] | 0B10000000 : BCDBuf[0]=BCDBuf[0] & 0B01111111);
-          (getWord(FT817,SPLIT)==false ? BCDBuf[0]=BCDBuf[0] | 0B01000000 : BCDBuf[0]=BCDBuf[0] & 0B10111111);
+
+          (getWord(FT817,PTT)==false  ? BCDBuf[0]=BCDBuf[0] | 0B10000000 : BCDBuf[0]=BCDBuf[0] & 0B01111111);
+          (getWord(FT817,SPLIT)==true ? BCDBuf[0]=BCDBuf[0] | 0B00100000 : BCDBuf[0]=BCDBuf[0] & 0B11011111);
+          BCDBuf[0]=BCDBuf[0] & 0B10111111;
+
           TX=(int)POWER*2;
-          if(getTX!=NULL) {       //* Ask caller thru a callback
-            getTX();
-          }
+          //if(getTX!=NULL) {       //* Ask caller thru a callback
+          //  getTX();
+          //}
           BCDBuf[0]=BCDBuf[0] | ((((int)TX) & 0x0f));
+
        } else {
-          BCDBuf[0]=0x00;
+          BCDBuf[0]=0B10000000;
        }
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x02 ? fprintf(stderr,"Command 0xF7 Resp(%s)\n",buffer) : _NOP);
 
-       sprintf(msg,"Command 0xF7 Resp(%s)\n",buffer);
-       printDEBUG(0x01,msg);
+       //sprintf(msg,"Command 0xF7 Resp(%s)\n",buffer);
+       //printDEBUG(0x01,msg);
        sendSerial(&BCDBuf[0],1);
        return;}
 
@@ -548,9 +555,9 @@ void CAT817::processCAT(byte* rxBuffer) {
        return; }
 
       default:    {
-       hex2str(&buffer[0],&rxBuffer[4],1);
-       sprintf(msg,"Invalid or unknown code %s\n",&buffer[0]);
-       (TRACE>=0X01 ? fprintf(stderr,msg) : _NOP);
+       //hex2str(&buffer[0],&rxBuffer[4],1);
+       //sprintf(msg,"Invalid or unknown code %s\n",&buffer[0]);
+       //(TRACE>=0X01 ? fprintf(stderr,msg) : _NOP);
        return;}
      } 
 

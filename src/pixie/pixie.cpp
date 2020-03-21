@@ -571,6 +571,8 @@ void CATchangeMode() {
           return;
        }
 
+       cat.POWER=dds->power;
+
        mode=cat.MODE;
        mod.mItem=cat.MODE;
        ModeUpdate();
@@ -583,19 +585,21 @@ void CATchangeMode() {
 //* Detect which change has been produced and operate accordingly
 //*------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
-
+       //fprintf(stderr,"CATchangeStatus()\n");
        log_trace("CATchangeStatus():PTT(%d)",getWord(FT817,PTT));
 //*---------------------
+       cat.POWER=dds->power;
+
        if (getWord(cat.FT817,PTT) != getWord(FT817,PTT)) {        //* PTT Changed
           setWord(&FT817,PTT,getWord(cat.FT817,PTT));
           if (getWord(FT817,PTT)==true) {
              keyState=KEY_DOWN;
              showSMeter((int)2*dds->power & 0x0f);
-             fprintf(stderr,"CATchangeStatus() PTT(On)\n");
+             //fprintf(stderr,"CATchangeStatus() PTT(On)\n");
           } else {
              keyState=KEY_UP;
              showSMeter(0);
-             fprintf(stderr,"CATchangeStatus() PTT(Off)\n");
+             //fprintf(stderr,"CATchangeStatus() PTT(Off)\n");
           }
           setPTT(getWord(FT817,PTT));
           showPTT();
@@ -1331,7 +1335,8 @@ int main(int argc, char* argv[])
                         break;
                 case 'd': //debug
                         trace=0x02;
-                        cat.TRACE=LOG_TRACE;
+                        //cat.TRACE=LOG_TRACE;
+			cat.TRACE=0x02;
                         log_set_quiet(0);
                         log_set_level(LOG_TRACE);
                         log_info(" Trace debug mode active");
@@ -1377,6 +1382,8 @@ int main(int argc, char* argv[])
      case 0x05  : {log_set_level(LOG_TRACE); cat.TRACE=0x02; break; }
      default    : {log_set_level(LOG_INFO);  trace=2; cat.TRACE=trace; break; }
   }
+
+//  cat.TRACE=0x02; // REMOVER
 
 
 //*--- Configuration: VFO
@@ -1429,6 +1436,7 @@ int main(int argc, char* argv[])
    log_fatal("CAT sub-system configuration");
    log_fatal("CAT Port(%s) at baud(%d) trace(%d)",port,catbaud,cat.TRACE);
 
+
 //*--- Configuration: KEYER
 
    cw_keyer_mode=ini_getl("KEYER","KEYER_MODE",KEYER_STRAIGHT,inifile);
@@ -1445,8 +1453,8 @@ int main(int argc, char* argv[])
    log_fatal("Keyer mode(%d) speed(%d) freq(%d) gain(%d) envelope(%d) spacing(%d) GPIO(%d) SoundHW(%s) Break(%d)",cw_keyer_mode,cw_keyer_speed,cw_keyer_sidetone_frequency,cw_keyer_sidetone_gain,cw_keyer_sidetone_envelope,cw_keyer_spacing,sidetone_gpio,snd_dev,keyer_brk);
 
 
-   cat.TRACE=trace;
-
+   //cat.TRACE=trace;
+   //cat.TRACE=0x02;  //REMOVER
 
 //*---- Establish initial values of system variables
 
