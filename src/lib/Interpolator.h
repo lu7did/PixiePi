@@ -89,7 +89,6 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 Interpolator::Interpolator(float* a,int n_tap,int factor)
 {
 
-  fprintf(stderr,"Interpolator::Interpolator() Object creation Started\n");
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;

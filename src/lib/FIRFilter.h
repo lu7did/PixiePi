@@ -6,6 +6,7 @@
 //* Solo para uso de radioaficionados, prohibido su utilizacion comercial
 //* Copyright 2018 Dr. Pedro E. Colla (LU7DID)
 //*--------------------------------------------------------------------------------------------------
+
 #ifndef FIRFilter_h
 #define FIRFilter_h
 
@@ -89,12 +90,11 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 //*--------------------------------------------------------------------------------------------------
 FIRFilter::FIRFilter(float* a,int n_tap)
 {
-  fprintf(stderr,"FIRFilter::FIRFilter() Object creation Started\n");
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;
   this->buf = (float*) malloc(BUFFER_SIZE*sizeof(float) * 2);
-  fprintf(stderr,"FIRFilter::FIRFilter() Object creation Completed\n");
+  fprintf(stderr,"FIRFilter::FIRFilter() Object creation completed\n");
 
   
 }
