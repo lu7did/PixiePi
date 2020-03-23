@@ -37,6 +37,17 @@
  * MA 02110-1301, USA.
  */
 
+
+#define PROGRAM_VERSION "1.0"
+#define PTT 0B00000001
+#define VOX 0B00000010
+#define RUN 0B00000100
+#define MAX_SAMPLERATE 200000
+#define BUFFERSIZE      96000
+#define IQBURST          4000
+
+
+
 #include <unistd.h>
 #include "stdio.h"
 #include <cstring>
@@ -63,18 +74,11 @@
 #include <iostream>
 #include <chrono>
 #include <thread>
+#include <limits.h>
 #include "/home/pi/PixiePi/src/lib/Decimator.h" 
 #include "/home/pi/PixiePi/src/lib/Interpolator.h" 
 #include "/home/pi/PixiePi/src/lib/FIRFilter.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
-
-#define PROGRAM_VERSION "1.0"
-#define PTT 0B00000001
-#define VOX 0B00000010
-#define RUN 0B00000100
-#define MAX_SAMPLERATE 200000
-#define BUFFERSIZE  96000
-#define IQBURST 4096
 
 
 //-------------------- GLOBAL VARIABLES ----------------------------
@@ -94,6 +98,9 @@ float* a;
 float* b;
 float* c;
 float* input;
+float* i1;
+float* i2;
+float* i3;
 float* iLow;
 float* qLow;
 
@@ -102,21 +109,18 @@ int numSamplesLow=0;
 
 int mode = 0;
 int bufferLengthInBytes;
-//  AudioFormat format = null;
-//  DataLine.Info info = null;
-//  SourceDataLine playbackLine = null;
-//  TargetDataLine captureLine = null;
     
 FIRFilter    *iFilter;
 FIRFilter    *qFilter;
-Decimator    *decimator;
-//Interpolator *iInterpolator;
-//Interpolator *qInterpolator;
-int decimation_factor = 4;
 
+Decimator    *d1;
+Decimator    *d2;
+Decimator    *d3;
+
+int decimation_factor = 4;
 short *buffer_i16;
 
-
+std::complex<float> CIQBuffer[IQBURST];	
 //--------------------------[System Word Handler]---------------------------------------------------
 // getSSW Return status according with the setting of the argument bit onto the SW
 //--------------------------------------------------------------------------------------------------
@@ -192,7 +196,6 @@ static void terminate(int num)
 {
     running=false;
     fprintf(stderr,"%s: Caught TERM signal(%x) - Terminating \n",PROGRAMID,num);
-   
 }
 //---------------------------------------------------------------------------------
 // init()
@@ -290,7 +293,6 @@ void init() {
     a[80] =	-5.6314686E-5f;
     a[81] =	-4.0276995E-5f;
     a[82] =	-1.7250879E-5f;
-
 
     /*
      * Kaiser Window FIR Filter
@@ -390,7 +392,6 @@ void init() {
     b[86] =	-5.237722E-5f;
     b[87] =	-3.5587244E-4f;
     b[88] =	-2.081541E-4f;
-
 
     /*
      * Kaiser Window FIR Filter
@@ -494,9 +495,10 @@ void init() {
     c[87] =	2.1822347E-4f;
     c[88] =	-6.767926E-5f;
 
-    //iInterpolator = new Interpolator(a, 83, decimation_factor);
-    //qInterpolator = new Interpolator(a, 83, decimation_factor);
-    decimator = new Decimator(a, 83, decimation_factor);
+    d1 = new Decimator(a, 83, decimation_factor);
+    d2 = new Decimator(a, 83, decimation_factor);
+    d3 = new Decimator(a, 83, decimation_factor);
+
     iFilter = new FIRFilter(b,89);
     qFilter = new FIRFilter(c,89);
 }
@@ -505,19 +507,23 @@ void init() {
 //---------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-	int ax;
-	int anyargs = 1;
-	float SetFrequency=434e6;
+	int   ax;
+	int   anyargs = 1;
+	float SetFrequency=7080000;
 	float SampleRate=48000;
+
 	//bool loop_mode_flag=false;
+
 	char* FileName=NULL;
-	int Harmonic=1;
-	enum {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
-	int InputType=typeiq_i16;
-	int Decimation=1;
+	int   Harmonic=1;
+	enum  {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double};
+	int   InputType=typeiq_i16;
+	int   Decimation=1;
         timer_start(timer_exec,100);
 
-        int m=1;
+        int   m=1;
+	int   SR=48000;
+	int   FifoSize=IQBURST*4;
 
         fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
@@ -536,12 +542,15 @@ int main(int argc, char* argv[])
 		{
 		case 'i': // File name
 			FileName = optarg;
+			fprintf(stderr,"%s: Filename(%s)\n",PROGRAMID,FileName);
 			break;
 		case 'f': // Frequency
 			SetFrequency = atof(optarg);
+			fprintf(stderr,"%s: Frequency(%10f)\n",PROGRAMID,SetFrequency);
 			break;
 		case 's': // SampleRate (Only needeed in IQ mode)
 			SampleRate = atoi(optarg);
+			fprintf(stderr,"%s: SampleRate(%10f)\n",PROGRAMID,SampleRate);
 			if(SampleRate>MAX_SAMPLERATE) 
 			{
 				for(int i=2;i<12;i++) //Max 10 times samplerate
@@ -572,14 +581,13 @@ int main(int argc, char* argv[])
 		case '?':
 			if (isprint(optopt) )
  			{
- 				fprintf(stderr, "%s: Generator: unknown option `-%c'.\n",PROGRAMID,optopt);
+ 			   fprintf(stderr, "%s: Generator: unknown option `-%c'.\n",PROGRAMID,optopt);
  			}
 			else
 			{
 				fprintf(stderr, "%s: unknown option character `\\x%x'.\n",PROGRAMID,optopt);
 			}
 			print_usage();
-
 			exit(1);
 			break;
 		default:
@@ -591,7 +599,7 @@ int main(int argc, char* argv[])
 
 	if(FileName==NULL) {fprintf(stderr,"%s: Need an input\n",PROGRAMID);exit(1);}
 
-        fprintf(stderr,"%s:main(): Trap initialization\n",PROGRAMID);
+        fprintf(stderr,"%s:main(): Trap handler initialization\n",PROGRAMID);
 
 	for (int i = 0; i < 64; i++) {
            struct sigaction sa;
@@ -603,8 +611,9 @@ int main(int argc, char* argv[])
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
         InputType=typeiq_float;
+        float gain=SHRT_MAX/4.0;
 
-        buffer_i16 =(short*)malloc(BUFFERSIZE*sizeof(short));
+        fprintf(stderr,"%s:main(): Standard input definition\n",PROGRAMID);
 
 	FILE *iqfile=NULL;
 	if(strcmp(FileName,"-")==0) {
@@ -619,10 +628,11 @@ int main(int argc, char* argv[])
 	   exit(0);
 	}
 
-	int SR=48000;
-	int FifoSize=IQBURST*4;
+        fprintf(stderr,"%s: Input from %s\n",PROGRAMID,FileName);
 
 // define I/Q object
+
+        fprintf(stderr,"%s:main(): RF I/Q Generator object creation\n",PROGRAMID);
 
 	iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
 	iqtest.SetPLLMasterLoop(3,4,0);
@@ -630,20 +640,34 @@ int main(int argc, char* argv[])
 	//iqtest.SetPLLMasterLoop(5,6,0);
 
 //generate buffer areas
- 
+
+        fprintf(stderr,"%s:main(): Memory buffer creation\n",PROGRAMID);
+        buffer_i16 =(short*)malloc(SR*sizeof(short)*2);
+
+        fprintf(stderr,"%s:main(): Filter coefficiente buffer creation\n",PROGRAMID); 
         a=(float*) malloc(96*sizeof(float));
         b=(float*) malloc(96*sizeof(float));
         c=(float*) malloc(96*sizeof(float));
 
-        input=(float*) malloc(IQBURST*sizeof(float)*2);
-        iLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
-        qLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
+        fprintf(stderr,"%s:main(): Decimation buffer creation\n",PROGRAMID); 
+        i1=(float*) malloc(SR*sizeof(float)*2);
+        i2=(float*) malloc(SR*sizeof(float)*2);
+        i3=(float*) malloc(SR*sizeof(float)*2);
 
-        int numBytesRead=0;
+
+        //iLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
+        //qLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
+
+        fprintf(stderr,"%s:main(): I/Q buffer creation\n",PROGRAMID); 
+        iLow=(float*) malloc(IQBURST*sizeof(float));
+        qLow=(float*) malloc(IQBURST*sizeof(float));
+
+        fprintf(stderr,"%s:main(): FIFO buffer creation\n",PROGRAMID); 
 	std::complex<float> CIQBuffer[IQBURST];	
+        int numBytesRead=0;
 
         init();
-        fprintf(stderr,"%s: Starting operations\n",PROGRAMID);
+        fprintf(stderr,"%s: Starting operations SHRT_MAX(%d)\n",PROGRAMID,(int)SHRT_MAX);
 	while(running)
 	{
 			int CplxSampleNumber=0;
@@ -652,34 +676,50 @@ int main(int argc, char* argv[])
 				case typeiq_float:
 				{
 					//static float IQBuffer[IQBURST*2];
-					static int IQBuffer[IQBURST*2];
+					//static int IQBuffer[IQBURST*2];
 					//int nbread=fread(IQBuffer,sizeof(float),IQBURST*2,iqfile);
 					//int nbread=fread(IQBuffer,sizeof(int),IQBURST*2,iqfile);
-					int nbread=fread(buffer_i16,sizeof(int),IQBURST*2,iqfile);
+					//int nbread=fread(buffer_i16,sizeof(short),IQBURST*2,iqfile);
+					//int nbread=fread(buffer_i16,sizeof(short),512*2,iqfile);
+					int nbread=fread(buffer_i16,sizeof(short),512,iqfile);
+					//fprintf(stderr,"%s: read from stdin nbread(%d) bytes\n",PROGRAMID,nbread);
 					//if(nbread==0) continue;
 					if(nbread>0)
 					{
 //*---- Adaptación de Generator SSB
                                         //Convert from int16 to float
-                                          int j=0;
 					  int k=0;
-                                          for (int i = 0; i < nbread; i++) {
- 	     				      input[j] = (float)buffer_i16[k];
-        	                              k++;
+				          int j=0;
+                                          for (j = 0; j < nbread; j++) {
+ 	     				      //i1[j] = ((float)(buffer_i16[k])/SHRT_MAX)*4.00;
+ 	     				      i1[j] = (float)(buffer_i16[k])/gain;
+        	                              //k++;
 					      k++;
-					      j++;
  			 		  }
+					  //fprintf(stderr,"%s: converted into float i1(%d)\n",PROGRAMID,j);
+
 
                                         //Decimation to 12 KHz
 
-                                          int numSamples=nbread/2;
-                                          decimator->decimate(input, numSamples, iLow);
-                                          int numSamplesLow=numSamples/decimation_factor;
+                                          int numSamples=nbread;
+
+                                          d1->decimate(i1, nbread, iLow);   //nbread/2=4000
+                                          //d2->decimate(i2, nbread/2, iLow);   //nbread/2/2=2000
+                                          //d3->decimate(i3, numSamples/4, iLow); //nbread/2/4=1000
+
+					  //fprintf(stderr,"%s: decimated 2x2x2 times numSamples(%d)\n",PROGRAMID,numSamples);
+
+                                          //int numSamplesLow=(numSamples/8)/decimation_factor;
+                                          int numSamplesLow=(numSamples/4);
 
                                         //split I/Q just copy iLow to qLow
+
                                           for (int i = 0; i < numSamplesLow; i++) { 
       				  	      qLow[i] = iLow[i];
 				  	  }
+
+					  //fprintf(stderr,"%s: branched into I/Q streams numSamplesLow(%d)\n",PROGRAMID,numSamplesLow);
+
 
 					//I/Q Filter
 					// I signal is passed thru a band pass filter
@@ -689,20 +729,18 @@ int main(int argc, char* argv[])
 					// than the I signal but also has a 90 degree phase shifter built in
 					  qFilter->do_filter(qLow,numSamplesLow);
 
+					  //fprintf(stderr,"%s: Filtered thru a Hilbert matrix\n",PROGRAMID);
+
 					//mover iLow y qLow a CIQBuffer
 
 //*---- Fin de Adaptación Generador SSB las muestras deben quedar en CIQBuffer
 
 					  for(int i=0;i<numSamplesLow;i++)
 					  {
-	        			     if(i%Decimation==0)
-		   			     {
-					       //CIQBuffer[CplxSampleNumber++]=std::complex<float>(IQBuffer[i*2],IQBuffer[i*2+1]);
-					       CIQBuffer[CplxSampleNumber++]=(float)iLow[i];
-					       CIQBuffer[CplxSampleNumber++]=(float)qLow[i];
-					     }
-					     //printf("%f %f\n",(IQBuffer[i*2]-127.5)/128.0,(IQBuffer[i*2+1]-127.5)/128.0);
+ 				            CIQBuffer[CplxSampleNumber++]=std::complex<float>(iLow[i*2],qLow[i*2]);
 					  }
+
+					  //fprintf(stderr,"%s: Transferred to FIFO Queue\n",PROGRAMID);
 
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
@@ -712,6 +750,8 @@ int main(int argc, char* argv[])
 				break;	
 		}
 		iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+   	        //fprintf(stderr,"%s: Sent to FIFO Queur for transmitting CplxSampleNumber(%d)\n",PROGRAMID,CplxSampleNumber);
+
 	}
 	iqtest.stop();
 }

@@ -31,12 +31,12 @@
 #include <unistd.h>
 
 #define MAXLEVEL 1
-#define BUFFER_SIZE 4096
+
 
 //----- System Variables
 
 #define RUNNING 0B00000001
-
+#define BUFFERSIZE 96000
 //*---------------------------------------------------------------------------------------------------
 //* Definitions
 //*---------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ class Decimator
       Decimator(float* a,int n_tap,int factor);
       void decimate(float* x, int len,float* out);
 
-      byte 	  TRACE=0x00;
+      byte TRACE=0x00;
 
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Decimator";
@@ -69,10 +69,10 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 
   private:
       char   msg[80]; 
-      int factor;		// decimation factor
+      int    factor;		// decimation factor
       float* coeff;	// filter coefficients
-      int n_tap;		// number of taps(coefficients)
-      int in_idx;		// index at which new data will be inserted
+      int    n_tap;		// number of taps(coefficients)
+      int    in_idx;		// index at which new data will be inserted
       float* buf;	// used as a circular buffer
 
 };
@@ -91,9 +91,9 @@ Decimator::Decimator(float* a,int n_tap,int factor)
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;
-  this->buf = (float*) malloc(BUFFER_SIZE*sizeof(float) * 2);
+  this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
   this->factor=factor;
-  fprintf(stderr,"Decimator::Decimator() Object creation completed\n");
+  fprintf(stderr,"Decimator::Decimator() Object creation completed tap(%d) factor(%d)\n",n_tap,factor);
 
   
 }
@@ -103,6 +103,7 @@ Decimator::Decimator(float* a,int n_tap,int factor)
 void Decimator::decimate(float* x,int len, float* out) {
 
   int m = 0;			// output index
+  in_idx=0;
 
   for (int k = 0; k < len; ) {
     for (int n = 0; n < factor; n++) {

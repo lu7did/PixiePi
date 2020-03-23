@@ -31,12 +31,11 @@
 #include <unistd.h>
 
 #define MAXLEVEL 1
-#define BUFFER_SIZE 4096
 
 //----- System Variables
 
 #define RUNNING 0B00000001
-
+#define BUFFERSIZE 96000
 //*---------------------------------------------------------------------------------------------------
 //* Definitions
 //*---------------------------------------------------------------------------------------------------
@@ -93,8 +92,8 @@ FIRFilter::FIRFilter(float* a,int n_tap)
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;
-  this->buf = (float*) malloc(BUFFER_SIZE*sizeof(float) * 2);
-  fprintf(stderr,"FIRFilter::FIRFilter() Object creation completed\n");
+  this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
+  fprintf(stderr,"FIRFilter::FIRFilter() Object creation completed taps(%d)\n",n_tap);
 
   
 }

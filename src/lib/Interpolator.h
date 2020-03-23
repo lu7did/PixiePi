@@ -31,12 +31,11 @@
 #include <unistd.h>
 
 #define MAXLEVEL 1
-#define BUFFER_SIZE 4096
 
 //----- System Variables
 
 #define RUNNING 0B00000001
-
+#define BUFFERSIZE 96000
 //*---------------------------------------------------------------------------------------------------
 //* Definitions
 //*---------------------------------------------------------------------------------------------------
@@ -92,7 +91,7 @@ Interpolator::Interpolator(float* a,int n_tap,int factor)
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;
-  this->buf = (float*) malloc(BUFFER_SIZE*sizeof(float) * 2);
+  this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
   this->factor=factor;
   fprintf(stderr,"Interpolator::Interpolator() Object creation Completed\n");
 
@@ -115,15 +114,15 @@ void Interpolator::interpolate(float* x,int len, float* out) {
 	for (int i = n; i < n_tap; i+=factor) {
 	  if (j < 0)
 	    //j += buf.length;
-            j += BUFFER_SIZE;
+            j += BUFFERSIZE;
 	  y = y + coeff[i] * buf[j--];
 	}
 	out[m++] = (float)(factor * y);
       }
       in_idx++;
       //if (in_idx >= buf.length) {  // REvisar si buf.length es BUFFER_SIZE o *2
-      if (in_idx >= BUFFER_SIZE) {
-	in_idx -= BUFFER_SIZE;
+      if (in_idx >= BUFFERSIZE) {
+	in_idx -= BUFFERSIZE;
       }
    }
 }
