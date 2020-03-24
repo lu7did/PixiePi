@@ -78,7 +78,7 @@
 #include "/home/pi/PixiePi/src/lib/Decimator.h" 
 #include "/home/pi/PixiePi/src/lib/Interpolator.h" 
 #include "/home/pi/PixiePi/src/lib/FIRFilter.h" 
-#include "/home/pi/PixiePi/src/lib/FastAGC.h" 
+#include "/home/pi/PixiePi/src/lib/AGControl.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
 
 
@@ -106,9 +106,18 @@ float* i3;
 float* iLow;
 float* qLow;
 
+float* iOut;
+float* qOut;
+AGControl*  agc;
+
+float  agc_rate=0.25;
+float  agc_reference=1.0;
+float  agc_max_gain=5.0;
+float  agc_current_gain=1.0;
+
 int numSamples=0;
 int numSamplesLow=0;
-
+int exitrecurse=0;
 int mode = 0;
 int bufferLengthInBytes;
     
@@ -196,7 +205,12 @@ static void terminate(int num)
 {
     running=false;
     fprintf(stderr,"%s: Caught TERM signal(%x) - Terminating \n",PROGRAMID,num);
-    //exit(16);
+    if (exitrecurse > 0) {
+       fprintf(stderr,"%s: Recursive trap - Force termination \n",PROGRAMID);
+       exit(16);
+    }
+    exitrecurse++;
+
 }
 //---------------------------------------------------------------------------------
 // init()
@@ -648,10 +662,9 @@ int main(int argc, char* argv[])
            sigaction(i, &sa, NULL);
         }
 
-        fprintf(stderr,"%s: Creating AGC object\n",PROGRAMID);
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
-        float gain=SHRT_MAX/4.0;
+        float gain=SHRT_MAX;
 
         fprintf(stderr,"%s:main(): Standard input definition\n",PROGRAMID);
 
@@ -702,9 +715,6 @@ int main(int argc, char* argv[])
         i1=(float*) malloc(SR*sizeof(float)*2);
 
 
-        //iLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
-        //qLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
-
         fprintf(stderr,"%s:main(): I/Q buffer creation\n",PROGRAMID); 
         iLow=(float*) malloc(IQBURST*sizeof(float));
         qLow=(float*) malloc(IQBURST*sizeof(float));
@@ -713,7 +723,15 @@ int main(int argc, char* argv[])
 	std::complex<float> CIQBuffer[IQBURST];	
         int numBytesRead=0;
 
+        fprintf(stderr,"%s:main(): AGControl object creation\n",PROGRAMID); 
+        iOut=(float*) malloc(IQBURST*sizeof(float));
+        qOut=(float*) malloc(IQBURST*sizeof(float));
+
+
+        agc=new AGControl();
+        fprintf(stderr,"%s:main(): Filter initialization\n",PROGRAMID); 
         init();
+
         fprintf(stderr,"%s: Starting operations SHRT_MAX(%d)\n",PROGRAMID,(int)SHRT_MAX);
 	while(running)
 	{
@@ -741,11 +759,12 @@ int main(int argc, char* argv[])
 					  qFilter->do_filter(qLow,numSamplesLow);
 
 //*---- Fin de Adaptación Generador SSB las muestras deben quedar en CIQBuffer
-
+                                          agc->computeagc(iLow,qLow,iOut,qOut,numSamplesLow,agc_rate,agc_reference,agc_max_gain,&agc_current_gain);
 					  for(int i=0;i<numSamplesLow;i++)
 					  {
  				            //CIQBuffer[CplxSampleNumber++]=std::complex<float>(iLow[i*2],qLow[i*2]);
- 				            CIQBuffer[CplxSampleNumber++]=std::complex<float>(iLow[i],qLow[i]);
+ 				            //CIQBuffer[CplxSampleNumber++]=std::complex<float>(iLow[i],qLow[i]);
+ 				            CIQBuffer[CplxSampleNumber++]=std::complex<float>(iOut[i],qOut[i]);
 					  }
 
 
