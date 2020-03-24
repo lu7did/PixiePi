@@ -115,13 +115,8 @@ int bufferLengthInBytes;
 FIRFilter    *iFilter;
 FIRFilter    *qFilter;
 
-float* agc_output_buffer;
-
 Decimator    *d1;
-Decimator    *d2;
-Decimator    *d3;
 
-FastAGC      *agc;      
 int decimation_factor = 8;
 short *buffer_i16;
 
@@ -216,6 +211,7 @@ void init() {
      * Transition band: 3000.0 Hz
      * Stopband attenuation: 80.0 dB
      */
+/*
     a[0]= -0.015700f;
     a[1]=  0.000000f;
     a[2]=  0.270941f;
@@ -223,8 +219,9 @@ void init() {
     a[4]=  0.270941f;
     a[5]=  0.000000f;
     a[6]= -0.015700f;
+*/
 
-/*
+
     a[0] =	-1.7250879E-5f;
     a[1] =	-4.0276995E-5f;
     a[2] =	-5.6314686E-5f;
@@ -308,7 +305,7 @@ void init() {
     a[80] =	-5.6314686E-5f;
     a[81] =	-4.0276995E-5f;
     a[82] =	-1.7250879E-5f;
-*/
+
     /*
      * Kaiser Window FIR Filter
      * Passband: 0.0 - 1350.0 Hz
@@ -529,10 +526,8 @@ void init() {
 
     fprintf(stderr,"%s: init() Decimator creation\n",PROGRAMID);
 
-    d1 = new Decimator(a, 7, decimation_factor);
-    //d1 = new Decimator(a, 83, decimation_factor);
-    d2 = new Decimator(a, 83, decimation_factor);
-    d3 = new Decimator(a, 83, decimation_factor);
+    //d1 = new Decimator(a, 7, decimation_factor);
+    d1 = new Decimator(a, 83, decimation_factor);
 
     fprintf(stderr,"%s: init() I/Q FIR Filter (Hilbert)\n",PROGRAMID);
 
@@ -654,23 +649,6 @@ int main(int argc, char* argv[])
         }
 
         fprintf(stderr,"%s: Creating AGC object\n",PROGRAMID);
-        static fastagc_ff_t inputI;
-        static fastagc_ff_t inputQ;
-        agc=new FastAGC();
-
-        inputI.input_size=IQBURST;
-        inputQ.input_size=IQBURST;
-        inputI.reference=1.0;
-        inputQ.reference=1.0;
-        inputI.buffer_1=(float*)calloc(inputI.input_size*4,sizeof(float));
-        inputI.buffer_2=(float*)calloc(inputI.input_size*4,sizeof(float));
-        inputI.buffer_input=(float*)malloc(sizeof(float)*IQBURST*4);
-        inputQ.buffer_1=(float*)calloc(inputQ.input_size*4,sizeof(float));
-        inputQ.buffer_2=(float*)calloc(inputQ.input_size*4,sizeof(float));
-        inputQ.buffer_input=(float*)malloc(sizeof(float)*IQBURST*4);
-        float* outputI=(float*)malloc(sizeof(float)*inputI.input_size*4);
-        float* outputQ=(float*)malloc(sizeof(float)*inputQ.input_size*4);
-
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
         float gain=SHRT_MAX/4.0;
@@ -722,8 +700,6 @@ int main(int argc, char* argv[])
 
         fprintf(stderr,"%s:main(): Decimation buffer creation\n",PROGRAMID); 
         i1=(float*) malloc(SR*sizeof(float)*2);
-        i2=(float*) malloc(SR*sizeof(float)*2);
-        i3=(float*) malloc(SR*sizeof(float)*2);
 
 
         //iLow=(float*) malloc((IQBURST/(2*decimation_factor))*sizeof(float)*2);
@@ -750,24 +726,11 @@ int main(int argc, char* argv[])
 					if(nbread>0)
 					{
 //*---- Adaptación de Generator SSB
-                                        //Convert from int16 to float
-                                         // int k=0;
-                                         // for (int j = 0; j < nbread; j++) {
- 	     				 //      i1[j] = (float)(buffer_i16[j])/(gain);
-					 //     }
- 			 		 // }
-
                                         //Decimation to 12 KHz
 
                                           //d1->decimate(i1, nbread, iLow);   //nbread/4=1024
                                           d1->decimate(buffer_i16, nbread, gain, iLow, qLow);   //nbread/4=1024
 			                  int numSamplesLow = nbread / decimation_factor;
-
-                                        //split I/Q just copy iLow to qLow
-
-                                          //for (int i = 0; i < numSamplesLow; i++) { 
-      				  	  //    qLow[i] = iLow[i];
-				  	  //}
 
 					//I/Q Filter
 					// I signal is passed thru a band pass filter
@@ -776,13 +739,7 @@ int main(int argc, char* argv[])
 					// Q signal is passed through a BPF which as the same amplitude response 
 					// than the I signal but also has a 90 degree phase shifter built in
 					  qFilter->do_filter(qLow,numSamplesLow);
-                                          //inputI.buffer_input=iLow;
-					  //inputI.input_size=numSamplesLow;
-					  //inputQ.input_size=numSamplesLow;
-                                          //inputQ.buffer_input=qLow;
-					//mover iLow y qLow a CIQBuffer
-                                          //agc->agc(&inputI,outputI);
-                                          //agc->agc(&inputQ,outputQ);
+
 //*---- Fin de Adaptación Generador SSB las muestras deben quedar en CIQBuffer
 
 					  for(int i=0;i<numSamplesLow;i++)
