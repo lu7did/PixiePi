@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/Generator
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/Generator ../bin/SSBGen
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
@@ -21,6 +21,9 @@ GCC = gcc
 ../bin/Generator : Pi4D/Generator.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h 
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Generator ./Pi4D/Generator.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h $(LDFLAGS)
 
+../bin/SSBGen : Pi4D/SSBGen.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h lib/FastAGC.h
+	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/SSBGen ./Pi4D/SSBGen.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h ./lib/FastAGC.h $(LDFLAGS)
+
 ../bin/PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
 	$(CCP) $(CXXFLAGS) -o ../bin/PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS)
  
@@ -34,10 +37,12 @@ clean:
 	rm -r  ../bin/PiRTTY
 	rm -r  ../bin/Pi4D
 	rm -r  ../bin/Generator
+	rm -r  ../bin/SSBGen
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
 	install -m 0755 ../bin/Pi4D   /usr/bin
+	install -m 0755 ../bin/SSBGen /usr/bin
 	install -m 0755 ../bin/Generator  /usr/bin

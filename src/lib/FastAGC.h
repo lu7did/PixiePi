@@ -1,14 +1,14 @@
 
 //*--------------------------------------------------------------------------------------------------
-//* Decimator   (HEADER CLASS)
+//* FastAGC   (HEADER CLASS)
 //*--------------------------------------------------------------------------------------------------
 //* Este es el firmware del diseÃ±o de SSB para PixiePi
-//  Decimator class implementation Modelled after FIRFilter.java  from JI3GAB
+//  FastAGC class implementation Modelled after fastagc_ff  from csdr
 //* Solo para uso de radioaficionados, prohibido su utilizacion comercial
 //* Copyright 2018 Dr. Pedro E. Colla (LU7DID)
 //*--------------------------------------------------------------------------------------------------
-#ifndef Decimator_h
-#define Decimator_h
+#ifndef FastAGC_h
+#define FastAGC_h
 
 #define _NOP        (byte)0
 
@@ -29,6 +29,7 @@
 #include <semaphore.h>
 #include <pigpio.h>
 #include <unistd.h>
+#include <math.h>
 
 #define MAXLEVEL 1
 
@@ -37,11 +38,25 @@
 
 #define RUNNING 0B00000001
 #define BUFFERSIZE 96000
+#define FASTAGC_MAX_GAIN 50
 //*---------------------------------------------------------------------------------------------------
 //* Definitions
 //*---------------------------------------------------------------------------------------------------
 typedef unsigned char byte;
 typedef bool boolean;
+
+
+typedef struct fastagc_ff_s
+{
+    float* buffer_1;
+    float* buffer_2;
+    float* buffer_input; //it is the actual input buffer to fill
+    float peak_1;
+    float peak_2;
+    int input_size;
+    float reference;
+    float last_gain;
+} fastagc_ff_t;
 
 //typedef void (*CALLBACK)();
 
@@ -52,29 +67,24 @@ bool getWord (unsigned char SysWord, unsigned char v);
 //*---------------------------------------------------------------------------------------------------
 //* FIRFilter CLASS
 //*---------------------------------------------------------------------------------------------------
-class Decimator
+class FastAGC
 {
   public: 
   
-      Decimator(float* a,int n_tap,int factor);
-      void decimate(float* x, int len,float* out);
-      void decimate(short* x, int len,float gain, float* I,float* Q);
+      FastAGC();
+      void agc(fastagc_ff_t* input, float* output);
 
       byte TRACE=0x00;
 
 //-------------------- GLOBAL VARIABLES ----------------------------
-const char   *PROGRAMID="Decimator";
+const char   *PROGRAMID="FastAGC";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 
   private:
       char   msg[80]; 
-      int    factor;		// decimation factor
-      float* coeff;	// filter coefficients
-      int    n_tap;		// number of taps(coefficients)
-      int    in_idx;		// index at which new data will be inserted
-      float* buf;	// used as a circular buffer
+
 };
 
 #endif
@@ -85,77 +95,61 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 //* Solo para uso de radioaficionados, prohibido su utilizacion comercial
 //* Copyright 2018 Dr. Pedro E. Colla (LU7DID)
 //*--------------------------------------------------------------------------------------------------
-Decimator::Decimator(float* a,int n_tap,int factor)
+FastAGC::FastAGC()
 {
-  fprintf(stderr,"Decimator::Decimator() Object creation started tap(%d) factor(%d)\n",n_tap,factor);
 
-  this->in_idx=0;
-  this->n_tap = n_tap;
-  this->coeff = a;
-  this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
-  this->factor=factor;
-  fprintf(stderr,"Decimator::Decimator() Object creation completed tap(%d) factor(%d)\n",n_tap,factor);
+
+   fprintf(stderr,"FastAGC::FastAGC() Object creation completed\n");
+
   
 }
 //*--------------------------------------------------------------------------------------------------
 // decimate: take one sample and compute one filterd output
 //*--------------------------------------------------------------------------------------------------
-void Decimator::decimate(float* x,int len, float* out) {
-  int m = 0;			// output index
-  in_idx=0;
+void FastAGC::agc(fastagc_ff_t* input, float* output) {
 
-  for (int k = 0; k < len; ) {
-    for (int n = 0; n < factor; n++) {
-	buf[in_idx++] = x[k++];
-	if (in_idx >= n_tap) {
-	    in_idx -= n_tap;
-	}
+    //Gain is processed on blocks of samples.
+    //You have to supply three blocks of samples before the first block comes out.
+    //AGC reaction speed equals input_size*samp_rate*2
+
+    //The algorithm calculates target gain at the end of the first block out of the peak value of all the three blocks.
+    //This way the gain change can easily react if there is any peak in the third block.
+    //Pros: can be easily speeded up with loop vectorization, easy to implement
+    //Cons: needs 3 buffers, dos not behave similarly to real AGC circuits
+
+    //Get the peak value of new input buffer
+    float peak_input=0;
+    for(int i=0;i<input->input_size;i++) //@fastagc_ff: peak search
+    {
+        float val=fabs(input->buffer_input[i]);
+        if(val>peak_input) peak_input=val;
     }
-    int j = in_idx - 1;
-    if (j < 0) {
-	j = n_tap - 1;
+
+    //Determine the maximal peak out of the three blocks
+    float target_peak=peak_input;
+    if(target_peak<input->peak_2) target_peak=input->peak_2;
+    if(target_peak<input->peak_1) target_peak=input->peak_1;
+
+    //we change the gain linearly on the apply_block from the last_gain to target_gain.
+    float target_gain=input->reference/target_peak;
+    if(target_gain>FASTAGC_MAX_GAIN) target_gain=FASTAGC_MAX_GAIN;
+    //fprintf(stderr, "target_gain: %g\n",target_gain);
+
+    for(int i=0;i<input->input_size;i++) //@fastagc_ff: apply gain
+    {
+        float rate=(float)i/input->input_size;
+        float gain=input->last_gain*(1.0-rate)+target_gain*rate;
+        output[i]=input->buffer_1[i]*gain;
     }
-    float y = 0.0;    
-    for (int i = 0; i < n_tap; ++i) {
-       if (j < 0) {
-	  j += n_tap;
-       }
-       y = y + coeff[i] * buf[j--];
-    }
-    out[m++] = (float)y;
-  }
 
-}
-
-void Decimator::decimate(short* x, int len,float gain, float* I,float* Q) {
-
-  int m = 0;			// output index
-  in_idx=0;
-
-  for (int k = 0; k < len; ) {
-    for (int n = 0; n < factor; n++) {
-	buf[in_idx++] = (float)x[k++]/gain;
-	if (in_idx >= n_tap) {
-	    in_idx -= n_tap;
-	}
-    }
-    int j = in_idx - 1;
-    if (j < 0) {
-	j = n_tap - 1;
-    }
-    float y = 0.0;    
-    for (int i = 0; i < n_tap; ++i) {
-       if (j < 0) {
-	  j += n_tap;
-       }
-       y = y + coeff[i] * buf[j--];
-    }
-    I[m] = (float)y;
-    Q[m] = I[m];
-    m++;
-  }
-
-
-
+    //Shift the three buffers
+    float* temp_pointer=input->buffer_1;
+    input->buffer_1=input->buffer_2;
+    input->peak_1=input->peak_2;
+    input->buffer_2=input->buffer_input;
+    input->peak_2=peak_input;
+    input->buffer_input=temp_pointer;
+    input->last_gain=target_gain;
+    //fprintf(stderr,"target_gain=%g\n", target_gain);
 }
 
