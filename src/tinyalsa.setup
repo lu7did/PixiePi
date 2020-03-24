@@ -1,0 +1,5 @@
+#!/bin/sh
+sudo apt-add-repository ppa:taylorcholberton/tinyalsa
+sudo apt-get update
+sudo apt-get install tinyalsa
+sudo apt-get install libtinyalsa-dev

@@ -87,14 +87,12 @@ const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 //*--------------------------------------------------------------------------------------------------
 Decimator::Decimator(float* a,int n_tap,int factor)
 {
-  fprintf(stderr,"Decimator::Decimator() Object creation started tap(%d) factor(%d)\n",n_tap,factor);
-
   this->in_idx=0;
   this->n_tap = n_tap;
   this->coeff = a;
   this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
   this->factor=factor;
-  fprintf(stderr,"Decimator::Decimator() Object creation completed tap(%d) factor(%d)\n",n_tap,factor);
+  fprintf(stderr,"%s:: Object creation completed tap(%d) factor(%d)\n",PROGRAMID,n_tap,factor);
   
 }
 //*--------------------------------------------------------------------------------------------------

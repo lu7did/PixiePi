@@ -93,7 +93,7 @@ FIRFilter::FIRFilter(float* a,int n_tap)
   this->n_tap = n_tap;
   this->coeff = a;
   this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
-  fprintf(stderr,"FIRFilter::FIRFilter() Object creation completed taps(%d)\n",n_tap);
+  fprintf(stderr,"%s Object creation completed taps(%d)\n",PROGRAMID,n_tap);
 
   
 }
