@@ -110,7 +110,6 @@ void CATchangeStatus();
 CAT817* cat;
 byte FT817;
 
-float SetFrequency=VFO_START;
 float SampleRate=6000;
 float ppm=1000.0;
 char  port[80];
@@ -121,6 +120,20 @@ byte gpio=GPIO04;
 
 iqdmasync* iqtest;
 
+int   ax;
+int   anyargs = 1;
+float SetFrequency=7080000;
+
+//bool loop_mode_flag=false;
+
+char* FileName=NULL;
+int   Harmonic=1;
+int   InputType=typeiq_i16;
+int   Decimation=1;
+
+int   m=1;
+int   SR=48000;
+int   FifoSize=IQBURST*4;
 
 
 // --- SSB generation objects
@@ -178,25 +191,34 @@ void setPTT(bool statePTT) {
        fprintf(stderr,"%s:setPTT() PTT On PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
        setWord(&cat->FT817,PTT,true);
        setWord(&MSW,PTT,true);
-       //gpioWrite(KEYER_OUT_GPIO, 1);
-       iqtest->SetPLLMasterLoop(3,4,0);
 
+       if (iqtest != NULL) {
+          iqtest->stop();
+          delete(iqtest);
+          usleep(1000);
+       }
+
+       iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+       iqtest->SetPLLMasterLoop(3,4,0);
+       usleep(1000);
        return;
     } 
 
 //---------------------------------*
 //          PTT Inactivated        *
 //---------------------------------*
+    fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+    setWord(&cat->FT817,PTT,false);
+    setWord(&MSW,PTT,false);
 
-    if (statePTT==false) {
-
-       fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
-       //gpioWrite(KEYER_OUT_GPIO, 0);
-       setWord(&cat->FT817,PTT,false);
-       setWord(&MSW,PTT,false);
+    if (iqtest != NULL) {
+       iqtest->stop();
+       delete(iqtest);
+       usleep(1000);
     }
+
+    iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
     iqtest->SetPLLMasterLoop(3,4,0);
-    return;
 
 }
 //---------------------------------------------------------------------------
@@ -358,28 +380,13 @@ int main(int argc, char* argv[])
 
         fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
-	int   ax;
-	int   anyargs = 1;
-	float SetFrequency=7080000;
-	float SampleRate=48000;
-
-	//bool loop_mode_flag=false;
-
-	char* FileName=NULL;
-	int   Harmonic=1;
-	int   InputType=typeiq_i16;
-	int   Decimation=1;
-        timer_start(timer_exec,100);
-
-        int   m=1;
-	int   SR=48000;
-	int   FifoSize=IQBURST*4;
         InputType=typeiq_float;
+        sprintf(port,"/tmp/ttyv1");
+        timer_start(timer_exec,100);
 
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
 
-        sprintf(port,"/tmp/ttyv1");
 
         //if (wiringPiSetup () < 0) {
         //   fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
@@ -556,10 +563,10 @@ float   gain=1.0;
 
 // define I/Q object
 
-        fprintf(stderr,"%s:main(): RF I/Q generator object creation\n",PROGRAMID);
+        //fprintf(stderr,"%s:main(): RF I/Q generator object creation\n",PROGRAMID);
 
-	iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-	iqtest->SetPLLMasterLoop(3,4,0);
+	//iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+	//iqtest->SetPLLMasterLoop(3,4,0);
 
 //generate buffer areas
 
@@ -581,6 +588,7 @@ float   gain=1.0;
         float voxmax=0.0;
         float voxlvl=voxmin;
 
+        setPTT(false);
 
 	while(getWord(MSW,RUN)==true)
 	{
@@ -594,19 +602,10 @@ float   gain=1.0;
 					if(nbread>0)
 					{
 					  int numSamplesLow=usb->generate(buffer_i16,nbread,Ibuffer,Qbuffer);
-					  if (getWord(MSW,PTT)==true) {
-					     for(int i=0;i<numSamplesLow;i++)
-					     {
- 				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
-					     } 
-					  } else {
- 			         	    //CplxSampleNumber=0;
-					     numSamplesLow=1024/usb->decimation_factor;
-					     for(int i=0;i<numSamplesLow;i++)
-					     {
- 				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
-					     } 
-					  }
+					  for(int i=0;i<numSamplesLow;i++)
+					  {
+ 				             CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
+					  } 
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
                                           setWord(&MSW,RUN,false);
