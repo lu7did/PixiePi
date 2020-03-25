@@ -18,9 +18,6 @@ GCC = gcc
 ../bin/Pi4D : Pi4D/Pi4D.cpp /home/pi/librpitx/src/librpitx.a lib/SSB.h
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Pi4D ./Pi4D/Pi4D.cpp lib/SSB.h  $(LDFLAGS)
 
-../bin/Generator : Pi4D/Generator.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h 
-	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Generator ./Pi4D/Generator.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h $(LDFLAGS)
-
 ../bin/SSBGen : Pi4D/SSBGen.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h lib/AGControl.h
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/SSBGen ./Pi4D/SSBGen.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h ./lib/AGControl.h $(LDFLAGS)
 

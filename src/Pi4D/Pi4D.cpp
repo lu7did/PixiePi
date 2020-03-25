@@ -70,8 +70,8 @@
 #include <signal.h>
 #include <semaphore.h>
 #include <pigpio.h>
-#include <wiringPi.h>
-#include <wiringPiI2C.h>
+//#include <wiringPi.h>
+//#include <wiringPiI2C.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
@@ -178,7 +178,9 @@ void setPTT(bool statePTT) {
        fprintf(stderr,"%s:setPTT() PTT On PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
        setWord(&cat->FT817,PTT,true);
        setWord(&MSW,PTT,true);
-       gpioWrite(KEYER_OUT_GPIO, 1);
+       //gpioWrite(KEYER_OUT_GPIO, 1);
+       iqtest->SetPLLMasterLoop(3,4,0);
+
        return;
     } 
 
@@ -189,10 +191,11 @@ void setPTT(bool statePTT) {
     if (statePTT==false) {
 
        fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
-       gpioWrite(KEYER_OUT_GPIO, 0);
+       //gpioWrite(KEYER_OUT_GPIO, 0);
        setWord(&cat->FT817,PTT,false);
        setWord(&MSW,PTT,false);
     }
+    iqtest->SetPLLMasterLoop(3,4,0);
     return;
 
 }
@@ -292,7 +295,7 @@ void timer_exec()
   if (TVOX!=0) {
      TVOX--;
      if(TVOX==0) {
-       printf("VOX turned off\n");
+       fprintf(stderr,"%s::timer_exec() VOX timer expiration event\n",PROGRAMID);
        setWord(&MSW,VOX,true);
      }
   }
@@ -378,24 +381,24 @@ int main(int argc, char* argv[])
 
         sprintf(port,"/tmp/ttyv1");
 
-        if (wiringPiSetup () < 0) {
-           fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
-           return 1;
-        }
+        //if (wiringPiSetup () < 0) {
+        //   fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
+        //   return 1;
+        //}
         fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
-        if (gpioInitialise()<0) {
-           fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
-           return 1;
-        }
+        //if (gpioInitialise()<0) {
+        //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
+        //   return 1;
+        //}
 
-        gpioSetMode(COOLER_GPIO,KEYER_OUT_GPIO);
-        gpioWrite(KEYER_OUT_GPIO, 0);
-        usleep(100000);
+        //gpioSetMode(COOLER_GPIO,KEYER_OUT_GPIO);
+        //gpioWrite(KEYER_OUT_GPIO, 0);
+        //usleep(100000);
 
-        gpioSetMode(COOLER_GPIO, PI_OUTPUT);
-        gpioWrite(COOLER_GPIO, 1);
-        usleep(100000);
+        //gpioSetMode(COOLER_GPIO, PI_OUTPUT);
+        //gpioWrite(COOLER_GPIO, 1);
+        //usleep(100000);
 
 //--------------------------------------------------------------------------------------------------
 // SSB (USB) controller generation
@@ -403,11 +406,12 @@ int main(int argc, char* argv[])
 
 float   gain=1.0;
 
-        usb=new SSB(&gain);
+        usb=new SSB();
         usb->agc.reference=1.0;
 	usb->agc.max_gain=5.0;
 	usb->agc.rate=0.25;
         usb->agc.active=false;
+	usb->agc.gain=&gain;
 
         fprintf(stderr,"%s:main(): SSB controller generation\n",PROGRAMID); 
 
@@ -568,7 +572,7 @@ float   gain=1.0;
 	std::complex<float> CIQBuffer[IQBURST];	
         int numBytesRead=0;
 
-        gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
+        //gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
 
         fprintf(stderr,"%s: Starting operations\n",PROGRAMID);
         setWord(&MSW,RUN,true);
@@ -596,7 +600,12 @@ float   gain=1.0;
  				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
 					     } 
 					  } else {
- 			         	    CplxSampleNumber=0;
+ 			         	    //CplxSampleNumber=0;
+					     numSamplesLow=1024/usb->decimation_factor;
+					     for(int i=0;i<numSamplesLow;i++)
+					     {
+ 				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
+					     } 
 					  }
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
@@ -605,45 +614,52 @@ float   gain=1.0;
 				}
 				break;	
 		}
-		iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+		if (getWord(MSW,PTT)==true) {
+		   iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+                }
 
 // VOX analysis
-
+          if (usb->agc.active==true) {
                 if (gain>voxmax) {
 		   voxmax=gain;
 		   voxlvl=voxmax*0.90;
-		   fprintf(stderr,"%s main() VOX maximum set to (%8f) trigger set to (%8f)\n",PROGRAMID,voxmax,voxlvl);
+		   fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
                 }
 
 		if (gain<voxmin) {
 		   voxmin=gain;
-		   fprintf(stderr,"%s main() VOX minimum set to (%8f)\n",PROGRAMID,voxmin);
+		   fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+
                 }
  
 		if (gain<=voxlvl) {
   		   TVOX=VOX_TIMER;
 		   setWord(&MSW,VOX,false);
-		   fprintf(stderr,"%s main() VOX trigger gain (%8f) trigger(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,gain,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+
 		   if (getWord(MSW,PTT)==false) {
-		      fprintf(stderr,"%s main() vox on gain(%8f)\n",PROGRAMID,gain);
 		      setPTT(true);
 		      setWord(&MSW,PTT,true);
+		      fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+
 		   }
 		}
 
 		if (getWord(MSW,VOX)==true) {
-		   fprintf(stderr,"%s main() VOX decay gain (%8f) trigger(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,gain,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 		   setWord(&MSW,VOX,false);
 		   setPTT(false);
 		   setWord(&MSW,PTT,false);
+		   fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+
 		}
+           }
 	}
 
 
         fprintf(stderr,"%s: Turning infrastructure off\n",PROGRAMID);
         
-        gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
-        gpioWrite(COOLER_GPIO,PTT_OFF);
+        //gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
+        //gpioWrite(COOLER_GPIO,PTT_OFF);
 
         fprintf(stderr,"%s: Stopping I/Q RF generator\n",PROGRAMID);
 

@@ -29,6 +29,7 @@
 #include <semaphore.h>
 #include <pigpio.h>
 #include <unistd.h>
+#include <limits.h>
 
 #define MAXLEVEL 1
 
@@ -57,8 +58,7 @@ class Decimator
   public: 
   
       Decimator(float* a,int n_tap,int factor);
-      void decimate(float* x, int len,float* out);
-      void decimate(short* x, int len,float gain, float* I,float* Q);
+      void decimate(short* x, int len, float* I,float* Q);
 
       byte TRACE=0x00;
 
@@ -95,44 +95,18 @@ Decimator::Decimator(float* a,int n_tap,int factor)
   fprintf(stderr,"%s:: Object creation completed tap(%d) factor(%d)\n",PROGRAMID,n_tap,factor);
   
 }
-//*--------------------------------------------------------------------------------------------------
-// decimate: take one sample and compute one filterd output
-//*--------------------------------------------------------------------------------------------------
-void Decimator::decimate(float* x,int len, float* out) {
-  int m = 0;			// output index
-  in_idx=0;
 
-  for (int k = 0; k < len; ) {
-    for (int n = 0; n < factor; n++) {
-	buf[in_idx++] = x[k++];
-	if (in_idx >= n_tap) {
-	    in_idx -= n_tap;
-	}
-    }
-    int j = in_idx - 1;
-    if (j < 0) {
-	j = n_tap - 1;
-    }
-    float y = 0.0;    
-    for (int i = 0; i < n_tap; ++i) {
-       if (j < 0) {
-	  j += n_tap;
-       }
-       y = y + coeff[i] * buf[j--];
-    }
-    out[m++] = (float)y;
-  }
-
-}
-
-void Decimator::decimate(short* x, int len,float gain, float* I,float* Q) {
+// decimate: another interface for decimator creating I/Q pairs with gain adjustment
+// --------------------------------------------------------------------------------------------------
+void Decimator::decimate(short* x, int len, float* I,float* Q) {
 
   int m = 0;			// output index
   in_idx=0;
-
+  float f=(float)(SHRT_MAX/2.0);
+ 
   for (int k = 0; k < len; ) {
     for (int n = 0; n < factor; n++) {
-	buf[in_idx++] = (float)x[k++]/gain;
+	buf[in_idx++] = (float)x[k++]/f;
 	if (in_idx >= n_tap) {
 	    in_idx -= n_tap;
 	}

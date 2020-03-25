@@ -688,35 +688,35 @@ int main(int argc, char* argv[])
 					{
 //*---- Adaptación de Generator SSB
                                         //Convert from int16 to float
-					  int k=0;
-				          int j=0;
-                                          for (j = 0; j < nbread; j++) {
+					  //int k=0;
+				          //int j=0;
+                                          //for (j = 0; j < nbread; j++) {
  	     				      //i1[j] = ((float)(buffer_i16[k])/SHRT_MAX)*4.00;
- 	     				      i1[j] = (float)(buffer_i16[k])/gain;
+ 	     				  //    i1[j] = (float)(buffer_i16[k])/gain;
         	                              //k++;
-					      k++;
- 			 		  }
+					  //    k++;
+ 			 		  //}
 					  //fprintf(stderr,"%s: converted into float i1(%d)\n",PROGRAMID,j);
 
 
                                         //Decimation to 12 KHz
 
-                                          int numSamples=nbread;
+                                          //int numSamples=nbread;
 
-                                          d1->decimate(i1, nbread, iLow);   //nbread/2=4000
+                                          d1->decimate(buffer_i16, nbread, iLow,qLow);   //nbread/2=4000
                                           //d2->decimate(i2, nbread/2, iLow);   //nbread/2/2=2000
                                           //d3->decimate(i3, numSamples/4, iLow); //nbread/2/4=1000
 
 					  //fprintf(stderr,"%s: decimated 2x2x2 times numSamples(%d)\n",PROGRAMID,numSamples);
 
                                           //int numSamplesLow=(numSamples/8)/decimation_factor;
-                                          int numSamplesLow=(numSamples/4);
+                                          int numSamplesLow=(nbread/decimation_factor);
 
                                         //split I/Q just copy iLow to qLow
 
-                                          for (int i = 0; i < numSamplesLow; i++) { 
-      				  	      qLow[i] = iLow[i];
-				  	  }
+                                          //for (int i = 0; i < numSamplesLow; i++) { 
+      				  	  //    qLow[i] = iLow[i];
+				  	  //}
 
 					  //fprintf(stderr,"%s: branched into I/Q streams numSamplesLow(%d)\n",PROGRAMID,numSamplesLow);
 

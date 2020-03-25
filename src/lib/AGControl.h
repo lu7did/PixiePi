@@ -94,7 +94,12 @@ AGControl::AGControl()
 void AGControl::computeagc(float* Iin, float* Qin, float* Iout, float* Qout,int input_size, float rate, float reference, float max_gain, float* current_gain) {
 
 float rate_1minus=1-rate;
-int debugn = 0;
+int   debugn = 0;
+float f=1.0;
+
+    if (current_gain != NULL) {
+       f=*current_gain;
+    }
 
     for(int i=0;i<input_size;i++)
     {
@@ -102,9 +107,13 @@ int debugn = 0;
         float ideal_gain = (reference/amplitude);
         if(ideal_gain>max_gain) ideal_gain = max_gain;
         if(ideal_gain<=0) ideal_gain = 0;
-        *current_gain = (ideal_gain-(*current_gain))*rate + (*current_gain)*rate_1minus;
-        Iout[i]=(*current_gain)*Iin[i];
-        Qout[i]=(*current_gain)*Qin[i];
+        f = ((ideal_gain-f)*rate) + (f*rate_1minus);
+        Iout[i]=f*Iin[i];
+        Qout[i]=f*Qin[i];
     }
+    if (current_gain != NULL) {
+       *current_gain=f;
+    }
+       
 }
 

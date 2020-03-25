@@ -71,11 +71,12 @@ class SSB
 {
   public: 
   
-      SSB(float* gain);
+      SSB();
       int generate(short *input,int len,float* I,float* Q);
 
       byte TRACE=0x00;
       ACB  agc;
+      int  decimation_factor;
 
 
 
@@ -98,7 +99,6 @@ float* c;
 FIRFilter    *iFilter;
 FIRFilter    *qFilter;
 Decimator    *d;
-int          decimation_factor = 8;
 
 
 };
@@ -112,7 +112,7 @@ int          decimation_factor = 8;
 // Copyright 2018 Dr. Pedro E. Colla (LU7DID)
 //--------------------------------------------------------------------------------------------------
 
-SSB::SSB(float* gain)
+SSB::SSB()
 {
 
   fprintf(stderr,"%s:: AGC Object Initialization\n",PROGRAMID);
@@ -122,7 +122,9 @@ SSB::SSB(float* gain)
   agc.rate=0.25;
   agc.reference=1.0;
   agc.max_gain=5.0;
-  agc.gain=gain;
+  agc.gain=NULL;
+
+  decimation_factor=8;
 
   fprintf(stderr,"%s: Filter coefficiente buffer creation\n",PROGRAMID); 
   a=(float*) malloc(96*sizeof(float));
@@ -441,8 +443,7 @@ SSB::SSB(float* gain)
 //*--------------------------------------------------------------------------------------------------
 int SSB::generate(short *input,int len,float* I,float* Q) {
 
-float gain=SHRT_MAX;                                        //Decimation to 12 KHz
-      d->decimate(input,len,gain,I,Q);                      //Input is fs=48KHz decimate by 8
+      d->decimate(input,len,I,Q);                      //Input is fs=48KHz decimate by 8
   int numSamplesLow = len / decimation_factor;              //Number of samples is much lower now
       iFilter->do_filter(I,numSamplesLow);                  //I Filter just unity gain to delay no phase change
       qFilter->do_filter(Q,numSamplesLow);                  //Q Filter also unity gain but with a 90 degree shift
