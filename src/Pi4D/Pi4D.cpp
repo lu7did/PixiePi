@@ -1,5 +1,6 @@
 /*
  * Pi4D.cpp
+
  * Raspberry Pi based USB experimental SSB Generator for digital modes (mainly WSPR and FT8)
  * Experimental version largely modelled after Generator.java by Takafumi INOUE (JI3GAB) and librpitx by Evariste  (F5OEO)
  * This program tries to mimic the behaviour of simple DSB transceivers used to operate low signal digital modes such as
@@ -42,12 +43,10 @@
 
 
 #define PROGRAM_VERSION "1.0"
-#define PTT 0B00000001
-#define VOX 0B00000010
-#define RUN 0B00000100
 #define MAX_SAMPLERATE 200000
 #define BUFFERSIZE      96000
 #define IQBURST          4000
+#define VOX_TIMER        20
 
 
 
@@ -71,6 +70,7 @@
 #include <signal.h>
 #include <semaphore.h>
 #include <pigpio.h>
+#include <wiringPi.h>
 #include <wiringPiI2C.h>
 #include <unistd.h>
 #include <cstring>
@@ -79,6 +79,8 @@
 #include <thread>
 #include <limits.h>
 #include "/home/pi/PixiePi/src/lib/SSB.h" 
+#include "/home/pi/PixiePi/src/lib/CAT817.h" 
+#include "/home/pi/PixiePi/src/pixie/pixie.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
 
 
@@ -92,9 +94,36 @@ enum  {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double,typeiq_carrier};
 typedef unsigned char byte;
 typedef bool boolean;
 
-bool running=true;
+
+// --- Transceiver control structure
 long int TVOX=0;
+
 byte MSW=0;
+byte trace=0x00;
+
+
+// --- CAT object
+void CATchangeMode();
+void CATchangeFreq();
+void CATchangeStatus();
+
+CAT817* cat;
+byte FT817;
+
+float SetFrequency=VFO_START;
+float SampleRate=6000;
+float ppm=1000.0;
+char  port[80];
+long  catbaud=CATBAUD;
+
+
+byte gpio=GPIO04;
+
+iqdmasync* iqtest;
+
+
+
+// --- SSB generation objects
 
 float  agc_rate=0.25;
 float  agc_reference=1.0;
@@ -107,11 +136,10 @@ float* Qbuffer;
 
 float  gain=1.0;
 
-int numSamples=0;
-int numSamplesLow=0;
-int exitrecurse=0;
-int mode = 0;
-int bufferLengthInBytes;
+int    numSamples=0;
+int    numSamplesLow=0;
+int    exitrecurse=0;
+int    bufferLengthInBytes;
 short *buffer_i16;
 std::complex<float> CIQBuffer[IQBURST];	
 //--------------------------[System Word Handler]---------------------------------------------------
@@ -134,7 +162,128 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 
 }
 
+//--------------------------------------------------------------------------------------------
+// set_PTT
+// Manage the PTT of the transceiver (can be used from the keyer or elsewhere
+//--------------------------------------------------------------------------------------------
+void setPTT(bool statePTT) {
+
+//---------------------------------*
+//          PTT Activated          *
+//---------------------------------*
+    if (statePTT==true) {
+
+//--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
+
+       fprintf(stderr,"%s:setPTT() PTT On PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+       setWord(&cat->FT817,PTT,true);
+       setWord(&MSW,PTT,true);
+       gpioWrite(KEYER_OUT_GPIO, 1);
+       return;
+    } 
+
+//---------------------------------*
+//          PTT Inactivated        *
+//---------------------------------*
+
+    if (statePTT==false) {
+
+       fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+       gpioWrite(KEYER_OUT_GPIO, 0);
+       setWord(&cat->FT817,PTT,false);
+       setWord(&MSW,PTT,false);
+    }
+    return;
+
+}
+//---------------------------------------------------------------------------
+// CATchangeFreq()
+// CAT Callback when frequency changes
+//---------------------------------------------------------------------------
+void CATchangeFreq() {
+
+  fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) SetFrequency(%d)\n",PROGRAMID,(int)cat->SetFrequency,(int)SetFrequency);
+  if ((cat->SetFrequency<VFO_START) || (cat->SetFrequency>VFO_END)) {
+     fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) out of band is rejected\n",PROGRAMID,(int)cat->SetFrequency);
+     cat->SetFrequency=SetFrequency;
+     return;
+  }
+
+
+  SetFrequency=cat->SetFrequency;
+
+  iqtest->clkgpio::disableclk(GPIO04);
+  iqtest->clkgpio::SetAdvancedPllMode(true);
+  iqtest->clkgpio::SetCenterFrequency(SetFrequency,SampleRate);
+  iqtest->clkgpio::SetFrequency(0);
+  iqtest->clkgpio::enableclk(GPIO04);
+
+  fprintf(stderr,"%s::CATchangeFreq() Frequency set to SetFrequency(%d)\n",PROGRAMID,(int)SetFrequency);
+}
+//-----------------------------------------------------------------------------------------------------------
+// CATchangeMode
+// Validate the new mode is a supported one
+// At this point only CW,CWR,USB and LSB are supported
+//-----------------------------------------------------------------------------------------------------------
+void CATchangeMode() {
+
+  fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d)\n",PROGRAMID,cat->MODE);
+
+  if (cat->MODE == MUSB) {
+     fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d) accepted\n",PROGRAMID,cat->MODE);
+     return;
+  }
+
+  fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d) invalid only USB supported\n",PROGRAMID,cat->MODE);
+  cat->MODE=MUSB;
+  return;
+
+}
+
+//------------------------------------------------------------------------------------------------------------
+// CATchangeStatus
+// Detect which change has been produced and operate accordingly
+//------------------------------------------------------------------------------------------------------------
+void CATchangeStatus() {
+
+  fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d)\n",PROGRAMID,cat->FT817);
+
+  if (getWord(cat->FT817,PTT) != getWord(FT817,PTT)) {        // PTT Changed
+     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) PTT changed to %s\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false");
+     setPTT(getWord(cat->FT817,PTT));
+  }
+
+
+  if (getWord(cat->FT817,RIT) != getWord(FT817,RIT)) {        // RIT Changed
+     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RIT) ? "true" : "false");
+  }
+
+  if (getWord(cat->FT817,LOCK) != getWord(FT817,LOCK)) {      // LOCK Changed
+     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) LOCK changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,LOCK) ? "true" : "false");
+  }
+
+  if (getWord(cat->FT817,SPLIT) != getWord(FT817,SPLIT)) {    // SPLIT mode Changed
+     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) SPLIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,SPLIT) ? "true" : "false");
+  }
+
+  if (getWord(cat->FT817,VFO) != getWord(FT817,VFO)) {        // VFO Changed
+     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) VFO changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,VFO) ? "VFO A" : "VFO B");
+  }
+
+  FT817=cat->FT817;
+  return;
+
+}
 //--------------------------------------------------------------------------------------------------
+// Stubs for callback not implemented yed
+//--------------------------------------------------------------------------------------------------
+
+void CATgetRX() {
+}
+void CATgetTX() {
+}
+//--------------------------------------------------------------------------------------------------
+
 // timer_exec 
 // timer management
 //--------------------------------------------------------------------------------------------------
@@ -144,6 +293,7 @@ void timer_exec()
      TVOX--;
      if(TVOX==0) {
        printf("VOX turned off\n");
+       setWord(&MSW,VOX,true);
      }
   }
 }
@@ -188,7 +338,7 @@ Usage: [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n
 
 static void terminate(int num)
 {
-    running=false;
+    setWord(&MSW,RUN,false);
     fprintf(stderr,"%s: Caught TERM signal(%x) - Terminating \n",PROGRAMID,num);
     if (exitrecurse > 0) {
        fprintf(stderr,"%s: Recursive trap - Force termination \n",PROGRAMID);
@@ -202,12 +352,13 @@ static void terminate(int num)
 //---------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
+
+        fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+
 	int   ax;
 	int   anyargs = 1;
 	float SetFrequency=7080000;
 	float SampleRate=48000;
-
-
 
 	//bool loop_mode_flag=false;
 
@@ -222,22 +373,50 @@ int main(int argc, char* argv[])
 	int   FifoSize=IQBURST*4;
         InputType=typeiq_float;
 
+        setWord(&MSW,RUN,true);
+        setWord(&MSW,VOX,false);
 
+        sprintf(port,"/tmp/ttyv1");
 
-        fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+        if (wiringPiSetup () < 0) {
+           fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
+           return 1;
+        }
+        fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
-        fprintf(stderr,"%s:main(): SSB controller generation\n",PROGRAMID); 
+        if (gpioInitialise()<0) {
+           fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
+           return 1;
+        }
+
+        gpioSetMode(COOLER_GPIO,KEYER_OUT_GPIO);
+        gpioWrite(KEYER_OUT_GPIO, 0);
+        usleep(100000);
+
+        gpioSetMode(COOLER_GPIO, PI_OUTPUT);
+        gpioWrite(COOLER_GPIO, 1);
+        usleep(100000);
+
+//--------------------------------------------------------------------------------------------------
+// SSB (USB) controller generation
+//--------------------------------------------------------------------------------------------------
+
+float   gain=1.0;
 
         usb=new SSB(&gain);
-
         usb->agc.reference=1.0;
 	usb->agc.max_gain=5.0;
 	usb->agc.rate=0.25;
         usb->agc.active=false;
 
+        fprintf(stderr,"%s:main(): SSB controller generation\n",PROGRAMID); 
+
+//--------------------------------------------------------------------------------------------------
+//      Argument parsting
+//--------------------------------------------------------------------------------------------------
 	while(1)
 	{
-		ax = getopt(argc, argv, "i:f:s:h:cat:");
+		ax = getopt(argc, argv, "i:f:s:p:h:cat:");
 		if(ax == -1) 
 		{
 			if(anyargs) break;
@@ -263,6 +442,10 @@ int main(int argc, char* argv[])
 			SetFrequency = atof(optarg);
 			fprintf(stderr,"%s: Frequency(%10f)\n",PROGRAMID,SetFrequency);
 			break;
+                case 'p': //serial port
+                        sprintf(port,optarg);
+                        fprintf(stderr,"%s Serial Port(%s)",PROGRAMID, port);
+                        break;
 		case 's': // SampleRate (Only needeed in IQ mode)
 			SampleRate = atoi(optarg);
 			fprintf(stderr,"%s: SampleRate(%10f)\n",PROGRAMID,SampleRate);
@@ -312,8 +495,14 @@ int main(int argc, char* argv[])
 		}/* end switch a */
 	}/* end while getopt() */
 
+//--------------------------------------------------------------------------------------------------
+// Parse input file (normally /dev/stdin)
+//--------------------------------------------------------------------------------------------------
 	if(FileName==NULL) {fprintf(stderr,"%s: Need an input\n",PROGRAMID);exit(1);}
 
+//--------------------------------------------------------------------------------------------------
+// Setup trap handling
+//--------------------------------------------------------------------------------------------------
         fprintf(stderr,"%s:main(): Trap handler initialization\n",PROGRAMID);
 
 	for (int i = 0; i < 64; i++) {
@@ -323,8 +512,23 @@ int main(int argc, char* argv[])
            sigaction(i, &sa, NULL);
         }
 
-        setWord(&MSW,RUN,true);
-        setWord(&MSW,VOX,false);
+//--------------------------------------------------------------------------------------------------
+// Setup CAT object
+//
+//--------------------------------------------------------------------------------------------------
+
+        cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
+
+        FT817=0x00;
+        cat->FT817=FT817;
+        cat->POWER=7;
+        cat->SetFrequency=SetFrequency;
+        cat->MODE=MUSB;
+        cat->TRACE=0x00;
+        cat->open(port,CATBAUD);
+        setWord(&cat->FT817,AGC,false);
+        setWord(&cat->FT817,PTT,false);
+
 
         // Standard input definition
 
@@ -350,19 +554,8 @@ int main(int argc, char* argv[])
 
         fprintf(stderr,"%s:main(): RF I/Q generator object creation\n",PROGRAMID);
 
-	iqdmasync iqtest(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-	iqtest.SetPLLMasterLoop(3,4,0);
-
-//*********************************************************************************************
-//*--- This is the experimental template on how to change frequency without stop
-//        iqtest.clkgpio::disableclk(4);
-//        usleep(1000);
-//        iqtest.clkgpio::SetAdvancedPllMode(true);
-//        iqtest.clkgpio::SetCenterFrequency(SetFrequency+600,SampleRate);
-//        iqtest.clkgpio::SetFrequency(0);
-// 	  iqtest.clkgpio::enableclk(4);
-//        usleep(1000);  
-//**********************************************************************************************
+	iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+	iqtest->SetPLLMasterLoop(3,4,0);
 
 //generate buffer areas
 
@@ -375,10 +568,20 @@ int main(int argc, char* argv[])
 	std::complex<float> CIQBuffer[IQBURST];	
         int numBytesRead=0;
 
-        fprintf(stderr,"%s: Starting operations SHRT_MAX(%d)\n",PROGRAMID,(int)SHRT_MAX);
-	while(running)
+        gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
+
+        fprintf(stderr,"%s: Starting operations\n",PROGRAMID);
+        setWord(&MSW,RUN,true);
+
+        float voxmin=usb->agc.max_gain;
+        float voxmax=0.0;
+        float voxlvl=voxmin;
+
+
+	while(getWord(MSW,RUN)==true)
 	{
 			int CplxSampleNumber=0;
+  			cat->get();
 			switch(InputType)
 			{
 				case typeiq_float:
@@ -387,19 +590,64 @@ int main(int argc, char* argv[])
 					if(nbread>0)
 					{
 					  int numSamplesLow=usb->generate(buffer_i16,nbread,Ibuffer,Qbuffer);
-					  for(int i=0;i<numSamplesLow;i++)
-					  {
- 				            CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
+					  if (getWord(MSW,PTT)==true) {
+					     for(int i=0;i<numSamplesLow;i++)
+					     {
+ 				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
+					     } 
+					  } else {
+ 			         	    CplxSampleNumber=0;
 					  }
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
-   					  running=false;
+                                          setWord(&MSW,RUN,false);
 					}
 				}
 				break;	
 		}
-		iqtest.SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+		iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
+
+// VOX analysis
+
+                if (gain>voxmax) {
+		   voxmax=gain;
+		   voxlvl=voxmax*0.90;
+		   fprintf(stderr,"%s main() VOX maximum set to (%8f) trigger set to (%8f)\n",PROGRAMID,voxmax,voxlvl);
+                }
+
+		if (gain<voxmin) {
+		   voxmin=gain;
+		   fprintf(stderr,"%s main() VOX minimum set to (%8f)\n",PROGRAMID,voxmin);
+                }
+ 
+		if (gain<=voxlvl) {
+  		   TVOX=VOX_TIMER;
+		   setWord(&MSW,VOX,false);
+		   fprintf(stderr,"%s main() VOX trigger gain (%8f) trigger(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,gain,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   if (getWord(MSW,PTT)==false) {
+		      fprintf(stderr,"%s main() vox on gain(%8f)\n",PROGRAMID,gain);
+		      setPTT(true);
+		      setWord(&MSW,PTT,true);
+		   }
+		}
+
+		if (getWord(MSW,VOX)==true) {
+		   fprintf(stderr,"%s main() VOX decay gain (%8f) trigger(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,gain,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   setWord(&MSW,VOX,false);
+		   setPTT(false);
+		   setWord(&MSW,PTT,false);
+		}
 	}
-	iqtest.stop();
+
+
+        fprintf(stderr,"%s: Turning infrastructure off\n",PROGRAMID);
+        
+        gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
+        gpioWrite(COOLER_GPIO,PTT_OFF);
+
+        fprintf(stderr,"%s: Stopping I/Q RF generator\n",PROGRAMID);
+
+	iqtest->stop();
+        delete(iqtest);
 }
 

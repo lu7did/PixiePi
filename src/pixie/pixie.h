@@ -134,9 +134,11 @@ enum {
 #define CMD       0B00000001
 #define GUI       0B00000010
 #define PTT       0B00000100
+#define VOX       0B00001000
 #define DRF       0B00001000
 #define DOG       0B00010000
 #define LCLK      0B00100000
+#define RUN       0B00100000
 #define SQL       0B01000000
 #define BCK       0B10000000
 

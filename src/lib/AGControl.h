@@ -106,7 +106,5 @@ int debugn = 0;
         Iout[i]=(*current_gain)*Iin[i];
         Qout[i]=(*current_gain)*Qin[i];
     }
-
-
 }
 
