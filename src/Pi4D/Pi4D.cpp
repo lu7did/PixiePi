@@ -22,6 +22,7 @@
  *    log.c logging facility by  rxi https://github.com/rxi/log.c
  *    minIni configuration management package by Compuphase https://github.com/compuphase/minIni/tree/master/dev
  *    tinyalsa https://github.com/tinyalsa/tinyalsa
+ *    PJ_RPI  GPIO low level handler git clone git://github.com/Pieter-Jan/PJ_RPI.git
  * Also libraries
  *    librpitx by  Evariste Courjaud (F5EOE)
  *    libcsdr by Karol Simonyi (HA7ILM) https://github.com/compuphase/minIni/tree/master/dev
@@ -42,13 +43,11 @@
  */
 
 
-#define PROGRAM_VERSION "1.0"
+//#define PROGRAM_VERSION "1.0"
 #define MAX_SAMPLERATE 200000
 #define BUFFERSIZE      96000
 #define IQBURST          4000
 #define VOX_TIMER        20
-
-
 
 #include <unistd.h>
 #include "stdio.h"
@@ -69,9 +68,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
-//#include <pigpio.h>
-#include <wiringPi.h>
-//#include <wiringPiI2C.h>
 #include <unistd.h>
 #include <cstring>
 #include <iostream>
@@ -80,9 +76,18 @@
 #include <limits.h>
 #include "/home/pi/PixiePi/src/lib/SSB.h" 
 #include "/home/pi/PixiePi/src/lib/CAT817.h" 
-#include "/home/pi/PixiePi/src/lib/RPI.h" 
 #include "/home/pi/PixiePi/src/pixie/pixie.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
+#include "/home/pi/PixiePi/src/lib/RPI.h" 
+
+
+// GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
+//#define INP_GPIO(g)   *(gpio.addr + ((g)/10)) &= ~(7<<(((g)%10)*3))
+//#define OUT_GPIO(g)   *(gpio.addr + ((g)/10)) |=  (1<<(((g)%10)*3))
+//#define SET_GPIO_ALT(g,a) *(gpio.addr + (((g)/10))) |= (((a)<=3?(a) + 4:(a)==4?3:2)<<(((g)%10)*3))
+//#define GPIO_SET  *(gpio.addr + 7)  // sets   bits which are 1 ignores bits which are 0
+//#define GPIO_CLR  *(gpio.addr + 10) // clears bits which are 1 ignores bits which are 0
+//#define GPIO_READ(g)  *(gpio.addr + 13) &= (1<<(g))
 
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
@@ -118,14 +123,12 @@ void CATchangeStatus();
 
 CAT817* cat;
 byte FT817;
+long int  bant=0;
 
 float SampleRate=6000;
 float ppm=1000.0;
 char  port[80];
 long  catbaud=CATBAUD;
-
-
-//byte gpio=GPIO04;
 
 iqdmasync* iqtest=nullptr;
 
@@ -183,14 +186,11 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
   }
 
 }
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
 
-//struct bcm2835_peripheral gpio = {GPIO_BASE};
- 
+//--------------------------------------------------------------------------------------------------
+// map_peripheral
 // Exposes the physical address defined in the passed structure using mmap on /dev/mem
+//--------------------------------------------------------------------------------------------------
 int map_peripheral(struct bcm2835_peripheral *p)
 {
    // Open /dev/mem
@@ -217,42 +217,81 @@ int map_peripheral(struct bcm2835_peripheral *p)
  
    return 0;
 }
- 
+//--------------------------------------------------------------------------------------------------
+// unmap_peripheral
+// release resources
+//--------------------------------------------------------------------------------------------------
 void unmap_peripheral(struct bcm2835_peripheral *p) {
  
     munmap(p->map, BLOCK_SIZE);
     close(p->mem_fd);
 }
 
-void togglePin(int pin,bool v) {
+//--------------------------------------------------------------------------------------------------
+// setGPIO
+// output status of a given GPIO pin
+//--------------------------------------------------------------------------------------------------
+void setGPIO(int pin,bool v) {
 
  fprintf(stderr,"%s::togglePin PIN(%d) value(%s)\n",PROGRAMID,pin,(v ? "true" : "false"));
+
+// ---  acquire resources
+
  if(map_peripheral(&gpio) == -1) 
   {
     fprintf(stderr,"Failed to map the physical GPIO registers into the virtual memory space.\n");
     return ;
   }
- 
-  // Define pin 7 as output
+// --- Clear pin definition and then set as output
+
   INP_GPIO(pin);
   OUT_GPIO(pin);
+
+// --- Map result to pin
  
   if (v==true) {
-    GPIO_SET = 1 << pin;
+    GPIO_SET = 1 << pin;  // Set as high
   } else {
-    GPIO_CLR = 1 << pin;
+    GPIO_CLR = 1 << pin;  // Set as low
   }
- 
+
+// --- release resources
+
+  unmap_peripheral(&gpio);
   return; 
+}
+//--------------------------------------------------------------------------------------------------
+// getGPIO
+// get value of a GPIO pin
+//--------------------------------------------------------------------------------------------------
+long int getGPIO(int pin) {
 
+ if(map_peripheral(&gpio) == -1) 
+  {
+    fprintf(stderr,"Failed to map the physical GPIO registers into the virtual memory space.\n");
+    return -1;
+  }
 
+  INP_GPIO(pin);
+  long int b=GPIO_READ(pin);
 
+  unmap_peripheral(&gpio);
+  return b;
 }
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
+void checkAux() {
 
+   long int b=getGPIO(AUX_GPIO);
+
+   if (b!=bant) {
+      fprintf(stderr,"%s AUX Pin set to(%ld) previous (%ld)\n",PROGRAMID,b,bant);
+      bant=b;
+   }
+
+}
 //--------------------------------------------------------------------------------------------
 // set_PTT
 // Manage the PTT of the transceiver (can be used from the keyer or elsewhere
@@ -279,8 +318,8 @@ void setPTT(bool statePTT) {
 
        //digitalWrite(COOLER_GPIO,HIGH);
        //digitalWrite(KEYER_OUT_GPIO,HIGH);
-       togglePin(COOLER_GPIO,true);
-       togglePin(KEYER_OUT_GPIO,true);
+       setGPIO(COOLER_GPIO,true);
+       setGPIO(KEYER_OUT_GPIO,true);
 
        iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
        iqtest->SetPLLMasterLoop(3,4,0);
@@ -302,8 +341,7 @@ void setPTT(bool statePTT) {
        usleep(10000);
     }
 
-    //digitalWrite(KEYER_OUT_GPIO,LOW);
-    togglePin(KEYER_OUT_GPIO,false);
+    setGPIO(KEYER_OUT_GPIO,false);
     iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
     iqtest->SetPLLMasterLoop(3,4,0);
 
@@ -497,65 +535,10 @@ int main(int argc, char* argv[])
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
 
-// ---- Initialize GPIO
+        fprintf(stderr,"%s:main(): GPIO low level controller\n",PROGRAMID); 
 
-        //if(gpioInitialise()<0) {
-        //   fprintf(stderr,"%s gpio initialization failure\n",PROGRAMID);
-        //   return -1;
-        //}
-
-
-// ---- Turn cooler on
-
-        //gpioSetMode(COOLER_GPIO, PI_OUTPUT);
-        //gpioWrite(COOLER_GPIO, 1);
-        //usleep(100000);
-
-
-        //system("gpio mode \"12\" out");
-        //system("gpio -g write \"12\" 0");
-
-        //system("gpio mode \"12\" out");
-        //system("gpio -g write \"12\" 0");
-
-        //gpioSetMode(KEYER_OUT_GPIO, PI_OUTPUT);
-        //usleep(100000);
-
-
-        //if (wiringPiSetup () < 0) {
-        //   fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
-        //   exit(16);
-        //}
-        fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
-
-
-        //pinMode(AUX_GPIO,INPUT);
-        //pullUpDnControl(AUX_GPIO,PUD_UP);
-        //wiringPiISR(AUX_GPIO,INT_EDGE_FALLING,&ISRAuxPTTOn);
-        //wiringPiISR(AUX_GPIO,INT_EDGE_RISING,&ISRAuxPTTOff);
-
-        //pinMode(COOLER_GPIO,OUTPUT);
-        //digitalWrite(COOLER_GPIO,HIGH);
-
-
-        togglePin(COOLER_GPIO,true);
-        togglePin(KEYER_OUT_GPIO,false);
-
-        //pinMode(KEYER_OUT_GPIO,OUTPUT);
-        //digitalWrite(KEYER_OUT_GPIO,LOW);
-
-        //if (gpioInitialise()<0) {
-        //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
-        //   return 1;
-        //}
-
-        //gpioSetMode(COOLER_GPIO,KEYER_OUT_GPIO);
-        //gpioWrite(KEYER_OUT_GPIO, 0);
-        //usleep(100000);
-
-        //gpioSetMode(COOLER_GPIO, PI_OUTPUT);
-        //gpioWrite(COOLER_GPIO, 1);
-        //usleep(100000);
+        setGPIO(COOLER_GPIO,true);
+        setGPIO(KEYER_OUT_GPIO,false);
 
 //--------------------------------------------------------------------------------------------------
 // SSB (USB) controller generation
@@ -710,11 +693,6 @@ float   gain=1.0;
 
         fprintf(stderr,"%s: Input from %s\n",PROGRAMID,FileName);
 
-
-        //fprintf(stderr,"%s: I/O RF Object created\n",PROGRAMID);
-        //iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-        //iqtest->SetPLLMasterLoop(3,4,0);
-
 //generate buffer areas
 
         fprintf(stderr,"%s:main(): Memory buffer creation\n",PROGRAMID);
@@ -735,10 +713,14 @@ float   gain=1.0;
 
         setPTT(false);
 
+// ==================================================================================================================================
+//                                               MAIN LOOP
+// ==================================================================================================================================
 	while(getWord(MSW,RUN)==true)
 	{
 			int CplxSampleNumber=0;
   			cat->get();
+			checkAux();
 			switch(InputType)
 			{
 				case typeiq_float:
@@ -770,29 +752,26 @@ float   gain=1.0;
 		   iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
                 }
 
-// VOX analysis
+// VOX controller (only if enabled)
+
           if (usb->agc.active==true) {
                 if (gain>voxmax) {
 		   voxmax=gain;
 		   voxlvl=voxmax*0.90;
-		   //fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
                 }
 
 		if (gain<voxmin) {
 		   voxmin=gain;
-		   //fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
                 }
  
 		if (gain<=voxlvl) {
   		   TVOX=VOX_TIMER;
 		   setWord(&MSW,VOX,false);
-		   //fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   if (getWord(MSW,PTT)==false) {
 		      setPTT(true);
 		      setWord(&MSW,PTT,true);
-		      //fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   }
 		}
@@ -801,14 +780,14 @@ float   gain=1.0;
 		   setWord(&MSW,VOX,false);
 		   setPTT(false);
 		   setWord(&MSW,PTT,false);
-		   //fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		}
            }
 	}
 
-
-
+// ==================================================================================================================================
+//  
+// ==================================================================================================================================
 
         fprintf(stderr,"%s: Turning off virtual rig and cooler\n",PROGRAMID);
         setPTT(false);
@@ -818,13 +797,8 @@ float   gain=1.0;
         delete(iqtest);
 
 
-        togglePin(KEYER_OUT_GPIO,false);
-        togglePin(COOLER_GPIO,false);
-
-        //digitalWrite(KEYER_OUT_GPIO,LOW);
-        //digitalWrite(COOLER_GPIO,LOW);
-        //system("gpio mode \"12\" out");
-        //system("gpio -g write \"12\" 0");
+        setGPIO(KEYER_OUT_GPIO,false);
+        setGPIO(COOLER_GPIO,false);
 
 }
 
