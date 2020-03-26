@@ -69,8 +69,8 @@
 #include <pthread.h>
 #include <signal.h>
 #include <semaphore.h>
-#include <pigpio.h>
-//#include <wiringPi.h>
+//#include <pigpio.h>
+#include <wiringPi.h>
 //#include <wiringPiI2C.h>
 #include <unistd.h>
 #include <cstring>
@@ -118,7 +118,7 @@ long  catbaud=CATBAUD;
 
 byte gpio=GPIO04;
 
-iqdmasync* iqtest;
+iqdmasync* iqtest=nullptr;
 
 int   ax;
 int   anyargs = 1;
@@ -192,15 +192,27 @@ void setPTT(bool statePTT) {
        setWord(&cat->FT817,PTT,true);
        setWord(&MSW,PTT,true);
 
-       if (iqtest != NULL) {
-          iqtest->stop();
-          delete(iqtest);
-          usleep(1000);
-       }
+       //if (iqtest != nullptr) {
+       //   iqtest->stop();
+       //   delete(iqtest);
+       //   iqtest=nullptr;
+       //   usleep(100000);
+       //}
 
-       iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-       iqtest->SetPLLMasterLoop(3,4,0);
-       usleep(1000);
+       fprintf(stderr,"%s turning GPIO PTT on\n",PROGRAMID);
+       //if (wiringPiSetup()<0) {
+       //    fprintf(stderr,"%s: Unable to setup gpio when PTT On\n",PROGRAMID);
+       //    exit(16);
+       //} 
+       //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
+       digitalWrite(5,HIGH);
+
+       //system("gpio mode \"12\" out");
+       //system("gpio -g write \"12\" 1");
+
+       //iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+       //iqtest->SetPLLMasterLoop(3,4,0);
+       usleep(10000);
        return;
     } 
 
@@ -210,15 +222,30 @@ void setPTT(bool statePTT) {
     fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
     setWord(&cat->FT817,PTT,false);
     setWord(&MSW,PTT,false);
+    //fprintf(stderr,"%s flags for PTT has been set\n",PROGRAMID);
 
-    if (iqtest != NULL) {
-       iqtest->stop();
-       delete(iqtest);
-       usleep(1000);
-    }
+    //if (iqtest != nullptr) {
+       //fprintf(stderr,"%s deallocating objects\n",PROGRAMID);
+    //   iqtest->stop();
+    //   delete(iqtest);
+    //   iqtest=nullptr;
+       //fprintf(stderr,"%s deallocatED objects\n",PROGRAMID);
+    //   usleep(10000);
+    //}
 
-    iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-    iqtest->SetPLLMasterLoop(3,4,0);
+    //fprintf(stderr,"%s About to gpio out 19 off\n",PROGRAMID);
+    //if (wiringPiSetup()<0) {
+    //   fprintf(stderr,"%s: Unable to setup gpio when PTT On\n",PROGRAMID);
+    //   exit(16);
+    //} 
+    //fprintf(stderr,"%s turning GPIO PTT Off\n",PROGRAMID);
+    //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
+    digitalWrite(5,LOW);
+
+    //system("gpio mode \"12\" out");
+    //system("gpio -g write \"12\" 0");
+    //fprintf(stderr,"%s Have set gpio out 12 off\n",PROGRAMID);
+
 
 }
 //---------------------------------------------------------------------------
@@ -234,15 +261,15 @@ void CATchangeFreq() {
      return;
   }
 
-
   SetFrequency=cat->SetFrequency;
 
-  iqtest->clkgpio::disableclk(GPIO04);
-  iqtest->clkgpio::SetAdvancedPllMode(true);
-  iqtest->clkgpio::SetCenterFrequency(SetFrequency,SampleRate);
-  iqtest->clkgpio::SetFrequency(0);
-  iqtest->clkgpio::enableclk(GPIO04);
-
+  if (iqtest != nullptr) {
+     iqtest->clkgpio::disableclk(GPIO04);
+     iqtest->clkgpio::SetAdvancedPllMode(true);
+     iqtest->clkgpio::SetCenterFrequency(SetFrequency,SampleRate);
+     iqtest->clkgpio::SetFrequency(0);
+     iqtest->clkgpio::enableclk(GPIO04);
+  }
   fprintf(stderr,"%s::CATchangeFreq() Frequency set to SetFrequency(%d)\n",PROGRAMID,(int)SetFrequency);
 }
 //-----------------------------------------------------------------------------------------------------------
@@ -387,13 +414,39 @@ int main(int argc, char* argv[])
         setWord(&MSW,RUN,true);
         setWord(&MSW,VOX,false);
 
+// ---- Initialize GPIO
 
-        //if (wiringPiSetup () < 0) {
-        //   fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
-        //   return 1;
+        //if(gpioInitialise()<0) {
+        //   fprintf(stderr,"%s gpio initialization failure\n",PROGRAMID);
+        //   return -1;
         //}
+
+
+// ---- Turn cooler on
+
+        //gpioSetMode(COOLER_GPIO, PI_OUTPUT);
+        //gpioWrite(COOLER_GPIO, 1);
+        //usleep(100000);
+
+
+        //system("gpio mode \"12\" out");
+        //system("gpio -g write \"12\" 0");
+
+        //system("gpio mode \"12\" out");
+        //system("gpio -g write \"12\" 0");
+
+        //gpioSetMode(KEYER_OUT_GPIO, PI_OUTPUT);
+        //usleep(100000);
+
+
+        if (wiringPiSetup () < 0) {
+           fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
+           exit(16);
+        }
         fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
+        pinMode(5,OUTPUT);
+        digitalWrite(5,LOW);
         //if (gpioInitialise()<0) {
         //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
         //   return 1;
@@ -415,7 +468,7 @@ float   gain=1.0;
 
         usb=new SSB();
         usb->agc.reference=1.0;
-	usb->agc.max_gain=5.0;
+	usb->agc.max_gain=2.0;
 	usb->agc.rate=0.25;
         usb->agc.active=false;
 	usb->agc.gain=&gain;
@@ -561,12 +614,9 @@ float   gain=1.0;
         fprintf(stderr,"%s: Input from %s\n",PROGRAMID,FileName);
 
 
-// define I/Q object
-
-        //fprintf(stderr,"%s:main(): RF I/Q generator object creation\n",PROGRAMID);
-
-	//iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-	//iqtest->SetPLLMasterLoop(3,4,0);
+        fprintf(stderr,"%s: I/O RF Object created\n",PROGRAMID);
+        iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+        iqtest->SetPLLMasterLoop(3,4,0);
 
 //generate buffer areas
 
@@ -578,8 +628,6 @@ float   gain=1.0;
         fprintf(stderr,"%s:main(): FIFO buffer creation\n",PROGRAMID); 
 	std::complex<float> CIQBuffer[IQBURST];	
         int numBytesRead=0;
-
-        //gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
 
         fprintf(stderr,"%s: Starting operations\n",PROGRAMID);
         setWord(&MSW,RUN,true);
@@ -602,10 +650,18 @@ float   gain=1.0;
 					if(nbread>0)
 					{
 					  int numSamplesLow=usb->generate(buffer_i16,nbread,Ibuffer,Qbuffer);
+					  if (getWord(MSW,PTT)==true) {
 					  for(int i=0;i<numSamplesLow;i++)
 					  {
  				             CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
-					  } 
+					  }
+					  } else {
+					  numSamplesLow=1024/usb->decimation_factor;
+					  for(int i=0;i<numSamplesLow;i++)
+					  {
+ 				             CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
+					  }
+ 					  }
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
                                           setWord(&MSW,RUN,false);
@@ -613,33 +669,33 @@ float   gain=1.0;
 				}
 				break;	
 		}
-		if (getWord(MSW,PTT)==true) {
+		//if (getWord(MSW,PTT)==true) {
 		   iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
-                }
+                //}
 
 // VOX analysis
           if (usb->agc.active==true) {
                 if (gain>voxmax) {
 		   voxmax=gain;
 		   voxlvl=voxmax*0.90;
-		   fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
                 }
 
 		if (gain<voxmin) {
 		   voxmin=gain;
-		   fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
                 }
  
 		if (gain<=voxlvl) {
   		   TVOX=VOX_TIMER;
 		   setWord(&MSW,VOX,false);
-		   fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   if (getWord(MSW,PTT)==false) {
 		      setPTT(true);
 		      setWord(&MSW,PTT,true);
-		      fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		      fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   }
 		}
@@ -648,7 +704,7 @@ float   gain=1.0;
 		   setWord(&MSW,VOX,false);
 		   setPTT(false);
 		   setWord(&MSW,PTT,false);
-		   fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		}
            }
@@ -656,13 +712,17 @@ float   gain=1.0;
 
 
         fprintf(stderr,"%s: Turning infrastructure off\n",PROGRAMID);
-        
-        //gpioWrite(KEYER_OUT_GPIO, PTT_OFF);
-        //gpioWrite(COOLER_GPIO,PTT_OFF);
-
-        fprintf(stderr,"%s: Stopping I/Q RF generator\n",PROGRAMID);
 
 	iqtest->stop();
         delete(iqtest);
+
+        fprintf(stderr,"%s: Turning off virtual rig and cooler\n",PROGRAMID);
+
+        //system("gpio -g write \"19\" 0");
+        setPTT(false);
+
+        //system("gpio mode \"12\" out");
+        //system("gpio -g write \"12\" 0");
+
 }
 
