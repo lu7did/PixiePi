@@ -80,9 +80,18 @@
 #include <limits.h>
 #include "/home/pi/PixiePi/src/lib/SSB.h" 
 #include "/home/pi/PixiePi/src/lib/CAT817.h" 
+#include "/home/pi/PixiePi/src/lib/RPI.h" 
 #include "/home/pi/PixiePi/src/pixie/pixie.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
 
+
+// GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
+#define INP_GPIO(g)   *(gpio.addr + ((g)/10)) &= ~(7<<(((g)%10)*3))
+#define OUT_GPIO(g)   *(gpio.addr + ((g)/10)) |=  (1<<(((g)%10)*3))
+#define SET_GPIO_ALT(g,a) *(gpio.addr + (((g)/10))) |= (((a)<=3?(a) + 4:(a)==4?3:2)<<(((g)%10)*3))
+#define GPIO_SET  *(gpio.addr + 7)  // sets   bits which are 1 ignores bits which are 0
+#define GPIO_CLR  *(gpio.addr + 10) // clears bits which are 1 ignores bits which are 0
+#define GPIO_READ(g)  *(gpio.addr + 13) &= (1<<(g))
 
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Pi4D";
@@ -116,7 +125,7 @@ char  port[80];
 long  catbaud=CATBAUD;
 
 
-byte gpio=GPIO04;
+//byte gpio=GPIO04;
 
 iqdmasync* iqtest=nullptr;
 
@@ -174,6 +183,75 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
   }
 
 }
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+
+//struct bcm2835_peripheral gpio = {GPIO_BASE};
+ 
+// Exposes the physical address defined in the passed structure using mmap on /dev/mem
+int map_peripheral(struct bcm2835_peripheral *p)
+{
+   // Open /dev/mem
+   if ((p->mem_fd = open("/dev/mem", O_RDWR|O_SYNC) ) < 0) {
+      printf("Failed to open /dev/mem, try checking permissions.\n");
+      return -1;
+   }
+ 
+   p->map = mmap(
+      NULL,
+      BLOCK_SIZE,
+      PROT_READ|PROT_WRITE,
+      MAP_SHARED,
+      p->mem_fd,      // File descriptor to physical memory virtual file '/dev/mem'
+      p->addr_p       // Address in physical map that we want this memory block to expose
+   );
+ 
+   if (p->map == MAP_FAILED) {
+        perror("mmap");
+        return -1;
+   }
+ 
+   p->addr = (volatile unsigned int *)p->map;
+ 
+   return 0;
+}
+ 
+void unmap_peripheral(struct bcm2835_peripheral *p) {
+ 
+    munmap(p->map, BLOCK_SIZE);
+    close(p->mem_fd);
+}
+
+void togglePin(int pin,bool v) {
+
+ fprintf(stderr,"%s::togglePin PIN(%d) value(%s)\n",PROGRAMID,pin,(v ? "true" : "false"));
+ if(map_peripheral(&gpio) == -1) 
+  {
+    fprintf(stderr,"Failed to map the physical GPIO registers into the virtual memory space.\n");
+    return ;
+  }
+ 
+  // Define pin 7 as output
+  INP_GPIO(pin);
+  OUT_GPIO(pin);
+ 
+  if (v==true) {
+    GPIO_SET = 1 << pin;
+  } else {
+    GPIO_CLR = 1 << pin;
+  }
+ 
+  return; 
+
+
+
+}
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
 
 //--------------------------------------------------------------------------------------------
 // set_PTT
@@ -199,17 +277,10 @@ void setPTT(bool statePTT) {
           usleep(100000);
        }
 
-       //fprintf(stderr,"%s turning GPIO PTT on\n",PROGRAMID);
-       //if (wiringPiSetup()<0) {
-       //    fprintf(stderr,"%s: Unable to setup gpio when PTT On\n",PROGRAMID);
-       //    exit(16);
-       //} 
-       //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
-       digitalWrite(COOLER_GPIO,HIGH);
-       digitalWrite(KEYER_OUT_GPIO,HIGH);
-
-       //system("gpio mode \"12\" out");
-       //system("gpio -g write \"12\" 1");
+       //digitalWrite(COOLER_GPIO,HIGH);
+       //digitalWrite(KEYER_OUT_GPIO,HIGH);
+       togglePin(COOLER_GPIO,true);
+       togglePin(KEYER_OUT_GPIO,true);
 
        iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
        iqtest->SetPLLMasterLoop(3,4,0);
@@ -223,33 +294,18 @@ void setPTT(bool statePTT) {
     fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
     setWord(&cat->FT817,PTT,false);
     setWord(&MSW,PTT,false);
-    //fprintf(stderr,"%s flags for PTT has been set\n",PROGRAMID);
 
     if (iqtest != nullptr) {
-       //fprintf(stderr,"%s deallocating objects\n",PROGRAMID);
        iqtest->stop();
        delete(iqtest);
        iqtest=nullptr;
-       //fprintf(stderr,"%s deallocatED objects\n",PROGRAMID);
        usleep(10000);
     }
 
-    //fprintf(stderr,"%s About to gpio out 19 off\n",PROGRAMID);
-    //if (wiringPiSetup()<0) {
-    //   fprintf(stderr,"%s: Unable to setup gpio when PTT On\n",PROGRAMID);
-    //   exit(16);
-    //} 
-    //fprintf(stderr,"%s turning GPIO PTT Off\n",PROGRAMID);
-    //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
-    //digitalWrite(COOLER_GPIO,LOW);
-    digitalWrite(KEYER_OUT_GPIO,LOW);
+    //digitalWrite(KEYER_OUT_GPIO,LOW);
+    togglePin(KEYER_OUT_GPIO,false);
     iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
     iqtest->SetPLLMasterLoop(3,4,0);
-
-    //system("gpio mode \"12\" out");
-    //system("gpio -g write \"12\" 0");
-    //fprintf(stderr,"%s Have set gpio out 12 off\n",PROGRAMID);
-
 
 }
 //---------------------------------------------------------------------------
@@ -404,6 +460,29 @@ static void terminate(int num)
 
 }
 //---------------------------------------------------------------------------------
+// ISRAuxPTTOn
+// ISR handler for AUX button 
+//---------------------------------------------------------------------------------
+void ISRAuxPTTOn (void) {
+
+   fprintf(stderr,"%s::ISRAuxPTTOn digitalRead(%d)\n",PROGRAMID,digitalRead(AUX_GPIO));
+   setPTT(true);
+   return;
+
+}
+//---------------------------------------------------------------------------------
+// ISRAuxPTTOff
+// ISR handler for AUX button 
+//---------------------------------------------------------------------------------
+void ISRAuxPTTOff (void) {
+
+   fprintf(stderr,"%s::ISRAuxPTTOff digitalRead(%d)\n",PROGRAMID,digitalRead(AUX_GPIO));
+   setPTT(false);
+   return;
+
+
+}
+//---------------------------------------------------------------------------------
 // main 
 //---------------------------------------------------------------------------------
 int main(int argc, char* argv[])
@@ -443,17 +522,28 @@ int main(int argc, char* argv[])
         //usleep(100000);
 
 
-        if (wiringPiSetup () < 0) {
-           fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
-           exit(16);
-        }
+        //if (wiringPiSetup () < 0) {
+        //   fprintf(stderr,"%s: Unable to setup wiringPi error(%s)\n",PROGRAMID,strerror(errno));
+        //   exit(16);
+        //}
         fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
-        pinMode(COOLER_GPIO,OUTPUT);
-        digitalWrite(COOLER_GPIO,HIGH);
 
-        pinMode(KEYER_OUT_GPIO,OUTPUT);
-        digitalWrite(KEYER_OUT_GPIO,LOW);
+        //pinMode(AUX_GPIO,INPUT);
+        //pullUpDnControl(AUX_GPIO,PUD_UP);
+        //wiringPiISR(AUX_GPIO,INT_EDGE_FALLING,&ISRAuxPTTOn);
+        //wiringPiISR(AUX_GPIO,INT_EDGE_RISING,&ISRAuxPTTOff);
+
+        //pinMode(COOLER_GPIO,OUTPUT);
+        //digitalWrite(COOLER_GPIO,HIGH);
+
+
+        togglePin(COOLER_GPIO,true);
+        togglePin(KEYER_OUT_GPIO,false);
+
+        //pinMode(KEYER_OUT_GPIO,OUTPUT);
+        //digitalWrite(KEYER_OUT_GPIO,LOW);
+
         //if (gpioInitialise()<0) {
         //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
         //   return 1;
@@ -728,8 +818,11 @@ float   gain=1.0;
         delete(iqtest);
 
 
-        digitalWrite(KEYER_OUT_GPIO,LOW);
-        digitalWrite(COOLER_GPIO,LOW);
+        togglePin(KEYER_OUT_GPIO,false);
+        togglePin(COOLER_GPIO,false);
+
+        //digitalWrite(KEYER_OUT_GPIO,LOW);
+        //digitalWrite(COOLER_GPIO,LOW);
         //system("gpio mode \"12\" out");
         //system("gpio -g write \"12\" 0");
 
