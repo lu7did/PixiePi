@@ -199,13 +199,14 @@ void setPTT(bool statePTT) {
           usleep(100000);
        }
 
-       fprintf(stderr,"%s turning GPIO PTT on\n",PROGRAMID);
+       //fprintf(stderr,"%s turning GPIO PTT on\n",PROGRAMID);
        //if (wiringPiSetup()<0) {
        //    fprintf(stderr,"%s: Unable to setup gpio when PTT On\n",PROGRAMID);
        //    exit(16);
        //} 
        //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
        digitalWrite(COOLER_GPIO,HIGH);
+       digitalWrite(KEYER_OUT_GPIO,HIGH);
 
        //system("gpio mode \"12\" out");
        //system("gpio -g write \"12\" 1");
@@ -240,7 +241,8 @@ void setPTT(bool statePTT) {
     //} 
     //fprintf(stderr,"%s turning GPIO PTT Off\n",PROGRAMID);
     //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
-    digitalWrite(COOLER_GPIO,LOW);
+    //digitalWrite(COOLER_GPIO,LOW);
+    digitalWrite(KEYER_OUT_GPIO,LOW);
     iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
     iqtest->SetPLLMasterLoop(3,4,0);
 
@@ -346,7 +348,7 @@ void timer_exec()
   if (TVOX!=0) {
      TVOX--;
      if(TVOX==0) {
-       fprintf(stderr,"%s::timer_exec() VOX timer expiration event\n",PROGRAMID);
+       //fprintf(stderr,"%s::timer_exec() VOX timer expiration event\n",PROGRAMID);
        setWord(&MSW,VOX,true);
      }
   }
@@ -448,7 +450,10 @@ int main(int argc, char* argv[])
         fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
         pinMode(COOLER_GPIO,OUTPUT);
-        digitalWrite(COOLER_GPIO,LOW);
+        digitalWrite(COOLER_GPIO,HIGH);
+
+        pinMode(KEYER_OUT_GPIO,OUTPUT);
+        digitalWrite(KEYER_OUT_GPIO,LOW);
         //if (gpioInitialise()<0) {
         //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
         //   return 1;
@@ -680,24 +685,24 @@ float   gain=1.0;
                 if (gain>voxmax) {
 		   voxmax=gain;
 		   voxlvl=voxmax*0.90;
-		   fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   //fprintf(stderr,"%s::main() VOX MAX level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
                 }
 
 		if (gain<voxmin) {
 		   voxmin=gain;
-		   fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   //fprintf(stderr,"%s::main() VOX MIN level max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
                 }
  
 		if (gain<=voxlvl) {
   		   TVOX=VOX_TIMER;
 		   setWord(&MSW,VOX,false);
-		   fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   //fprintf(stderr,"%s::main() VOX trigger activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   if (getWord(MSW,PTT)==false) {
 		      setPTT(true);
 		      setWord(&MSW,PTT,true);
-		      fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		      //fprintf(stderr,"%s::main() VOX PTT activated max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		   }
 		}
@@ -706,24 +711,25 @@ float   gain=1.0;
 		   setWord(&MSW,VOX,false);
 		   setPTT(false);
 		   setWord(&MSW,PTT,false);
-		   fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
+		   //fprintf(stderr,"%s::main() VOX TIMEOUT event max(%8f) min(%8f) trig(%8f) gain(%8f) VOX(%s) PTT(%s)\n",PROGRAMID,voxmax,voxmin,voxlvl,gain,(getWord(MSW,VOX) ? "true" : "false"),(getWord(MSW,PTT) ? "true" : "false"));
 
 		}
            }
 	}
 
 
-        fprintf(stderr,"%s: Turning infrastructure off\n",PROGRAMID);
 
 
         fprintf(stderr,"%s: Turning off virtual rig and cooler\n",PROGRAMID);
-
-        //system("gpio -g write \"19\" 0");
         setPTT(false);
 
+        fprintf(stderr,"%s: Removing RF I/O object\n",PROGRAMID);
 	iqtest->stop();
         delete(iqtest);
 
+
+        digitalWrite(KEYER_OUT_GPIO,LOW);
+        digitalWrite(COOLER_GPIO,LOW);
         //system("gpio mode \"12\" out");
         //system("gpio -g write \"12\" 0");
 
