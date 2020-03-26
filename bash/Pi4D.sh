@@ -1,22 +1,18 @@
 #!/bin/sh
 #*-----------------------------------------------------------------------
-#* Pi4D
-#* Script to establish a remote pipe with socal and then bring pixie up
-#* this way enables a conduit for CAT commands to be sent remotely to this
-#* instance
+#* Pi4D.sh
+#* Script to implement a SSB transceiver
+#* A remote pipe is implemented to carry CAT commands
+#* Sound is feed thru the arecord command (PulseAudio ALSA), proper hardware
+#* interface needs to be established. (-a parameter enables VOX)
+#* the script needs to be called with the frequency in Hz as a parameter
+#*            ./Pi4D.sh [frequency in Hz]
 #*-----------------------------------------------------------------------
-#socat -d -d pty,raw,echo=0,link=/tmp/ttyv0 TCP-LISTEN:8080 &
-#PID=$!
-#echo "socat PID($PID)"
-#gpio mode "12" out
-#gpio -g write "12" 1
-#gpio mode "24" out
-#gpio -g write "24" 1
-
-arecord -c1 -r48000 -D hw:1 -fS16_LE - | sudo /home/pi/PixiePi/bin/Pi4D -i /dev/stdin -s 6000 -p /tmp/ttyv0 -f "$1" $2 $3
-#gpio -g write "12" 0
-#gpio -g write "24" 0
-
-#echo "Killing socat PID($PID)"
-#sudo pkill socat
+echo "Pi4D PixiePi based SSB transceiver ($date)"
+socat -d -d pty,raw,echo=0,link=/tmp/ttyv0 TCP-LISTEN:8080 &
+PID=$!
+echo "Pipe for /tmp/ttyv0 PID($PID)"
+arecord -c1 -r48000 -D hw:1 -fS16_LE - | sudo /home/pi/PixiePi/bin/Pi4D -i /dev/stdin -s 6000 -p /tmp/ttyv0 -f "$1" -a
+echo "Removing /tmp/ttyv0 PI($PID)"
+sudo pkill socat
 

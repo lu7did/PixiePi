@@ -245,7 +245,8 @@ the power output were in the order of 200 mW during the tests!
 
 # Operating FT8
 
-FT8 can be operated either as a monitoring station or as a beacon.
+FT8 can be operated either as a monitoring station or as a beacon or as a stand-alone USB transceiver for digital modes (see operating as an
+USB transceiver below).
 
 ## Monitoring station
 
@@ -285,7 +286,28 @@ When programmed as modes other than CW or CWR the keyer will basically become a 
 
 # Operating as a SSB transceiver
 
-To be implemented.
+SSB transmission, as usually understood, requires a linear transmitter and the Pixie implementation (or any similar project) behaves as a 
+class-C mode, which means non-linear big time. If used to transmit voice, or any other mode where the amplitude of the signal carries
+information, the result will be severely distorted and create many problems to nearby stations, let alone comply with technical 
+specs all hams has to comply with.
+
+However there are many modes which are created using a SSB signal, still the information is either PSK or FM modulated, as an example
+digital modes (i.e. RTTY or PSK31), image modes (SSTV) or weak signal modes (WSPR, FT8, etc). On these modes even a non-linear PA
+like the Pixie will do, as long as the generation of the signal itself is linear. And this is what the Pi4D program does.
+
+This program works with the PixiePi setup as a "headless" configuration, so no LCD display nor encoder knob is handled, so the transceiver
+is setup on start to the typical frequency. The PTT line doesn´t exists but the transmitter can be turn on either using a CAT interface or
+a VOX system.
+
+The Raspberry Pi Zero computer doesn´t have any sound input interface so an external USB card needs to be used, assuming the proper 
+configuration is used the actual FT8 or PSK31 or SSTV signal can be feed and transmitted; the transceiver is set as a receiver while not
+transmitting therefore it can feed another computer. In this way the PixiePi configuration can be used as a stand-alone transceiver.
+
+Theoretically the WSJT-X program can be used on the very same board used to implement the PixiePi platform, however a Raspberry Pi Zero is
+way too small to support both the taxing demand of creating the RF signal and the CPU intensive calculus needed to operate small signals.
+
+For implementation see Pi4D.sh at the PixiePi/bash directory.
+
 
 # Operating as a FM transceiver
 
@@ -301,7 +323,7 @@ To be implemented
      - LCD 16x2 display
      - USB soundcard (optional)
 
-**Work in progress, this code set is not yet functional, hardware has many issues, build experience needed at this point.
+**Work in progress, this code set has limited functionality, hardware has many issues, build experience needed at this point.
 
 # CAT Control
 
@@ -326,7 +348,8 @@ therefore it can be used on a Raspberry Pi Zero W to control the rig. See bash/p
 
 The rigctl interface is a server running in the background (rigctld) which can be accessed using a telnet interface at localhost port 4532.
 
-See the docs/rigctl_commands.txt for a summary of the commands or visit the Hamlib page for complete documentation.
+See the docs/rigctl_commands.txt for a summary of the commands or visit the Hamlib page for complete documentation, the script 
+PixiePi/bash/pixie.sh has sample on how to implement a pipe based to enable rigctl.
 
 # Other packages
 
@@ -334,4 +357,4 @@ In general the hardware can be used to implement modulation modes proposed by th
 In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
 GPIO12 line as the PTT, some programs might require this line to be activated or deactivated externally.
 
-#  Work in progress, this code set is not yet functional
+#  Work in progress, this code has limited functionality
