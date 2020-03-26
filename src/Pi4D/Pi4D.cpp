@@ -192,12 +192,12 @@ void setPTT(bool statePTT) {
        setWord(&cat->FT817,PTT,true);
        setWord(&MSW,PTT,true);
 
-       //if (iqtest != nullptr) {
-       //   iqtest->stop();
-       //   delete(iqtest);
-       //   iqtest=nullptr;
-       //   usleep(100000);
-       //}
+       if (iqtest != nullptr) {
+          iqtest->stop();
+          delete(iqtest);
+          iqtest=nullptr;
+          usleep(100000);
+       }
 
        fprintf(stderr,"%s turning GPIO PTT on\n",PROGRAMID);
        //if (wiringPiSetup()<0) {
@@ -205,13 +205,13 @@ void setPTT(bool statePTT) {
        //    exit(16);
        //} 
        //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
-       digitalWrite(5,HIGH);
+       digitalWrite(COOLER_GPIO,HIGH);
 
        //system("gpio mode \"12\" out");
        //system("gpio -g write \"12\" 1");
 
-       //iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-       //iqtest->SetPLLMasterLoop(3,4,0);
+       iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+       iqtest->SetPLLMasterLoop(3,4,0);
        usleep(10000);
        return;
     } 
@@ -224,14 +224,14 @@ void setPTT(bool statePTT) {
     setWord(&MSW,PTT,false);
     //fprintf(stderr,"%s flags for PTT has been set\n",PROGRAMID);
 
-    //if (iqtest != nullptr) {
+    if (iqtest != nullptr) {
        //fprintf(stderr,"%s deallocating objects\n",PROGRAMID);
-    //   iqtest->stop();
-    //   delete(iqtest);
-    //   iqtest=nullptr;
+       iqtest->stop();
+       delete(iqtest);
+       iqtest=nullptr;
        //fprintf(stderr,"%s deallocatED objects\n",PROGRAMID);
-    //   usleep(10000);
-    //}
+       usleep(10000);
+    }
 
     //fprintf(stderr,"%s About to gpio out 19 off\n",PROGRAMID);
     //if (wiringPiSetup()<0) {
@@ -240,7 +240,9 @@ void setPTT(bool statePTT) {
     //} 
     //fprintf(stderr,"%s turning GPIO PTT Off\n",PROGRAMID);
     //pinMode (KEYER_OUT_GPIO, OUTPUT) ;
-    digitalWrite(5,LOW);
+    digitalWrite(COOLER_GPIO,LOW);
+    iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+    iqtest->SetPLLMasterLoop(3,4,0);
 
     //system("gpio mode \"12\" out");
     //system("gpio -g write \"12\" 0");
@@ -445,8 +447,8 @@ int main(int argc, char* argv[])
         }
         fprintf(stderr,"%s:main(): wiringPi controller setup completed\n",PROGRAMID); 
 
-        pinMode(5,OUTPUT);
-        digitalWrite(5,LOW);
+        pinMode(COOLER_GPIO,OUTPUT);
+        digitalWrite(COOLER_GPIO,LOW);
         //if (gpioInitialise()<0) {
         //   fprintf(stderr,"%s: Unable to setup gpio\n",PROGRAMID);
         //   return 1;
@@ -614,9 +616,9 @@ float   gain=1.0;
         fprintf(stderr,"%s: Input from %s\n",PROGRAMID,FileName);
 
 
-        fprintf(stderr,"%s: I/O RF Object created\n",PROGRAMID);
-        iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-        iqtest->SetPLLMasterLoop(3,4,0);
+        //fprintf(stderr,"%s: I/O RF Object created\n",PROGRAMID);
+        //iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+        //iqtest->SetPLLMasterLoop(3,4,0);
 
 //generate buffer areas
 
@@ -652,15 +654,15 @@ float   gain=1.0;
 					  int numSamplesLow=usb->generate(buffer_i16,nbread,Ibuffer,Qbuffer);
 					  if (getWord(MSW,PTT)==true) {
 					  for(int i=0;i<numSamplesLow;i++)
-					  {
- 				             CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
-					  }
+					     {
+ 				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
+					     }
 					  } else {
-					  numSamplesLow=1024/usb->decimation_factor;
-					  for(int i=0;i<numSamplesLow;i++)
-					  {
- 				             CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
-					  }
+					    numSamplesLow=1024/usb->decimation_factor;
+					    for(int i=0;i<numSamplesLow;i++)
+					    {
+ 				               CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
+					    }
  					  }
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
@@ -669,9 +671,9 @@ float   gain=1.0;
 				}
 				break;	
 		}
-		//if (getWord(MSW,PTT)==true) {
+		if (getWord(MSW,PTT)==true) {
 		   iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
-                //}
+                }
 
 // VOX analysis
           if (usb->agc.active==true) {
@@ -713,13 +715,14 @@ float   gain=1.0;
 
         fprintf(stderr,"%s: Turning infrastructure off\n",PROGRAMID);
 
-	iqtest->stop();
-        delete(iqtest);
 
         fprintf(stderr,"%s: Turning off virtual rig and cooler\n",PROGRAMID);
 
         //system("gpio -g write \"19\" 0");
         setPTT(false);
+
+	iqtest->stop();
+        delete(iqtest);
 
         //system("gpio mode \"12\" out");
         //system("gpio -g write \"12\" 0");
