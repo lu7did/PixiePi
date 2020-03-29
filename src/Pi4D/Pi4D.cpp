@@ -1,6 +1,7 @@
 /*
  * Pi4D.cpp
 
+
  * Raspberry Pi based USB experimental SSB Generator for digital modes (mainly WSPR and FT8)
  * Experimental version largely modelled after Generator.java by Takafumi INOUE (JI3GAB) and librpitx by Evariste  (F5OEO)
  * This program tries to mimic the behaviour of simple DSB transceivers used to operate low signal digital modes such as
@@ -79,6 +80,8 @@
 #include "/home/pi/PixiePi/src/pixie/pixie.h" 
 #include "/home/pi/librpitx/src/librpitx.h"
 #include "/home/pi/PixiePi/src/lib/RPI.h" 
+#include "/home/pi/PixiePi/src/lib/DDS.h"
+//#include <bcm2835.h>
 
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
@@ -98,6 +101,10 @@
 #define GPIO_CLR  *(gpio.addr + 10) // clears bits which are 1 ignores bits which are 0
 #define GPIO_READ(g)  *(gpio.addr + 13) &= (1<<(g))
 
+//#define GPIO_GET(g) *(gpio+13) &= (1<<(g)) // 0 if LOW, (1<<g) if HIGH
+//#define GPIO_PULL *(gpio+37) // Pull up/pull down
+//#define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
+
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Pi4D";
 const char   *PROG_VERSION="1.0";
@@ -109,12 +116,26 @@ typedef unsigned char byte;
 typedef bool boolean;
 
 
+// --- DDS
+
+//clkgpio     *clk = nullptr;;
+//generalgpio gengpio;
+//padgpio     pad;
+//float       ppm=1000.0;
+//byte        power=7;
+
+DDS*        dds=nullptr;
+
+iqdmasync*  iqtest=nullptr;
+float       SampleRate=6000;
+float       SetFrequency=7080000;
+
+
 // --- Transceiver control structure
 long int TVOX=0;
 
 byte MSW=0;
 byte trace=0x00;
-
 
 // --- CAT object
 void CATchangeMode();
@@ -123,18 +144,13 @@ void CATchangeStatus();
 
 CAT817* cat;
 byte FT817;
-long int  bant=0;
+long int  bButtonAnt=0;
 
-float SampleRate=6000;
-float ppm=1000.0;
 char  port[80];
 long  catbaud=CATBAUD;
 
-iqdmasync* iqtest=nullptr;
-
 int   ax;
 int   anyargs = 1;
-float SetFrequency=7080000;
 
 //bool loop_mode_flag=false;
 
@@ -165,8 +181,9 @@ int    numSamples=0;
 int    numSamplesLow=0;
 int    exitrecurse=0;
 int    bufferLengthInBytes;
-short *buffer_i16;
+short  *buffer_i16;
 std::complex<float> CIQBuffer[IQBURST];	
+
 //--------------------------[System Word Handler]---------------------------------------------------
 // getSSW Return status according with the setting of the argument bit onto the SW
 //--------------------------------------------------------------------------------------------------
@@ -233,8 +250,6 @@ void unmap_peripheral(struct bcm2835_peripheral *p) {
 //--------------------------------------------------------------------------------------------------
 void setGPIO(int pin,bool v) {
 
- fprintf(stderr,"%s::togglePin PIN(%d) value(%s)\n",PROGRAMID,pin,(v ? "true" : "false"));
-
 // ---  acquire resources
 
  if(map_peripheral(&gpio) == -1) 
@@ -266,32 +281,38 @@ void setGPIO(int pin,bool v) {
 //--------------------------------------------------------------------------------------------------
 long int getGPIO(int pin) {
 
+// Set RPI pin to be an input
+   //bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
+   //bcm2835_gpio_set_pud(pin, BCM2835_GPIO_PUD_UP);
+   //uint8_t v = bcm2835_gpio_lev(pin);
+// ---  acquire resources
+
  if(map_peripheral(&gpio) == -1) 
   {
     fprintf(stderr,"Failed to map the physical GPIO registers into the virtual memory space.\n");
-    return -1;
+    return 0;
   }
+// --- Clear pin definition and then set as output
 
   INP_GPIO(pin);
-  long int b=GPIO_READ(pin);
+  //OUT_GPIO(pin);
+  int v=GPIO_READ(pin);
+// --- Map result to pin
+ 
+  //if (v==true) {
+  //  GPIO_SET = 1 << pin;  // Set as high
+  //} else {
+  //  GPIO_CLR = 1 << pin;  // Set as low
+  //}
+
+
+// --- release resources
 
   unmap_peripheral(&gpio);
-  return b;
+  return (long int) v;
 }
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-void checkAux() {
-
-   long int b=getGPIO(AUX_GPIO);
-
-   if (b!=bant) {
-      fprintf(stderr,"%s AUX Pin set to(%ld) previous (%ld)\n",PROGRAMID,b,bant);
-      bant=b;
-   }
-
-}
 //--------------------------------------------------------------------------------------------
 // set_PTT
 // Manage the PTT of the transceiver (can be used from the keyer or elsewhere
@@ -305,47 +326,89 @@ void setPTT(bool statePTT) {
 
 //--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
 
-       fprintf(stderr,"%s:setPTT() PTT On PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
-       setWord(&cat->FT817,PTT,true);
-       setWord(&MSW,PTT,true);
+       if (getWord(MSW,TUNE) == false) {
+          fprintf(stderr,"%s:setPTT() PTT On PTT(%s) USB mode\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+          setWord(&cat->FT817,PTT,true);
+          setWord(&MSW,PTT,true);
 
-       if (iqtest != nullptr) {
-          iqtest->stop();
-          delete(iqtest);
-          iqtest=nullptr;
-          usleep(100000);
+          if (dds != nullptr) {
+             dds->close();
+   	     delete(dds);
+             dds=nullptr;
+             usleep(100000);
+         }
+       } else {
+          fprintf(stderr,"%s:setPTT() PTT On PTT(%s) TUNE  mode\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
        }
 
-       //digitalWrite(COOLER_GPIO,HIGH);
-       //digitalWrite(KEYER_OUT_GPIO,HIGH);
        setGPIO(COOLER_GPIO,true);
        setGPIO(KEYER_OUT_GPIO,true);
 
-       iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-       iqtest->SetPLLMasterLoop(3,4,0);
-       usleep(10000);
+       if (getWord(MSW,TUNE) == false) {
+          iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
+          iqtest->SetPLLMasterLoop(3,4,0);
+          usleep(10000);
+       }
        return;
     } 
 
 //---------------------------------*
 //          PTT Inactivated        *
 //---------------------------------*
-    fprintf(stderr,"%s:setPTT() PTT Off PTT(%s)\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
     setWord(&cat->FT817,PTT,false);
     setWord(&MSW,PTT,false);
 
-    if (iqtest != nullptr) {
-       iqtest->stop();
-       delete(iqtest);
-       iqtest=nullptr;
-       usleep(10000);
+    if (getWord(MSW,TUNE) == false) {
+       fprintf(stderr,"%s:setPTT() PTT released PTT(%s) USB mode \n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+       if (iqtest != nullptr) {
+          iqtest->stop();
+          delete(iqtest);
+          iqtest=nullptr;
+          usleep(10000);
+       }
+    } else {
+       fprintf(stderr,"%s:setPTT() PTT released PTT(%s) TUNE mode \n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
     }
 
     setGPIO(KEYER_OUT_GPIO,false);
-    iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
-    iqtest->SetPLLMasterLoop(3,4,0);
+
+// --- Create a DDS object
+
+    if (getWord(MSW,TUNE)==false) {
+       dds=new DDS(NULL);
+       dds->gpio=byte(GPIO04);
+       dds->power=7;
+       dds->open(SetFrequency); 
+       setWord(&MSW,TUNE,false);
+    }
+
 
 }
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+void checkAux() {
+
+   int GPIO27=27;
+   long int bButton=getGPIO(GPIO27);
+
+   if (bButton!=bButtonAnt) {
+      bButtonAnt=bButton;
+      if (getWord(MSW,PTT)==false) {
+         if (bButton == 0) {
+            fprintf(stderr,"%s AUX Pin Pressed (%ld)\n",PROGRAMID,bButtonAnt);
+            setWord(&MSW,TUNE,true);
+            setPTT(true);
+        } else {
+            fprintf(stderr,"%s AUX Pin Released (%ld)\n",PROGRAMID,bButtonAnt);
+            setPTT(false);
+        }
+     } else {
+       fprintf(stderr,"%s AUX Pin activity ignored while transmitting\n",PROGRAMID);
+     }
+  } 
+     
+}
+
 //---------------------------------------------------------------------------
 // CATchangeFreq()
 // CAT Callback when frequency changes
@@ -359,15 +422,23 @@ void CATchangeFreq() {
      return;
   }
 
-  SetFrequency=cat->SetFrequency;
 
-  if (iqtest != nullptr) {
-     iqtest->clkgpio::disableclk(GPIO04);
-     iqtest->clkgpio::SetAdvancedPllMode(true);
-     iqtest->clkgpio::SetCenterFrequency(SetFrequency,SampleRate);
-     iqtest->clkgpio::SetFrequency(0);
-     iqtest->clkgpio::enableclk(GPIO04);
+  if (getWord(MSW,PTT) == true) {
+     fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->SetFrequency);
+     cat->SetFrequency=SetFrequency;
+     return;
+     if (iqtest != nullptr) {
+        iqtest->clkgpio::disableclk(GPIO04);
+        iqtest->clkgpio::SetAdvancedPllMode(true);
+        iqtest->clkgpio::SetCenterFrequency(SetFrequency,SampleRate);
+        iqtest->clkgpio::SetFrequency(0);
+        iqtest->clkgpio::enableclk(GPIO04);
+     }
   }
+
+  SetFrequency=cat->SetFrequency;
+  dds->set(SetFrequency);
+
   fprintf(stderr,"%s::CATchangeFreq() Frequency set to SetFrequency(%d)\n",PROGRAMID,(int)SetFrequency);
 }
 //-----------------------------------------------------------------------------------------------------------
@@ -475,7 +546,7 @@ Usage: [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n
 -s            SampleRate 10000-250000 \n\
 -f float      central frequency Hz(50 kHz to 1500 MHz),\n\
 -c            carrier mode only\n\
--a            activate AGC\n\
+-a            activate VOX\n\
 -h            Use harmonic number n\n\
 -?            help (this help).\n\
 \n",PROGRAMID,PROG_VERSION,PROG_BUILD);
@@ -537,13 +608,15 @@ int main(int argc, char* argv[])
 
         fprintf(stderr,"%s:main(): GPIO low level controller\n",PROGRAMID); 
 
+// ---
+// Set cooler and shut off PTT
+// ---
         setGPIO(COOLER_GPIO,true);
         setGPIO(KEYER_OUT_GPIO,false);
 
 //--------------------------------------------------------------------------------------------------
 // SSB (USB) controller generation
 //--------------------------------------------------------------------------------------------------
-
 float   gain=1.0;
 
         usb=new SSB();
@@ -566,7 +639,7 @@ float   gain=1.0;
 			if(anyargs) break;
 			else ax='h'; //print usage and exit
 		}
-		anyargs = 1;	
+		anyargs = 1;
 
 		switch(ax)
 		{
@@ -658,7 +731,6 @@ float   gain=1.0;
 
 //--------------------------------------------------------------------------------------------------
 // Setup CAT object
-//
 //--------------------------------------------------------------------------------------------------
 
         cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
@@ -673,9 +745,9 @@ float   gain=1.0;
         setWord(&cat->FT817,AGC,false);
         setWord(&cat->FT817,PTT,false);
 
-
-        // Standard input definition
-
+// ---
+// Standard input definition
+// ---
         fprintf(stderr,"%s:main(): Standard input definition\n",PROGRAMID);
 
 	FILE *iqfile=NULL;
@@ -693,8 +765,9 @@ float   gain=1.0;
 
         fprintf(stderr,"%s: Input from %s\n",PROGRAMID,FileName);
 
-//generate buffer areas
-
+// ---
+// generate DSP buffer areas
+// ---
         fprintf(stderr,"%s:main(): Memory buffer creation\n",PROGRAMID);
         buffer_i16 =(short*)malloc(SR*sizeof(short)*2);
         Ibuffer =(float*)malloc(IQBURST*sizeof(short)*2);
@@ -730,16 +803,16 @@ float   gain=1.0;
 					{
 					  int numSamplesLow=usb->generate(buffer_i16,nbread,Ibuffer,Qbuffer);
 					  if (getWord(MSW,PTT)==true) {
-					  for(int i=0;i<numSamplesLow;i++)
+					     for(int i=0;i<numSamplesLow;i++)
 					     {
  				                CIQBuffer[CplxSampleNumber++]=std::complex<float>(Ibuffer[i],Qbuffer[i]);
-					     }
+					      }
 					  } else {
-					    numSamplesLow=1024/usb->decimation_factor;
-					    for(int i=0;i<numSamplesLow;i++)
-					    {
+					     numSamplesLow=1024/usb->decimation_factor;
+					     for(int i=0;i<numSamplesLow;i++)
+					     {
  				               CIQBuffer[CplxSampleNumber++]=std::complex<float>(0.0,0.0);
-					    }
+					     }
  					  }
 					} else {
 					  printf("%s: End of file\n",PROGRAMID);
@@ -752,8 +825,9 @@ float   gain=1.0;
 		   iqtest->SetIQSamples(CIQBuffer,CplxSampleNumber,Harmonic);
                 }
 
+// ---
 // VOX controller (only if enabled)
-
+// ---
           if (usb->agc.active==true) {
                 if (gain>voxmax) {
 		   voxmax=gain;
@@ -762,7 +836,6 @@ float   gain=1.0;
 
 		if (gain<voxmin) {
 		   voxmin=gain;
-
                 }
  
 		if (gain<=voxlvl) {
@@ -786,19 +859,30 @@ float   gain=1.0;
 	}
 
 // ==================================================================================================================================
-//  
+// end of loop  
 // ==================================================================================================================================
-
         fprintf(stderr,"%s: Turning off virtual rig and cooler\n",PROGRAMID);
         setPTT(false);
 
+// ---
+// Deactivating 
+// ---
         fprintf(stderr,"%s: Removing RF I/O object\n",PROGRAMID);
-	iqtest->stop();
-        delete(iqtest);
 
+        if (iqtest!=nullptr) {  
+   	   iqtest->stop();
+           delete(iqtest);
+	}
+
+	if (dds!=nullptr) {
+           dds->close();
+	   delete(dds);
+        }
+
+        iqtest=nullptr;
+        dds=nullptr;
 
         setGPIO(KEYER_OUT_GPIO,false);
         setGPIO(COOLER_GPIO,false);
-
 }
 

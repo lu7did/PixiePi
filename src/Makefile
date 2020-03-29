@@ -1,9 +1,9 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/Generator ../bin/SSBGen
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/Generator ../bin/SSBGen 
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
-LDFLAGS = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio
+LDFLAGS = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio 
 CFLAGS  = -Wall -g -O2 -Wno-unused-variable
 CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
 
