@@ -368,7 +368,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
          BCDBuf[0]=0x00;
        }
-       fprintf(stderr,"processCAT(): 0x08 received ----------->\n");
+       //fprintf(stderr,"processCAT(): 0x08 received ----------->\n");
        setWord(&FT817,PTT,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x01 ? fprintf(stderr,"Command 0x08 Resp(%s) PTT(On)********************\n",buffer) : _NOP);

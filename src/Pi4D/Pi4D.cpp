@@ -81,17 +81,7 @@
 #include "/home/pi/librpitx/src/librpitx.h"
 #include "/home/pi/PixiePi/src/lib/RPI.h" 
 #include "/home/pi/PixiePi/src/lib/DDS.h"
-//#include <bcm2835.h>
-
-
-// GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
-//#define INP_GPIO(g)   *(gpio.addr + ((g)/10)) &= ~(7<<(((g)%10)*3))
-//#define OUT_GPIO(g)   *(gpio.addr + ((g)/10)) |=  (1<<(((g)%10)*3))
-//#define SET_GPIO_ALT(g,a) *(gpio.addr + (((g)/10))) |= (((a)<=3?(a) + 4:(a)==4?3:2)<<(((g)%10)*3))
-//#define GPIO_SET  *(gpio.addr + 7)  // sets   bits which are 1 ignores bits which are 0
-//#define GPIO_CLR  *(gpio.addr + 10) // clears bits which are 1 ignores bits which are 0
-//#define GPIO_READ(g)  *(gpio.addr + 13) &= (1<<(g))
-
+#include "/home/pi/PixiePi/src/minIni/minIni.h"
 
 // GPIO setup macros. Always use INP_GPIO(x) before using OUT_GPIO(x)
 #define INP_GPIO(g)   *(gpio.addr + ((g)/10)) &= ~(7<<(((g)%10)*3))
@@ -101,10 +91,6 @@
 #define GPIO_CLR  *(gpio.addr + 10) // clears bits which are 1 ignores bits which are 0
 #define GPIO_READ(g)  *(gpio.addr + 13) &= (1<<(g))
 
-//#define GPIO_GET(g) *(gpio+13) &= (1<<(g)) // 0 if LOW, (1<<g) if HIGH
-//#define GPIO_PULL *(gpio+37) // Pull up/pull down
-//#define GPIO_PULLCLK0 *(gpio+38) // Pull up/pull down clock
-
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Pi4D";
 const char   *PROG_VERSION="1.0";
@@ -112,24 +98,28 @@ const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 enum  {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double,typeiq_carrier};
 
+const char   *CFGFILE="Pi4D.cfg";
 typedef unsigned char byte;
 typedef bool boolean;
 
 
-// --- DDS
-
-//clkgpio     *clk = nullptr;;
-//generalgpio gengpio;
-//padgpio     pad;
-//float       ppm=1000.0;
-//byte        power=7;
+// --- DDS & I/Q Generator
 
 DDS*        dds=nullptr;
-
 iqdmasync*  iqtest=nullptr;
+
 float       SampleRate=6000;
 float       SetFrequency=7080000;
 
+
+// --- Define minIni related parameters
+
+char        inifile[80];
+char        iniStr[100];
+long        nIni;
+int         sIni;
+int         kIni;
+char        iniSection[50];
 
 // --- Transceiver control structure
 long int TVOX=0;
@@ -138,6 +128,7 @@ byte MSW=0;
 byte trace=0x00;
 
 // --- CAT object
+
 void CATchangeMode();
 void CATchangeFreq();
 void CATchangeStatus();
@@ -154,7 +145,8 @@ int   anyargs = 1;
 
 //bool loop_mode_flag=false;
 
-char* FileName=NULL;
+char  FileName[80];
+
 int   Harmonic=1;
 int   InputType=typeiq_i16;
 int   Decimation=1;
@@ -281,10 +273,6 @@ void setGPIO(int pin,bool v) {
 //--------------------------------------------------------------------------------------------------
 long int getGPIO(int pin) {
 
-// Set RPI pin to be an input
-   //bcm2835_gpio_fsel(pin, BCM2835_GPIO_FSEL_INPT);
-   //bcm2835_gpio_set_pud(pin, BCM2835_GPIO_PUD_UP);
-   //uint8_t v = bcm2835_gpio_lev(pin);
 // ---  acquire resources
 
  if(map_peripheral(&gpio) == -1) 
@@ -297,15 +285,6 @@ long int getGPIO(int pin) {
   INP_GPIO(pin);
   //OUT_GPIO(pin);
   int v=GPIO_READ(pin);
-// --- Map result to pin
- 
-  //if (v==true) {
-  //  GPIO_SET = 1 << pin;  // Set as high
-  //} else {
-  //  GPIO_CLR = 1 << pin;  // Set as low
-  //}
-
-
 // --- release resources
 
   unmap_peripheral(&gpio);
@@ -327,7 +306,6 @@ void setPTT(bool statePTT) {
 //--- if SPLIT swap VFO AND if also CW shift the carrier by vfoshift[current VFO]
 
        if (getWord(MSW,TUNE) == false) {
-          fprintf(stderr,"%s:setPTT() PTT On PTT(%s) USB mode\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
           setWord(&cat->FT817,PTT,true);
           setWord(&MSW,PTT,true);
 
@@ -336,7 +314,9 @@ void setPTT(bool statePTT) {
    	     delete(dds);
              dds=nullptr;
              usleep(100000);
-         }
+          }
+          fprintf(stderr,"%s:setPTT() PTT On PTT(%s) USB mode\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+
        } else {
           fprintf(stderr,"%s:setPTT() PTT On PTT(%s) TUNE  mode\n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
        }
@@ -347,6 +327,7 @@ void setPTT(bool statePTT) {
        if (getWord(MSW,TUNE) == false) {
           iqtest=new iqdmasync(SetFrequency,SampleRate,14,FifoSize,MODE_IQ);
           iqtest->SetPLLMasterLoop(3,4,0);
+          cat->SetFrequency=SetFrequency;
           usleep(10000);
        }
        return;
@@ -359,13 +340,14 @@ void setPTT(bool statePTT) {
     setWord(&MSW,PTT,false);
 
     if (getWord(MSW,TUNE) == false) {
-       fprintf(stderr,"%s:setPTT() PTT released PTT(%s) USB mode \n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
        if (iqtest != nullptr) {
           iqtest->stop();
           delete(iqtest);
           iqtest=nullptr;
           usleep(10000);
        }
+       fprintf(stderr,"%s:setPTT() PTT released PTT(%s) USB mode \n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
+
     } else {
        fprintf(stderr,"%s:setPTT() PTT released PTT(%s) TUNE mode \n",PROGRAMID,(getWord(MSW,PTT) ? "true" : "false"));
     }
@@ -379,12 +361,15 @@ void setPTT(bool statePTT) {
        dds->gpio=byte(GPIO04);
        dds->power=7;
        dds->open(SetFrequency); 
+       cat->SetFrequency=SetFrequency;
        setWord(&MSW,TUNE,false);
     }
 
 
 }
 //--------------------------------------------------------------------------------------------------
+// checkAux
+// check the aux button
 //--------------------------------------------------------------------------------------------------
 void checkAux() {
 
@@ -395,11 +380,11 @@ void checkAux() {
       bButtonAnt=bButton;
       if (getWord(MSW,PTT)==false) {
          if (bButton == 0) {
-            fprintf(stderr,"%s AUX Pin Pressed (%ld)\n",PROGRAMID,bButtonAnt);
+            //fprintf(stderr,"%s AUX Pin Pressed (%ld)\n",PROGRAMID,bButtonAnt);
             setWord(&MSW,TUNE,true);
             setPTT(true);
         } else {
-            fprintf(stderr,"%s AUX Pin Released (%ld)\n",PROGRAMID,bButtonAnt);
+            //fprintf(stderr,"%s AUX Pin Released (%ld)\n",PROGRAMID,bButtonAnt);
             setPTT(false);
         }
      } else {
@@ -415,16 +400,16 @@ void checkAux() {
 //---------------------------------------------------------------------------
 void CATchangeFreq() {
 
-  fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) SetFrequency(%d)\n",PROGRAMID,(int)cat->SetFrequency,(int)SetFrequency);
+  //fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) SetFrequency(%d)\n",PROGRAMID,(int)cat->SetFrequency,(int)SetFrequency);
   if ((cat->SetFrequency<VFO_START) || (cat->SetFrequency>VFO_END)) {
-     fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) out of band is rejected\n",PROGRAMID,(int)cat->SetFrequency);
+     //fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) out of band is rejected\n",PROGRAMID,(int)cat->SetFrequency);
      cat->SetFrequency=SetFrequency;
      return;
   }
 
 
   if (getWord(MSW,PTT) == true) {
-     fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->SetFrequency);
+     //fprintf(stderr,"%s::CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->SetFrequency);
      cat->SetFrequency=SetFrequency;
      return;
      if (iqtest != nullptr) {
@@ -436,9 +421,9 @@ void CATchangeFreq() {
      }
   }
 
+
   SetFrequency=cat->SetFrequency;
   dds->set(SetFrequency);
-
   fprintf(stderr,"%s::CATchangeFreq() Frequency set to SetFrequency(%d)\n",PROGRAMID,(int)SetFrequency);
 }
 //-----------------------------------------------------------------------------------------------------------
@@ -448,10 +433,10 @@ void CATchangeFreq() {
 //-----------------------------------------------------------------------------------------------------------
 void CATchangeMode() {
 
-  fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d)\n",PROGRAMID,cat->MODE);
+  //fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d)\n",PROGRAMID,cat->MODE);
 
   if (cat->MODE == MUSB) {
-     fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d) accepted\n",PROGRAMID,cat->MODE);
+     //fprintf(stderr,"%s::CATchangeMode() cat.MODE(%d) accepted\n",PROGRAMID,cat->MODE);
      return;
   }
 
@@ -467,13 +452,12 @@ void CATchangeMode() {
 //------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
 
-  fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d)\n",PROGRAMID,cat->FT817);
+  //fprintf(stderr,"%s::CATchangeStatus() FT817(%d) cat.FT817(%d)\n",PROGRAMID,FT817,cat->FT817);
 
   if (getWord(cat->FT817,PTT) != getWord(FT817,PTT)) {        // PTT Changed
-     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) PTT changed to %s\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false");
+     //fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) PTT changed to %s\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false");
      setPTT(getWord(cat->FT817,PTT));
   }
-
 
   if (getWord(cat->FT817,RIT) != getWord(FT817,RIT)) {        // RIT Changed
      fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RIT) ? "true" : "false");
@@ -488,7 +472,8 @@ void CATchangeStatus() {
   }
 
   if (getWord(cat->FT817,VFO) != getWord(FT817,VFO)) {        // VFO Changed
-     fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) VFO changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,VFO) ? "VFO A" : "VFO B");
+     setWord(&FT817,VFO,getWord(cat->FT817,VFO));
+     //fprintf(stderr,"%s::CATchangeStatus() cat.FT817(%d) VFO changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,VFO) ? "VFO A" : "VFO B");
   }
 
   FT817=cat->FT817;
@@ -545,7 +530,7 @@ Usage: [-i File Input][-s Samplerate][-l] [-f Frequency] [-h Harmonic number] \n
 -i            path to File Input \n\
 -s            SampleRate 10000-250000 \n\
 -f float      central frequency Hz(50 kHz to 1500 MHz),\n\
--c            carrier mode only\n\
+-c            configuration file definition\n\
 -a            activate VOX\n\
 -h            Use harmonic number n\n\
 -?            help (this help).\n\
@@ -592,48 +577,13 @@ void ISRAuxPTTOff (void) {
 
 }
 //---------------------------------------------------------------------------------
-// main 
+// arg_parse
 //---------------------------------------------------------------------------------
-int main(int argc, char* argv[])
-{
+void arg_parse(int argc, char* argv[]) {
 
-        fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
-
-        InputType=typeiq_float;
-        sprintf(port,"/tmp/ttyv1");
-        timer_start(timer_exec,100);
-
-        setWord(&MSW,RUN,true);
-        setWord(&MSW,VOX,false);
-
-        fprintf(stderr,"%s:main(): GPIO low level controller\n",PROGRAMID); 
-
-// ---
-// Set cooler and shut off PTT
-// ---
-        setGPIO(COOLER_GPIO,true);
-        setGPIO(KEYER_OUT_GPIO,false);
-
-//--------------------------------------------------------------------------------------------------
-// SSB (USB) controller generation
-//--------------------------------------------------------------------------------------------------
-float   gain=1.0;
-
-        usb=new SSB();
-        usb->agc.reference=1.0;
-	usb->agc.max_gain=2.0;
-	usb->agc.rate=0.25;
-        usb->agc.active=false;
-	usb->agc.gain=&gain;
-
-        fprintf(stderr,"%s:main(): SSB controller generation\n",PROGRAMID); 
-
-//--------------------------------------------------------------------------------------------------
-//      Argument parsting
-//--------------------------------------------------------------------------------------------------
 	while(1)
 	{
-		ax = getopt(argc, argv, "i:f:s:p:h:cat:");
+		ax = getopt(argc, argv, "i:f:s:p:h:c:at:");
 		if(ax == -1) 
 		{
 			if(anyargs) break;
@@ -644,12 +594,13 @@ float   gain=1.0;
 		switch(ax)
 		{
 		case 'i': // File name
-			FileName = optarg;
+                        sprintf(FileName,optarg);
+			//FileName = optarg;
 			fprintf(stderr,"%s: Filename(%s)\n",PROGRAMID,FileName);
 			break;
-		case 'c': // loop mode
-			InputType=typeiq_carrier;
-			fprintf(stderr,"%s: Carrier mode only\n",PROGRAMID);
+		case 'c': // INI file
+                        strcpy(inifile,optarg);
+			fprintf(stderr,"%s: Configuration file (%s)\n",PROGRAMID,inifile);
 			break;
 		case 'a': // loop mode
 			usb->agc.active=true;
@@ -657,11 +608,12 @@ float   gain=1.0;
 			break;
 		case 'f': // Frequency
 			SetFrequency = atof(optarg);
+			//cat->SetFrequency=SetFrequency;
 			fprintf(stderr,"%s: Frequency(%10f)\n",PROGRAMID,SetFrequency);
 			break;
                 case 'p': //serial port
                         sprintf(port,optarg);
-                        fprintf(stderr,"%s Serial Port(%s)",PROGRAMID, port);
+                        fprintf(stderr,"%s: Serial Port(%s)\n",PROGRAMID, port);
                         break;
 		case 's': // SampleRate (Only needeed in IQ mode)
 			SampleRate = atoi(optarg);
@@ -712,10 +664,90 @@ float   gain=1.0;
 		}/* end switch a */
 	}/* end while getopt() */
 
+}
+//---------------------------------------------------------------------------------
+// main 
+//---------------------------------------------------------------------------------
+int main(int argc, char* argv[])
+{
+
+        fprintf(stderr,"%s %s [%s]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+
+        InputType=typeiq_float;
+        sprintf(port,"/tmp/ttyv0");
+        sprintf(FileName,"-");
+        timer_start(timer_exec,100);
+
+        strcpy(inifile,CFGFILE);
+
+        setWord(&MSW,RUN,true);
+        setWord(&MSW,VOX,false);
+
+        fprintf(stderr,"%s:main(): GPIO low level controller\n",PROGRAMID); 
+
+// ---
+// Set cooler and shut off PTT
+// ---
+        setGPIO(COOLER_GPIO,true);
+        setGPIO(KEYER_OUT_GPIO,false);
+
+
+float  agc_rate=0.25;
+float  agc_reference=1.0;
+float  agc_max_gain=5.0;
+float  agc_current_gain=1.0;
+
+
+
+//--------------------------------------------------------------------------------------------------
+// SSB (USB) controller generation
+//--------------------------------------------------------------------------------------------------
+float   gain=1.0;
+
+        usb=new SSB();
+        usb->agc.reference=1.0;
+	usb->agc.max_gain=2.0;
+	usb->agc.rate=0.25;
+        usb->agc.active=false;
+	usb->agc.gain=&gain;
+
+        fprintf(stderr,"%s:main(): SSB controller generation\n",PROGRAMID); 
+
+//--------------------------------------------------------------------------------------------------
+//      Argument parsting
+//      First pass, all parms pretty much ignored except for configuration file
+//--------------------------------------------------------------------------------------------------
+        //arg_parse(argc,argv);
+
+
+//--------------------------------------------------------------------------------------------------
+//      Process configuration file
+//--------------------------------------------------------------------------------------------------
+
+        //SetFrequency=(float)ini_getl("Pi4D","FREQUENCY",(long int)SetFrequency,inifile);
+        //cat->SetFrequency=SetFrequency;
+
+        SampleRate=(float)ini_getl("Pi4D","SAMPLERATE",(long int)SampleRate,inifile);
+
+        agc_rate=(float)(ini_getl("Pi4D","AGC_RATE",(long int)(agc_rate*100),inifile))/100.0;
+        agc_reference=(float)(ini_getl("Pi4D","AGC_REF",(long int)(agc_reference*100),inifile))/100.0;
+        agc_max_gain=(float)(ini_getl("Pi4D","AGC_MAX_GAIN",(long int)(agc_max_gain*100),inifile))/100.0;
+
+
+        nIni=ini_gets("Pi4D", "PORT", "/tmp/ttyv1", port, sizearray(port), inifile);
+        nIni=ini_gets("Pi4D", "INPUT", "/dev/stdin", FileName, sizearray(FileName), inifile);
+        catbaud=(long int)ini_getl("Pi4D","BAUD",CATBAUD,inifile);
+
+//--------------------------------------------------------------------------------------------------
+//      Argument parsting
+//      Second pass, this is to override all configuration coming from a file
+//--------------------------------------------------------------------------------------------------
+        arg_parse(argc,argv);
+
 //--------------------------------------------------------------------------------------------------
 // Parse input file (normally /dev/stdin)
 //--------------------------------------------------------------------------------------------------
-	if(FileName==NULL) {fprintf(stderr,"%s: Need an input\n",PROGRAMID);exit(1);}
+	//if(FileName==NULL) {fprintf(stderr,"%s: Need an input\n",PROGRAMID);exit(1);}
 
 //--------------------------------------------------------------------------------------------------
 // Setup trap handling
@@ -741,20 +773,25 @@ float   gain=1.0;
         cat->SetFrequency=SetFrequency;
         cat->MODE=MUSB;
         cat->TRACE=0x00;
-        cat->open(port,CATBAUD);
+
+        cat->open(port,catbaud);
         setWord(&cat->FT817,AGC,false);
         setWord(&cat->FT817,PTT,false);
 
 // ---
 // Standard input definition
 // ---
+
         fprintf(stderr,"%s:main(): Standard input definition\n",PROGRAMID);
 
 	FILE *iqfile=NULL;
 	if(strcmp(FileName,"-")==0) {
    	  iqfile=fopen("/dev/stdin","rb");
+          fprintf(stderr,"%s Sound data from Standard Input (%s)\n",PROGRAMID,FileName);
 	} else {
 	  iqfile=fopen(FileName	,"rb");
+          fprintf(stderr,"%s Sound data from file(%s)\n",PROGRAMID,FileName);
+
         }
 
 	if (iqfile==NULL) 
@@ -884,5 +921,34 @@ float   gain=1.0;
 
         setGPIO(KEYER_OUT_GPIO,false);
         setGPIO(COOLER_GPIO,false);
+
+
+// --- Save configuration file upon exit
+
+        sprintf(iniStr,"%f",SetFrequency);
+        nIni = ini_puts("Pi4D","FREQUENCY",iniStr,inifile);
+
+        sprintf(iniStr,"%f",SampleRate);
+        nIni = ini_puts("Pi4D","SAMPLERATE",iniStr,inifile);
+
+        sprintf(iniStr,"%f",agc_rate*100.0);
+        nIni = ini_puts("Pi4D","AGC_RATE",iniStr,inifile);
+
+        sprintf(iniStr,"%f",agc_reference*100.0);
+        nIni = ini_puts("Pi4D","AGC_REF",iniStr,inifile);
+
+        sprintf(iniStr,"%f",agc_max_gain*100.0);
+        nIni = ini_puts("Pi4D","AGC_MAX_GAIN",iniStr,inifile);
+
+        sprintf(iniStr,"%s",port);
+        nIni = ini_puts("Pi4D","PORT",iniStr,inifile);
+
+        sprintf(iniStr,"%s",FileName);
+        nIni = ini_puts("Pi4D","INPUT",iniStr,inifile);
+
+        sprintf(iniStr,"%ld",catbaud);
+        nIni = ini_puts("Pi4D","BAUD",iniStr,inifile);
+
+
 }
 
