@@ -1353,7 +1353,7 @@ int main(int argc, char* argv[])
      default    : {log_set_level(LOG_INFO);  trace=2; cat.TRACE=trace; break; }
   }
 
-//  cat.TRACE=0x02; // REMOVER
+  cat.TRACE=0x02; // REMOVER
 
 
 //*--- Configuration: VFO
@@ -1640,6 +1640,7 @@ int main(int argc, char* argv[])
 //*--- Initialize CAT
 
 
+    //cat.TRACE=trace;
     cat.open(port,catbaud);
     cat.SetFrequency=SetFrequency;
 
