@@ -24,5 +24,5 @@ import time
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
 #* Configure GPIO27 as output and turn it on
-GPIO.setup(24, GPIO.OUT)
-GPIO.output(24, GPIO.HIGH)
+GPIO.setup(12, GPIO.OUT)
+GPIO.output(12, GPIO.HIGH)

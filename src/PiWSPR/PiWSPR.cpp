@@ -106,7 +106,7 @@ int    ntx=0;
 int    nskip=0;
 byte   ptt=GPIO12;
 
-char   wspr_message[20];          // user beacon message to encode
+char   wspr_message[40];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 

@@ -112,9 +112,6 @@ bool ready=false;
 
 }
 
-//#define TCPIP_INTERFACE_RESET_SECONDS_TIME		(5 * 60)		//If interface is not connected for # seconds cause a reset of the interface to ensure it will reconnect to new connections
-//#define TCPIP_INTERFACE_CHECK_SECONDS_TIME		15				//Check the conencterion every # seconds (so we can flag to our applicaiton if it is connected or not)
-
 void changeFreq();
 void CATchangeMode();
 void CATchangeFreq();
@@ -178,14 +175,6 @@ auto startAux=std::chrono::system_clock::now();
 auto endAux=std::chrono::system_clock::now();
  
 //*--- LCD custom character definitions
-//* TX -- char(0)     <T>
-//* S0 -- char(1)     < >
-//* S1 -- char(2)     |
-//* S2 -- char(3)     ||
-//* S3 -- char(4)     |||
-//* S4 -- char(5)     ||||
-//* S5 -- char(6)     |||||
-//* SL -- char(7)     
 
 byte top_line[8]    = {0b11111, 0b11111, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000};
 byte bottom_line[8] = {0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111, 0b11111};
@@ -699,15 +688,6 @@ void timer_SMeter() {
        return;
     }
 
-//    if (getWord(FT817,PTT)==true) {
-//       return;
-//    } else {
-//      float prng= (float)std::rand();
-//      float pmax= (float)RAND_MAX;
-//      float v   = abs(SMETERMAX*(prng/pmax));
-//      log_trace("Random number generated is %d MAX(%d)",prng,RAND_MAX);
-//      showSMeter(0);
-//    }
 
 }
 //*---------------------------------------------------------------------------
@@ -772,20 +752,11 @@ void aux_event(int gpio, int level, uint32_t tick) {
              if (lapAux > MAXSWPUSH) {
                 log_trace("Aux pulse really long, %d ms. ",lapAux);
              }
-             //auxcnt=(auxcnt+1) & 0xff;
-             //lcd.clear();
-             //lcd.setCursor(0,0);
-             //sprintf(hi,"Valor %d",auxcnt);
-             //lcd.print(string(hi));
-             //lcd.setCursor(0,1);
-             //lcd.write(auxcnt);
-         
              return;
            }
            return;
         }
         startAux = std::chrono::system_clock::now();
-        //int pushSW=gpioRead(ENCODER_SW);
         lcd.backlight(true);
         lcd.setCursor(0,0);
         TBCK=backlight;;
@@ -850,7 +821,6 @@ void updateEncoders(int gpio, int level, uint32_t tick)
 
         endEncoder = std::chrono::system_clock::now();
         int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
-        //std::cout << "Rotary Encoder lap " << lapEncoder << "ms.\n";
 
         if ( lapEncoder  < MINENCLAP )  {
              log_trace("Encoder: ignore pulse too close from last");
@@ -1534,9 +1504,7 @@ int main(int argc, char* argv[])
 
 
     mod.add((char*)"CW ",NULL);
-    //mod.set(MCW);
     mod.set(mode);
-    //mode=MCW;
     mod.refresh();
 
     lck.add((char*)"Off",NULL);  
@@ -1572,9 +1540,6 @@ int main(int argc, char* argv[])
     gpioSetPullUpDown(AUX_GPIO,PI_PUD_UP);
     gpioSetAlertFunc(AUX_GPIO,aux_event);
     usleep(100000);
-    //gpioSetISRFunc(AUX_GPIO, FALLING_EDGE,0,aux_event);
-
-    //gpioSetAlertFunc(AUX_GPIO, aux_event);
 
 //*---- Configure Encoder
     gpioSetMode(ENCODER_SW, PI_INPUT);
@@ -1613,12 +1578,6 @@ int main(int argc, char* argv[])
 //*---- TEST bit letters
 
 
-    //lcd.createChar(0,top_line);
-    //lcd.createChar(1,bottom_line);
-    //lcd.createChar(2,both_lines);
-    //lcd.createChar(3,dot);
-
-    
     lcd.createChar(0,C00);
     lcd.createChar(1,C01);
     lcd.createChar(2,C02);
@@ -1630,6 +1589,7 @@ int main(int argc, char* argv[])
 
 
     lcd.backlight(true);
+
 //*--- Show banner briefly (1 sec)
 
     lcd.lcdLoc(LINE1);
@@ -1646,19 +1606,13 @@ int main(int argc, char* argv[])
 
 //*---- Define the VFO System parameters (Initial Firmware conditions)
 
-  //(trace=0x01 ? ini_browse(Callback, NULL, inifile) : _NOP);
-
   vx.setVFOdds(setDDSFreq);
-
   vx.setVFOBand(VFOA,ini_getl("VFO","VFO_BAND_START",VFO_BAND_START,inifile));
   vx.set(VFOA,ini_getl("VFO","VFOA",VFO_START,inifile));
-  //vx.setVFOStep(VFOA,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
   vx.setVFOLimit(VFOA,ini_getl("VFO","VFO_START",VFO_START,inifile),ini_getl("VFO","VFO_END",VFO_END,inifile));
   vx.setVFOShift(VFOA,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
-
   vx.setVFOBand(VFOB,ini_getl("VFO","VFO_BAND_START",VFO_BAND_START,inifile));
   vx.set(VFOB,ini_getl("VFO","VFOB",VFO_START,inifile));
-  //vx.setVFOStep(VFOB,ini_getl("VFO","VFO_STEP",VFO_STEP_100Hz,inifile));
   vx.setVFOLimit(VFOB,ini_getl("VFO","VFO_START",VFO_START,inifile),ini_getl("VFO","VFO_END",VFO_END,inifile));
   vx.setVFOShift(VFOB,ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile));
 
@@ -1673,7 +1627,6 @@ int main(int argc, char* argv[])
 
     signal(SIGALRM, &sigalarm_handler);  // set a signal handler
     timer_start(timer_exec,MSEC100);
-    //timer_start(timer_SMeter,1000);
 
 //*--- Define the rest of the signal handlers, basically as termination exceptions
 
@@ -1749,11 +1702,9 @@ int main(int argc, char* argv[])
                    SetFrequency=f;
                    cat.SetFrequency=f;
                    dds->set(SetFrequency);
-                   //(getWord(FT817,TXONLY)==0 ? dds->enable() : dds->disable());
                 }
              }
          } else {
-           //ssb->process();
          }
          CMD_FSM();
          if (TBCK!=0 && backlight !=0 && getWord(MSW,CMD)==false) {
