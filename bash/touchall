@@ -1,0 +1,10 @@
+#!/bin/sh
+
+cd $(pwd)
+cd ..
+cd ./src
+
+echo "Touching everything *.c and *.h and *.cpp from $(pwd) downwards"
+find . -type f -name "*.c" -exec sudo touch {} +
+find . -type f -name "*.h" -exec sudo touch {} +
+find . -type f -name "*.cpp" -exec sudo touch {} +

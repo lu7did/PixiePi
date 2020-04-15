@@ -18,8 +18,8 @@ GCC = gcc
 ../bin/Pi4D : Pi4D/Pi4D.cpp /home/pi/librpitx/src/librpitx.a lib/SSB.h lib/RPI.h minIni/minIni.c
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Pi4D ./Pi4D/Pi4D.cpp lib/SSB.h lib/RPI.h minIni/minIni.c  $(LDFLAGS)
 
-../bin/SSBGen : Pi4D/SSBGen.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h lib/AGControl.h
-	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/SSBGen ./Pi4D/SSBGen.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h ./lib/AGControl.h $(LDFLAGS)
+#../bin/SSBGen : Pi4D/SSBGen.cpp /home/pi/librpitx/src/librpitx.a lib/FIRFilter.h lib/Interpolator.h lib/Decimator.h lib/AGControl.h
+#	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/SSBGen ./Pi4D/SSBGen.cpp ./lib/FIRFilter.h ./lib/Interpolator.h ./lib/Decimator.h ./lib/AGControl.h $(LDFLAGS)
 
 ../bin/PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
 	$(CCP) $(CXXFLAGS) -o ../bin/PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS)

@@ -167,18 +167,18 @@ void timer_exec()
 //---------------------------------------------------------------------------
 // Timer handler function
 //---------------------------------------------------------------------------
-void timer_start(std::function<void(void)> func, unsigned int interval)
-{
-  std::thread([func, interval]()
-  {
-    while (getWord(MSW,RUN)==true)
-    {
-      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
-      func();
-      std::this_thread::sleep_until(x);
-    }
-  }).detach();
-}
+//void timer_start(std::function<void(void)> func, unsigned int interval)
+//{
+//  std::thread([func, interval]()
+//  {
+//    while (getWord(MSW,RUN)==true)
+//    {
+//      auto x = std::chrono::steady_clock::now() + std::chrono::milliseconds(interval);
+//      func();
+//      std::this_thread::sleep_until(x);
+//    }
+//  }).detach();
+//}
 
 //---------------------------------------------------------------------------------
 // Print usage
@@ -567,7 +567,7 @@ int main(int argc, char* argv[])
 	enum  {typeiq_i16,typeiq_u8,typeiq_float,typeiq_double,typeiq_carrier};
 	int   InputType=typeiq_i16;
 	int   Decimation=1;
-        timer_start(timer_exec,100);
+        //timer_start(timer_exec,100);
 
         int   m=1;
 	int   SR=48000;

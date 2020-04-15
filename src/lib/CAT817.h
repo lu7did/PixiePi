@@ -102,7 +102,9 @@ class CAT817
       void open(char* port, int speed);
       void sendStatus();
       void sendMode();
+      void close();
       void printDEBUG(byte t,char* m);
+       int snr2code(int snr);
 
       int  RITOFS=0x00;
       byte MODEWORD=0xff;
@@ -110,7 +112,7 @@ class CAT817
       byte POWER=7;
       byte MODE=MUSB;
       byte TRACE=0x00;
-      byte RX=0x00;
+      int  RX=0x00;
       byte TX=0x00;
       byte METER=0xFF;
       bool active=false;
@@ -485,7 +487,7 @@ void CAT817::processCAT(byte* rxBuffer) {
        sendStatus();
        return; }  
       case 0xE7:  {     //* Receiver Status
-       int RX;
+       //int RX;
        if (METER>0x0F) {
           float prng= (float)std::rand();
           float pmax= (float)RAND_MAX;
@@ -565,6 +567,62 @@ void CAT817::processCAT(byte* rxBuffer) {
      } 
 
 
+}
+//*---------------------------------------------------------------------------------------------------------
+// sig2code (FT817 coding)
+//*----- S-Meter signal coded for command 0xE7
+//*----- xxxx0000 S0
+//*----- xxxx0001 S1
+//*----- xxxx0010 S2
+//*----- xxxx0011 S3
+//*----- xxxx0100 S4
+//*----- xxxx0101 S5
+//*----- xxxx0110 S6
+//*----- xxxx0111 S7
+//*----- xxxx1000 S8
+//*----- xxxx1001 S9
+//*----- xxxx1010 S9+10dB
+//*----- xxxx1011 S9+20dB
+//*----- xxxx1100 S9+30dB
+//*----- xxxx1101 S9+40dB
+//*----- xxxx1110 S9+50dB
+//*----- xxxx1111 S9+60dB
+//*----------------------------------------------------------------------------------------------
+int CAT817::snr2code(int snr) {
+
+    if (snr <= -121) { return 0B0000000; }              //S0
+    if (snr > -121 && snr <= -115) {return 0B00000001;} //S1
+    if (snr > -115 && snr <= -109) {return 0B00000010;} //S2
+    if (snr > -109 && snr <= -106) {return 0B00000011;} //S3
+    if (snr > -106 && snr <= -97)  {return 0b00000100;} //S4
+    if (snr > -97 && snr <= -91)   {return 0b00000101;} //S5
+    if (snr > -91 && snr <= -85)   {return 0b00000110;} //S6
+    if (snr > -85 && snr <= -79)   {return 0b00000111;} //S7
+    if (snr > -79 && snr <= -73)   {return 0b00001000;} //S8
+    if (snr > -73 && snr <= -67)   {return 0b00001001;} //S9
+    if (snr > -67 && snr <= -57)   {return 0b00001010;} //S9+10dB
+    if (snr > -57 && snr <= -47)   {return 0b00001011;} //S9+20dB
+    if (snr > -47 && snr <= -37)   {return 0b00001100;} //S9+30dB
+    if (snr > -37 && snr <= -27)   {return 0b00001101;} //S9+40dB
+    if (snr > -27 && snr <= -17)   {return 0b00001110;} //S9+50dB
+    if (snr > -17)                 {return 0b00001111;} //S9+60dB
+
+    return 0x0f;
+
+}
+//*-------------------------------------------------------------------------
+//* close
+//* close the serial link and disable the CAT operation if successful
+//*-------------------------------------------------------------------------
+
+void CAT817::close() {
+
+    if (this->active==true) {
+       serialClose(this->serial_port);
+       this->active=false;
+    }
+
+    return;
 }
 //*-------------------------------------------------------------------------
 //* open
