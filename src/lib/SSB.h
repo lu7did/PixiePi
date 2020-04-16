@@ -41,7 +41,7 @@
 //----- System Variables
 
 #define BUFFERSIZE 96000
-#define IQBURST          4000
+#define IQBURST     4096
 
 //---------------------------------------------------------------------------------------------------
 // Definitions
