@@ -378,7 +378,6 @@ void CAT817::processCAT(byte* rxBuffer) {
        } else {
          BCDBuf[0]=0x00;
        }
-       //fprintf(stderr,"processCAT(): 0x08 received ----------->\n");
        setWord(&FT817,PTT,true);
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x01 ? fprintf(stderr,"%s::processCAT() Command 0x08 Resp(%s) PTT(On)\n",this->PROGRAMID,buffer) : _NOP);
@@ -518,7 +517,6 @@ void CAT817::processCAT(byte* rxBuffer) {
 //*----- xxxx1110 S9+50dB
 //*----- xxxx1111 S9+60dB
 
-       //BCDBuf[0]=(RX | 0B00001111) & 0B00001010;   //* Fake signal equivalent to S6 (see manual)
        BCDBuf[0]=((int)RX & 0x0f) | 0x00;     //* Either fake level or extracted from receiver
        hex2str(&buffer[0],&BCDBuf[0],1);
        (TRACE>=0x02 ? fprintf(stderr,"%s::processCAT() Command 0xE7 Resp(%s)\n",this->PROGRAMID,buffer) : _NOP);
@@ -552,6 +550,7 @@ void CAT817::processCAT(byte* rxBuffer) {
           return;
        }
        
+
        BCDBuf[0]=BCDBuf[0] | ((((POWER*2) & 0x0f) << 1) & 0xf0) | 0x01;
        BCDBuf[1]=0x11;
        hex2str(&buffer[0],&BCDBuf[0],2);
@@ -635,7 +634,7 @@ void CAT817::open(char* port, int speed) {
        this->active=false;
        return ;
     }
-    (TRACE >= 0x00 ? fprintf(stderr, "%s::open() Opened port(%s) at baud(%d) serial(%d) tracelevel(%d)\n",this->PROGRAMID,port,speed,this->serial_port,TRACE) : _NOP);
+    (TRACE >= 0x01 ? fprintf(stderr, "%s::open() Opened port(%s) at baud(%d) serial(%d) tracelevel(%d)\n",this->PROGRAMID,port,speed,this->serial_port,TRACE) : _NOP);
     this->active=true;
 }
 //*-------------------------------------------------------------------------

@@ -111,7 +111,7 @@ unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 
 bool WSPRwindow=false;
-void cbkDDS();
+void cbkDDS(float f);
 
 //*---- Define WSPR memory blocks
 
@@ -121,10 +121,30 @@ WSPR   wspr(NULL);
 //=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //                              ROUTINE STRUCTURE
 //=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
+//--------------------------[System Word Handler]---------------------------------------------------
+// getSSW Return status according with the setting of the argument bit onto the SW
+//--------------------------------------------------------------------------------------------------
+bool getWord (unsigned char SysWord, unsigned char v) {
+
+  return SysWord & v;
+
+}
+//--------------------------------------------------------------------------------------------------
+// setSSW Sets a given bit of the system status Word (SSW)
+//--------------------------------------------------------------------------------------------------
+void setWord(unsigned char* SysWord,unsigned char v, bool val) {
+
+  *SysWord = ~v & *SysWord;
+  if (val == true) {
+    *SysWord = *SysWord | v;
+  }
+
+}
+
 //--------------------------------------------------------------------------
 // Callback for DDS pointers
 //--------------------------------------------------------------------------
-void cbkDDS() {
+void cbkDDS(float f) {
 
     //NOP
 }
@@ -306,7 +326,7 @@ int main(int argc, char *argv[])
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
     dds->gpio=gpio;
-    dds->power=MAXLEVEL;
+    dds->power=DDS_MAXLEVEL;
     dds->setppm(1000.0);
 
 //*--- Seed random number generator
@@ -362,7 +382,7 @@ int main(int argc, char *argv[])
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
     f+=wspr_offset;
     fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
-    dds->open(f);
+    dds->start(f);
 
 //*---- Turn on Transmitter
 
@@ -386,7 +406,7 @@ int main(int argc, char *argv[])
     fprintf(stderr,"Turning off TX\n");
     gpioWrite(ptt,PTT_OFF);
 
-    dds->close();
+    dds->stop();
     usleep(100000);
 
     delete(dds);

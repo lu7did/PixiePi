@@ -82,6 +82,7 @@
 #include "../lib/DDS.h"
 #include "../minIni/minIni.h"
 #include "../log.c/log.h"
+#include "/home/pi/OrangeThunder/src/OT/OT.h"
 
 #include <iostream>
 #include <cstdlib> // for std::rand() and std::srand()
@@ -94,7 +95,7 @@ byte mode=MCW;
 int  shift=VFO_SHIFT;
 int  ritofs=0;
 int  step=0;
-byte ddspower=MAXLEVEL;
+byte ddspower=DDS_MAXLEVEL;
 byte trace=0x00;
 byte ptt=KEYER_OUT_GPIO;
 byte txonly=ALWAYS;
@@ -112,7 +113,7 @@ bool ready=false;
 
 }
 
-void changeFreq();
+void changeFreq(float f);
 void CATchangeMode();
 void CATchangeFreq();
 void CATchangeStatus();
@@ -272,7 +273,7 @@ char hi[80];
 byte memstatus=0;
 int a;
 int anyargs = 0;
-float SetFrequency=VFO_START;
+float f=VFO_START;
 float ppm=1000.0;
 struct sigaction sa;
 byte keepalive=0;
@@ -407,7 +408,7 @@ void setPTT(bool statePTT) {
        }
 
        f=(float)(vx.vfo[vx.vfoAB]+(mode==MCW || mode==MCWR ? df : 0));
-       log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->SetFrequency,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
+       log_trace("setPTT(): PTT On setting DDS to f=%d DDS(%d) df=%d MODE=%d shift(%d) vfo(%d)",(int)f,(int)dds->f,(int)df,mode,vx.vfoshift[vx.vfoAB],(int)vx.vfo[vx.vfoAB]);
 
 //*--- Now turn the transmitter at the frequency f based on the mode
 
@@ -418,7 +419,7 @@ void setPTT(bool statePTT) {
            case MCW:
            case MCWR: 
                    {
-                     (txonly==1 ? dds->open(f) : dds->set(f)) ;
+                     (txonly==1 ? dds->start(f) : dds->set(f)) ;
                      //softToneWrite (sidetone_gpio, cw_keyer_sidetone_frequency);
 
                      break;
@@ -461,7 +462,7 @@ void setPTT(bool statePTT) {
        case MCWR:
             {
             if (keyer_brk==0) {
-               (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
+               (txonly==1 ? dds->stop() : dds->set((float)(vx.get(vx.vfoAB))));
                log_trace("Break-In Timer not set frequency");
             } else {
                TBRK=keyer_brk;
@@ -513,7 +514,7 @@ void keyChangeEvent() {
 //*
 //*---------------------------------------------------------------------------
 
-void changeFreq() {
+void changeFreq(float f) {
 
 
 }
@@ -524,12 +525,12 @@ void changeFreq() {
 void CATchangeFreq() {
 
   //
-  log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)SetFrequency);
+  log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)f);
 
-  SetFrequency=cat.SetFrequency;
+  f=cat.SetFrequency;
   log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
-  long int f=(long int)SetFrequency;
-  log_trace("changeFreq: Frequency set to f(%d)",f);
+  long int fx=(long int)f;
+  log_trace("changeFreq: Frequency set to f(%d)",fx);
   dds->power=ddspower;
   cat.POWER=dds->power;
   if (vx.vfoAB==VFOA) {
@@ -539,8 +540,8 @@ void CATchangeFreq() {
      setWord(&FT817,VFO,true);
      setWord(&cat.FT817,VFO,true);
   }
-  dds->set(SetFrequency);
-  vx.set(vx.vfoAB,f);
+  dds->set(f);
+  vx.set(vx.vfoAB,fx);
   
 
 }
@@ -723,7 +724,7 @@ void timer_exec()
   if (TBRK>0){
      TBRK--;
      if (TBRK==0){
-       (txonly==1 ? dds->close() : dds->set((float)(vx.get(vx.vfoAB))));
+       (txonly==1 ? dds->stop() : dds->set((float)(vx.get(vx.vfoAB))));
      }
    }
     
@@ -1290,7 +1291,7 @@ int main(int argc, char* argv[])
                         log_info(" CW Keyer Weight W: %d",cw_keyer_weight);
                         break;
                 case 'f': // Frequency
-                        SetFrequency = atof(optarg);
+                        f = atof(optarg);
                         break;
 		case 'g': // GPIO
 		        gpio=atoi(optarg);
@@ -1358,7 +1359,7 @@ int main(int argc, char* argv[])
 
 //*--- Configuration: VFO
 
-   (ini_getl("VFO","AB",VFOA,inifile)==VFOA ? SetFrequency=ini_getl("VFO","VFOA",VFO_START,inifile)*1.0 : SetFrequency=ini_getl("VFO","VFOB",VFO_START,inifile)*1.0);  
+   (ini_getl("VFO","AB",VFOA,inifile)==VFOA ? f=ini_getl("VFO","VFOA",VFO_START,inifile)*1.0 : f=ini_getl("VFO","VFOB",VFO_START,inifile)*1.0);  
 
    mode=ini_getl("VFO","MODE",MCW,inifile);
 
@@ -1373,7 +1374,7 @@ int main(int argc, char* argv[])
    setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
    setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
    log_fatal("Transceiver configuration");
-   log_fatal("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,SetFrequency,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
+   log_fatal("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,f,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
 
    maxrit=ini_getl("VFO","MAXRIT",MAXRIT,inifile);
    minrit=ini_getl("VFO","MINRIT",MINRIT,inifile);
@@ -1393,9 +1394,9 @@ int main(int argc, char* argv[])
    gpio=ini_getl("DDS","GPIO",GPIO04,inifile);
    ptt=ini_getl("DDS","PTT",KEYER_OUT_GPIO,inifile);
    txonly=ini_getl("DDS","TXONLY",0,inifile);
-   ddspower=ini_getl("DDS","MAXLEVEL",MAXLEVEL,inifile);
+   ddspower=ini_getl("DDS","MAXLEVEL",DDS_MAXLEVEL,inifile);
    log_fatal("DDS configuration");
-   log_fatal("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",SetFrequency,gpio,ddspower,ptt,txonly);
+   log_fatal("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",f,gpio,ddspower,ptt,txonly);
 
 
 //*--- Configuration: CAT
@@ -1530,8 +1531,8 @@ int main(int argc, char* argv[])
 
 //*---- Turn cooler on
 
-    gpioSetMode(COOLER_GPIO, PI_OUTPUT);
-    gpioWrite(COOLER_GPIO, 1);
+    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
+    gpioWrite(GPIO_COOLER, 1);
     usleep(100000);
  
 //*---- Manage AUX key
@@ -1597,7 +1598,7 @@ int main(int argc, char* argv[])
     lcd.print(string(hi));
     lcd.lcdLoc(LINE2);
     lcd.print(string(COPYRIGHT));
-    delay(ONESEC);
+    delay(ONESECS);
 
     if (wiringPiSetup () < 0) {
         log_fatal("Unable to setup wiringPi: %s", strerror (errno));
@@ -1642,7 +1643,7 @@ int main(int argc, char* argv[])
 
     //cat.TRACE=trace;
     cat.open(port,catbaud);
-    cat.SetFrequency=SetFrequency;
+    cat.SetFrequency=f;
 
     setWord(&FT817,PTT,false);
 
@@ -1653,7 +1654,7 @@ int main(int argc, char* argv[])
 
     dds->gpio=byte(gpio);
     dds->power=byte(ddspower);
-    (txonly==0 ? dds->open(ini_getl("VFO","VFOA",VFO_START,inifile)) : void(_NOP));
+    (txonly==0 ? dds->start(ini_getl("VFO","VFOA",VFO_START,inifile)) : void(_NOP));
     cat.POWER=dds->power;
 
 //*---
@@ -1694,15 +1695,15 @@ int main(int argc, char* argv[])
 //*--- if in COMMAND MODE (VFO) any change in frequency is detected and transferred to the PLL
 
          if (getWord(MSW,CMD)==false && getWord(FT817,PTT)==false) {
-             float f=SetFrequency;
+             float freq=f;
              processVFO();
              if (getWord(JSW,XVFO)==true) {
                 setWord(&JSW,XVFO,false);
-                (rit.mItem!=0 ? f = (float) (vx.get(vx.vfoAB)+ritofs) : f=(float) vx.get(vx.vfoAB));
-                if (f != dds->SetFrequency) {
-                   SetFrequency=f;
+                (rit.mItem!=0 ? f = (float) (vx.get(vx.vfoAB)+ritofs) : freq=(float) vx.get(vx.vfoAB));
+                if (freq != dds->f) {
+                   f=freq;
                    cat.SetFrequency=f;
-                   dds->set(SetFrequency);
+                   dds->set(f);
                 }
              }
          } else {
@@ -1732,7 +1733,7 @@ int main(int argc, char* argv[])
     fprintf(stderr,"Closing DDS txonly(%d)\n",txonly);
     log_info("Closing DDS");
 
-    (txonly==0 ? dds->close() : void(_NOP));
+    (txonly==0 ? dds->stop() : void(_NOP));
     delete(dds);
 
 //*---- Saving configuration
@@ -1811,7 +1812,7 @@ int main(int argc, char* argv[])
 
 //*---- Turn cooler off 
 
-    gpioWrite(COOLER_GPIO, 0);
+    gpioWrite(GPIO_COOLER, 0);
 
 
 //*--- turn LCD off

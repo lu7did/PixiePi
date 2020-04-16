@@ -37,16 +37,18 @@
 #include <sstream>
 #include <iomanip>
 #include "/home/pi/librpitx/src/librpitx.h"
-
-#define GPIO04   4
-#define GPIO20  20 
-#define MAXLEVEL 1
+//#include "/home/pi/PixiePi/src/lib/DDS.h"
+#include "/home/pi/OrangeThunder/src/OT/OT.h"
 
 typedef unsigned char byte;
 typedef bool boolean;
-typedef void (*CALLBACK)();
+typedef void (*CALLBACKDDS)(float f);
 
-
+//--------------------------[System Word Handler]---------------------------------------------------
+// getSSW Return status according with the setting of the argument bit onto the SW
+//--------------------------------------------------------------------------------------------------
+bool getWord (unsigned char SysWord, unsigned char v);
+void setWord(unsigned char* SysWord,unsigned char v, bool val);
 
 //*---------------------------------------------------------------------------------------------------
 //* DDS CLASS
@@ -55,25 +57,33 @@ class DDS
 {
   public: 
   
-      DDS(CALLBACK c);
-      CALLBACK changeFreq=NULL;
+      DDS(CALLBACKDDS c);
+      CALLBACKDDS changeFreq=NULL;
 
       float get();
       void set(float f);
-      void open(float f);
-      void close();
+      void start(float f);
+      void stop();
       void setppm(float ppm);
 
-      float       SetFrequency;
+      float       f;
       //clkgpio     *clk=new clkgpio;
       clkgpio     *clk;
       //clkgpio     *clk=new clkgpio;
       generalgpio gengpio;
       padgpio     pad;
-      byte        gpio=GPIO04;
+      byte        gpio=GPIO_DDS;
       float       ppm=1000.0;
-      byte        power=MAXLEVEL;
+      byte        power=DDS_MAXLEVEL;
       byte 	  TRACE=0x00;
+      byte        MSW=0x00;
+
+// --- Program initialization
+const char   *PROGRAMID="DDS";
+const char   *PROG_VERSION="1.0";
+const char   *PROG_BUILD="00";
+const char   *COPYRIGHT="(c) LU7DID 2019,2020";
+
 
   private:
       char msg[80]; 
@@ -87,21 +97,22 @@ class DDS
 //* Solo para uso de radioaficionados, prohibido su utilizacion comercial
 //* Copyright 2018 Dr. Pedro E. Colla (LU7DID)
 //*--------------------------------------------------------------------------------------------------
-DDS::DDS(CALLBACK c)
+DDS::DDS(CALLBACKDDS c)
 {
 
 
  if (c!=NULL) {changeFreq=c;}   //* Callback of change VFO frequency
- gengpio.setpulloff(GPIO04);
- gpio=GPIO04;
 
+ gengpio.setpulloff(GPIO_DDS);
+ gpio=GPIO_DDS;
 
+ (TRACE>=0x01 ? fprintf(stderr,"%s::DDS object successfully created\n",PROGRAMID) : _NOP);
 }
 //*------------------------------------------------------------------------
 //* open
 //* start the dds
 //*------------------------------------------------------------------------
-void DDS::open(float f) {
+void DDS::start(float freq) {
 
   clk=new clkgpio;
   clk->SetAdvancedPllMode(true);
@@ -110,17 +121,24 @@ void DDS::open(float f) {
   pad.setlevel(power);
 
   setppm(ppm);
-  set(f);
+  set(freq);
+
+  setWord(&MSW,RUN,true);
+  usleep(10000);
+ (TRACE>=0x01 ? fprintf(stderr,"%s::start() GPIO(%d) power(%d) freq(%g) started!\n",PROGRAMID,this->gpio,this->power,this->f) : _NOP);
+
 }
 //*-----------------------------------------------------------------------
 //* close
 //* finalizes and close the DDS
 //*-----------------------------------------------------------------------
-void DDS::close() {
+void DDS::stop() {
 
     clk->disableclk(gpio);
     delete(clk);
     usleep(100000);
+    setWord(&MSW,RUN,false);
+    (TRACE>=0x01 ? fprintf(stderr,"%s::stop() stopped!\n",PROGRAMID) : _NOP);
 
 }
 
@@ -130,30 +148,31 @@ void DDS::close() {
 //*-------------------------------------------------------------------------
 float DDS::get() {
 
-   return SetFrequency;
+   return f;
 
 }
 //*-------------------------------------------------------------------------
 //* set()
 //* set the current frequency
 //*-------------------------------------------------------------------------
-void DDS::set(float f) {
+void DDS::set(float freq) {
 
    
-   int fx=(int)f;
-   (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
-
-   SetFrequency=f;
-   if (changeFreq!=NULL) {
-      changeFreq();
+   int fx=(int)freq;
+   this->f=freq;
+   if (changeFreq!=NULL && getWord(MSW,RUN)==true) {
+      changeFreq(f);
    }
+
    gengpio.setpulloff(gpio);
    pad.setlevel(power);
 
    clk->SetAdvancedPllMode(true);
-   clk->SetCenterFrequency(SetFrequency,10);
+   clk->SetCenterFrequency(this->f,10);
    clk->SetFrequency(000);
    clk->enableclk(gpio);
+
+   (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
 
 }
 //*------------------------------------------------------------------------
@@ -163,5 +182,6 @@ void DDS::setppm(float ppm) {
   if(ppm!=1000) {   //ppm is set else use ntp
     clk->Setppm(ppm);
   }
+
 }
 
