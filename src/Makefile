@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/SSBGen  ../bin/genCW
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/genCW
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
@@ -33,7 +33,6 @@ clean:
 	rm -r  ../bin/PiWSPR
 	rm -r  ../bin/PiRTTY
 	rm -r  ../bin/Pi4D
-	rm -r  ../bin/SSBGen
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
@@ -41,4 +40,3 @@ install: all
 	install -m 0755 ../bin/PiRTTY /usr/bin
 	install -m 0755 ../bin/Pi4D   /usr/bin
 	install -m 0755 ../bin/genCW  /usr/bin
-	install -m 0755 ../bin/SSBGen /usr/bin

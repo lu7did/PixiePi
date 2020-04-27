@@ -1372,7 +1372,7 @@ int main(int argc, char* argv[])
    setWord(&FT817,SPLIT,ini_getl("VFO","SPLIT",0,inifile));
    setWord(&FT817,RIT,ini_getl("VFO","RIT",0,inifile));
    setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
-   setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
+   //setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
    log_fatal("Transceiver configuration");
    log_fatal("VFO A/B(%d) Mode(%d) Shift(%d) Step(%d) f(%10.0f) Split(%d) RIT(%d) Lock(%d) TxOnly(%d)",ini_getl("VFO","AB",VFOA,inifile),mode,shift,step,f,ini_getl("VFO","SPLIT",0,inifile),ini_getl("VFO","RIT",0,inifile),ini_getl("VFO","LOCK",0,inifile),ini_getl("VFO","TXONLY",0,inifile));
 
@@ -1393,7 +1393,8 @@ int main(int argc, char* argv[])
 //*---- Configuration: DDS 
    gpio=ini_getl("DDS","GPIO",GPIO04,inifile);
    ptt=ini_getl("DDS","PTT",KEYER_OUT_GPIO,inifile);
-   txonly=ini_getl("DDS","TXONLY",0,inifile);
+   //txonly=ini_getl("DDS","TXONLY",0,inifile);
+   txonly=0;
    ddspower=ini_getl("DDS","MAXLEVEL",DDS_MAXLEVEL,inifile);
    log_fatal("DDS configuration");
    log_fatal("DDS f(%10.0f) GPIO(%d) POWER(%d) PTT(%d) TxOnly(%d)",f,gpio,ddspower,ptt,txonly);
