@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/SSBGen 
+all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/SSBGen  ../bin/genCW
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 
@@ -17,6 +17,9 @@ GCC = gcc
 
 ../bin/Pi4D : Pi4D/Pi4D.cpp /home/pi/librpitx/src/librpitx.a minIni/minIni.c
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Pi4D ./Pi4D/Pi4D.cpp minIni/minIni.c  $(LDFLAGS)
+
+../bin/genCW : lib/genCW.cpp /home/pi/librpitx/src/librpitx.a ./lib/DDS.h
+	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/genCW ./lib/genCW.cpp ./lib/DDS.h  $(LDFLAGS)
 
 ../bin/PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h
 	$(CCP) $(CXXFLAGS) -o ../bin/PiWSPR ./PiWSPR/PiWSPR.cpp  ./PiWSPR/PiWSPR.h lib/WSPR.h $(LDFLAGS)
@@ -37,4 +40,5 @@ install: all
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
 	install -m 0755 ../bin/Pi4D   /usr/bin
+	install -m 0755 ../bin/genCW  /usr/bin
 	install -m 0755 ../bin/SSBGen /usr/bin

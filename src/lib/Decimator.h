@@ -59,8 +59,10 @@ class Decimator
   
       Decimator(float* a,int n_tap,int factor);
       void decimate(short* x, int len, float* I,float* Q);
+      void decimate(short* x, int len, short* buffer);
 
       byte TRACE=0x00;
+      float* fbuffer;
 
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="Decimator";
@@ -91,11 +93,26 @@ Decimator::Decimator(float* a,int n_tap,int factor)
   this->n_tap = n_tap;
   this->coeff = a;
   this->buf = (float*) malloc(BUFFERSIZE*sizeof(float) * 2);
+  this->fbuffer=(float*) malloc(BUFFERSIZE*sizeof(float) * 2);
   this->factor=factor;
-  fprintf(stderr,"%s:: Object creation completed tap(%d) factor(%d)\n",PROGRAMID,n_tap,factor);
+  (TRACE>=0x02 ? fprintf(stderr,"%s:: Object creation completed tap(%d) factor(%d)\n",PROGRAMID,n_tap,factor) : _NOP);
   
 }
+// --------------------------------------------------------------------------------------------------
+// decimate: another interface for decimator creating I/Q pairs with gain adjustment
+// --------------------------------------------------------------------------------------------------
+void Decimator::decimate(short* x, int len, short* buffer) {
 
+    float f=(float)(SHRT_MAX/2.0);
+
+    decimate(x,len,fbuffer,NULL);
+    for (int i=0;i<factor;i++) {
+        buffer[i]=(short)(fbuffer[i]*f);
+    }
+    return;
+    
+}
+// --------------------------------------------------------------------------------------------------
 // decimate: another interface for decimator creating I/Q pairs with gain adjustment
 // --------------------------------------------------------------------------------------------------
 void Decimator::decimate(short* x, int len, float* I,float* Q) {
@@ -122,12 +139,12 @@ void Decimator::decimate(short* x, int len, float* I,float* Q) {
        }
        y = y + coeff[i] * buf[j--];
     }
+
     I[m] = (float)y;
-    Q[m] = I[m];
+    if (Q!=NULL) {
+       Q[m] = I[m];
+    }
     m++;
   }
-
-
-
 }
 

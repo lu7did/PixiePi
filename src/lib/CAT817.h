@@ -65,7 +65,8 @@ typedef void (*CALLBACK)();
 //*--- Transmission control
 
 #define AGC    0B01000000
-#define TXONLY 0B00100000
+//#define TXONLY 0B00100000
+#define SHIFT  0B00100000
 #define RIT    0B00010000
 #define LOCK   0B00001000
 #define PTT    0B00000100

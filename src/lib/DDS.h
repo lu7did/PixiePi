@@ -105,6 +105,8 @@ DDS::DDS(CALLBACKDDS c)
 
  gengpio.setpulloff(GPIO_DDS);
  gpio=GPIO_DDS;
+ usleep(10000);
+
 
  (TRACE>=0x01 ? fprintf(stderr,"%s::DDS object successfully created\n",PROGRAMID) : _NOP);
 }
@@ -115,10 +117,16 @@ DDS::DDS(CALLBACKDDS c)
 void DDS::start(float freq) {
 
   clk=new clkgpio;
+  usleep(10000);
+
   clk->SetAdvancedPllMode(true);
+  usleep(10000);
 
   gengpio.setpulloff(gpio);
+  usleep(100000);
+
   pad.setlevel(power);
+  usleep(100000);
 
   setppm(ppm);
   set(freq);
@@ -135,8 +143,11 @@ void DDS::start(float freq) {
 void DDS::stop() {
 
     clk->disableclk(gpio);
+    usleep(100000);
+
     delete(clk);
     usleep(100000);
+
     setWord(&MSW,RUN,false);
     (TRACE>=0x01 ? fprintf(stderr,"%s::stop() stopped!\n",PROGRAMID) : _NOP);
 
@@ -165,12 +176,22 @@ void DDS::set(float freq) {
    }
 
    gengpio.setpulloff(gpio);
+   usleep(10000);
+
    pad.setlevel(power);
+   usleep(10000);
 
    clk->SetAdvancedPllMode(true);
+   usleep(10000);
+
    clk->SetCenterFrequency(this->f,10);
+   usleep(10000);
+
    clk->SetFrequency(000);
+   usleep(10000);
+
    clk->enableclk(gpio);
+   usleep(10000);
 
    (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
 
@@ -181,6 +202,8 @@ void DDS::set(float freq) {
 void DDS::setppm(float ppm) {
   if(ppm!=1000) {   //ppm is set else use ntp
     clk->Setppm(ppm);
+    usleep(10000);
+
   }
 
 }
