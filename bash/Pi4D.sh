@@ -1,23 +1,60 @@
 #!/bin/sh
 #*-----------------------------------------------------------------------
-#* Pi4D.sh
-#* Script to implement a SSB transceiver
+#* PixiePi
+#* Script to implement a simple USB transceiver using the OrangeThunder platformm
 #* A remote pipe is implemented to carry CAT commands
 #* Sound is feed thru the arecord command (PulseAudio ALSA), proper hardware
-#* interface needs to be established. (-a parameter enables VOX)
+#* interface needs to be established. (-v parameter enables VOX)
 #* the script needs to be called with the frequency in Hz as a parameter
-#*            ./Pi4D.sh [frequency in Hz]
+#*            ./demo_genSSB.sh   (transmit at 14074000 Hz)
 #*-----------------------------------------------------------------------
-echo "Pi4D PixiePi based SSB transceiver ($date)"
-echo "Frequency defined: $1"
-/home/pi/PixiePi/bash/LCDoff.py
+clear
+echo "$0 (PixiePi simple USB transceiver)"
 
-socat -d -d pty,raw,echo=0,link=/tmp/ttyv0 TCP-LISTEN:8080 &
+#*----------------------------------------*
+#* Launching socat server                 *
+#*----------------------------------------*
+sudo socat -d -d pty,raw,echo=0,mode=0777,link=/tmp/ttyv0 pty,raw,echo=0,mode=0777,link=/tmp/ttyv1 2> /dev/null  &
 PID=$!
-sudo rm -r /tmp/ptt_fifo
-echo "Pipe for /tmp/ttyv0 PID($PID)"
-arecord -c1 -r48000 -D hw:1 -fS16_LE - | sudo /home/pi/PixiePi/bin/Pi4D -x -t 3  -p /tmp/ttyv0 -f "$1"
+echo "CAT commands piped from apps thru /tmp/ttyv1 PID($PID)"
+#*----------------------------------------*
+#* Launching rigctl server (optional)     *
+#*----------------------------------------*
+#echo "Launchiing rigctld"
+#sudo rigctld -m 351 -r /dev/ttyS10 -T 127.0.0.1 -t 4532 -s 4800 --model=$(rigctl -l | grep "FT-817" | awk '{print $1}') -v &
+#RIGCTL=$!
+#echo "rigctld PID($RIGCTL)"
+
+#*----------------------------------------*
+#* Process clean up                       *
+#*----------------------------------------*
+sudo rm -r /tmp/ptt_fifo 2> /dev/null
+
+sudo pkill -9 -f sendiq  2> /dev/null
+sudo pkill -9 -f wsjtx   2> /dev/null
+sudo pkill -9 -f flrig   2> /dev/null
+sudo pkill -9 -f arecord 2> /dev/null
+
+#*----------------------------------------*
+#* Transceiver execution using loopback   *
+#*----------------------------------------*
+sudo Pi4D -p /tmp/ttyv0 -x  -f 7074000 
+
+#*----------------------------------------*
+#* terminating                            *
+#*----------------------------------------*
+sudo rm -r /tmp/ptt_fifo 2> /dev/null
+
+echo "Killing rigtcl PID($RIGCTL)"
+sudo pkill rigctld 2> /dev/null
+
 echo "Removing /tmp/ttyv0 PI($PID)"
-sudo pkill socat
-/home/pi/PixiePi/bash/LCDoff.py
+sudo pkill socat 2> /dev/null
+
+echo "Removing /tmp/ptt_fifo"
+sudo rm /tmp/ptt_fifo 2> /dev/null
+echo "$0 completed"
+#*----------------------------------------*
+#*           End of Script                * 
+#*----------------------------------------*
 
