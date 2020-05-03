@@ -129,12 +129,11 @@ The following components needs not to be placed when building the kit
 ## Different connections (Recommended MODS)
 
 ```
-* Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect negative side of D3 diode to the interface board PTT line
 * Cut trace from R5 to KEY socket, connect both keyer legs to the socket going into GPIO15 and GPIO13.
 * Assure all three boards (interface, Pixie and Raspberry Pi) share a common ground.
-* Extract +12V from the Pixie +12V socket, feed LM7805 with it.
+* Extract +12V from the Pixie +12V socket, feed LM7805 with it, then feed the Raspberry Pi Zero board with it.
 ```
 ![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
 
@@ -149,6 +148,9 @@ Space is very limited on typical kits but a small piece of aluminum might be eno
 with it.
 
 The keyer transistor Q1 will benefit from a heat sink as well if long keying times are expected.
+
+A cooler can be activated using the GPIO 19 line, feed the cooler not from the Raspberry Pi board but from the +5V regulator or
+external power supply if used.
 
 
 ## Broadcast Interference (BCI)
