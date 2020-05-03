@@ -6,28 +6,13 @@ Issues:
 
 Implementation Backlog
 
-X [Bug] Debounce push and encoder
-X [Bug] Backlight timeout doesn't work
-X [Bug] Wrong message on GUI at first use
-X [Bug] Implement driver level
-X [Bug] Extend S-Meter to 5 blocks
-X [Bug] Keyer type not persistent
-X [Bug] Remove PWM for sidetone
-X [Bug] Initial refresh not repetitive
-X [Bug] Debounce AUX
-X [Bug] Mode is not changing correctly
-X [Feature] Implement AUX line as long push
-
-
-? [Bug] Check keyer speed update
-? [Doc] Update README.md with several changes
-? [Feature] Keyer act like encoder when in GUI mode
-
-* [Bug] Lock doesn't implemented
-* [Bug] Representation for S-Meter and Power
-
-* [Feature] External CAT line
-* [Feature] USB mode
-* [Feature] FSK (RTTY) mode
-* [Feature] PSK (PSK31) mode
-* [Feature] FT8 mode
+* Test Pi4D over PixiePi platform
+* Update README.md for the PixiePi platform
+* Reorganize code base for OT to be the master project
+* PixiePi v2.0
+  - new menu strategy 
+  - new GUI
+  - scale options and functions (OCX paradigm)
+* implement FREQ and POWER commands at sendRF to support DDS operation
+* preserve librpitx to protect change on ModeIQ.
+ 

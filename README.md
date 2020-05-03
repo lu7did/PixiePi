@@ -31,8 +31,6 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Frequency can be shift during transmission to implement CW.
 
-* Sidetone generation.
-
 * Transmission controlled by processor.
 
 * Display LCD & Rotary Encoder.
@@ -41,11 +39,13 @@ The rest of the code deals mostly with the user interface and operating features
 
 * Variable DDS drive level.
 
-* Capable of operating most digital modes with very small modifications.
+* Capable of operating other digital modes, specially FT8 and WSPR, with very small modifications.
 
 * Full or Partial Break-In in transmit.
 
-* Perhaps, some day, even to manage SSB using a firmware approach (PE1NNZ)
+* Open source firmware allow the adaptation to other simple DIY QRP/QRPp projects.
+
+* With some limitations able to be used in linear modes (USB).
 
 ## DISCLAIMER
 
@@ -100,8 +100,9 @@ The Raspberry Pi Zero pinout assignments are:
 
 This is a snapshot of the current prototype used to develop and debug this project:
 
+![Alt Text](docs/PixiePi_buildprocess.jpg?raw=true "PixiePi Hardware Prototype during testing")
 ![Alt Text](docs/PixiePi_Build_001.jpeg?raw=true "PixiePi Hardware Prototype")
-![Alt Text](docs/PixiePi_Build_002.jpeg?raw=true "PixiePi Hardware Prototype")
+![Alt Text](docs/PixiePi_Build_001.jpeg?raw=true "PixiePi Hardware Prototype")
 
 
 
@@ -117,22 +118,24 @@ Some minor modifications are needed while building the Chinese DIY Pixie kit, ot
 
 The following components needs not to be placed when building the kit
 
+```
 * D2 - Diode 1N4001
 * R6 - R 100K
 * C8 - C 100nF
 * W1 - R 47K (var)
 * D3 - Diode 1N4148
 * Y1 - Cristal 7.032 MHz
-
+```
 ## Different connections (Recommended MODS)
 
+```
 * Connect Pin 7 LM386 to PWM exit from interface card (sidetone) marked as Vol+ in the schematic.
 * Connect Cx=100 nF on the same place than Y1 on the kit.
 * Connect negative side of D3 diode to the interface board PTT line
 * Cut trace from R5 to KEY socket, connect both keyer legs to the socket going into GPIO15 and GPIO13.
 * Assure all three boards (interface, Pixie and Raspberry Pi) share a common ground.
 * Extract +12V from the Pixie +12V socket, feed LM7805 with it.
-
+```
 ![Alt Text](docs/pixie_pcb.jpg?raw=true "PixiePi PCB mods")
 
 All additional interface circuitry might be constructed on a prototype perfboard or using the Manhattan
@@ -175,6 +178,7 @@ Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPR
 
 The preliminar 3D design for a project case (with LCD) can be seen as follows
 
+
 [PixiePi 3D Case Design](https://www.thingiverse.com/thing:4153649)
 
 **Warning**
@@ -184,6 +188,7 @@ The preliminar 3D design for a project case (with LCD) can be seen as follows
 
 # Package requirements
 
+```
 *   sudo apt-get install i2c-tools libi2c-dev
 *   sudo apt-get install socat
 *   sudo apt-get install telnet
@@ -193,23 +198,26 @@ The preliminar 3D design for a project case (with LCD) can be seen as follows
 *   Follow instructions to download and build the HamLib package from https://sourceforge.net/projects/hamlib/files/hamlib/  (hamlib-1.0.1.tgz at this moment, check it out for latest)
 *   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
 *   Enable PWM in your Raspberry Pi [tutorial](https://learn.adafruit.com/adding-basic-audio-ouput-to-raspberry-pi-zero/pi-zero-pwm-audio) 
+```
 
 # Build
 
+```
 *  git clone https://github.com/lu7did/PixiePi
 *  cd /home/pi/PixiePi/src
 *  make
 *  sudo make install
- 
+``` 
 
 # Release notes:
 
-  * This project requires a board combining:
+  * This project requires a hardware board combining:
 
-     - Raspberry Pi
+```
+     - Raspberry Pi Zero (W preferred).
      - Pixie Transceiver
      - Glueware simple electronics to switch transmitter, connect keyer and others.
-
+```
   This setup can be used with flrig as the front-end and CAT controller (**headless mode**), it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
@@ -220,7 +228,7 @@ WSPR can be operated either as a monitoring station or as a beacon.
 ## Monitoring station
 
 * Plug the PHONE exit to the LINE-IN entry of a soundcard.
-* Start the pixie program with ./bash/pixie.sh (correct frequency to 7038600).
+* Start the pixie program with ./bash/pixie.sh (correct frequency to 7074000).
 * Use WSJTX to monitor, select Mode as WSPR
 * Ctl-C to terminate.
 
@@ -308,10 +316,11 @@ way too small to support both the taxing demand of creating the RF signal and th
 
 For implementation see Pi4D.sh at the PixiePi/bash directory.
 
+Some samples of reports using the WSJT-X program for both transmitting and receiving using the program Pi4D.
 
-# Operating as a FM transceiver
+![Alt Text](docs/PixiePi_Test_20200503_RX.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for FT8 operation")
+![Alt Text](docs/PixiePi_Test_20200503_TX.jpg?raw=true "Reports from using WSJT-X Program with PixiePi as the transmitter for FT8 operation")
 
-To be implemented
 
 # Other programs
 
