@@ -76,17 +76,18 @@
 
 #include "pixie.h"
 #include "../lib/ClassMenu.h"
-#include "../lib/VFOSystem.h"
 #include "../lib/LCDLib.h"
-#include "../lib/CAT817.h"
 #include "../lib/DDS.h"
 #include "../minIni/minIni.h"
 #include "../log.c/log.h"
+
+#include "/home/pi/OrangeThunder/src/lib/VFOSystem.h"
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
+#include "/home/pi/OrangeThunder/src/lib/CAT817.h"
 
 #include <iostream>
-#include <cstdlib> // for std::rand() and std::srand()
-#include <ctime> // for std::time()
+#include <cstdlib>    // for std::rand() and std::srand()
+#include <ctime>      // for std::time()
 
 //*--- Define Initialization Values for CAT
 
