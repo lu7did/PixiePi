@@ -96,7 +96,7 @@ void gpiochangePin(int pin, int state);
 void gpiochangeEncoder(int clk,int dt,int state);
 
 
-byte  TRACE=0x00;
+byte  TRACE=0x02;
 byte  MSW=0x00;
 int   a;
 int   anyargs;
@@ -215,9 +215,17 @@ while(true)
      createMenu();
 
 //*---  Define and initialize GPIO interface
-
+     gpio_buffer=(char*) malloc(1024);
      setupGPIO();
 
+     while(1){
+      int gpio_read=gpio->readpipe(gpio_buffer,1024);
+          if (gpio_read>0) {
+              gpio_buffer[gpio_read]=0x00;
+             (TRACE>=0x02 ? fprintf(stderr,"%s",(char*)gpio_buffer) : _NOP);
+          }
+          usleep(10000);
+     }
 
   exit(0);
 }
