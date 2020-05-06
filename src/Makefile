@@ -31,12 +31,14 @@ CXXFLAGS = -std=c++11 -Wall -g -O3 -Wno-unused-variable
 
 clean:
 	rm -r  ../bin/pixie
+	rm -r  ../bin/PixiePi
 	rm -r  ../bin/PiWSPR
 	rm -r  ../bin/PiRTTY
 	rm -r  ../bin/Pi4D
 
 install: all
 	install -m 0755 ../bin/pixie  /usr/bin
+	install -m 0755 ../bin/PixiePi /usr/bin
 	install -m 0755 ../bin/PiWSPR /usr/bin
 	install -m 0755 ../bin/PiRTTY /usr/bin
 	install -m 0755 ../bin/Pi4D   /usr/bin

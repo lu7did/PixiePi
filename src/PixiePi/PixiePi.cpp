@@ -96,11 +96,11 @@ void gpiochangePin(int pin, int state);
 void gpiochangeEncoder(int clk,int dt,int state);
 
 
-byte  TRACE=0x02;
+byte  TRACE=0x01;
 byte  MSW=0x00;
 int   a;
 int   anyargs;
-
+int   lcd_light;
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
@@ -108,6 +108,9 @@ const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2018,2020";
 
 
+
+LCDLib    *lcd;
+char*     LCD_buffer;
 // *----------------------------------------------------------------*
 // *                  GPIO support processing                       *
 // *----------------------------------------------------------------*
@@ -208,6 +211,18 @@ while(true)
                 }
         }
 
+//*--- Create memory resources
+
+     gpio_buffer=(char*) malloc(1024);
+     LCD_buffer=(char*) malloc(32);
+
+//*--- Define and initialize LCD interface
+
+     setupLCD();
+     sprintf(LCD_buffer,"%s %s(%s)",PROGRAMID,PROG_VERSION,PROG_BUILD);
+     lcd->println(0,0,LCD_buffer);
+     sprintf(LCD_buffer,"%s","Booting..");
+     lcd->println(0,1,LCD_buffer);
 
 
 //*--- Create infrastructure for the execution of the GUI
@@ -215,8 +230,8 @@ while(true)
      createMenu();
 
 //*---  Define and initialize GPIO interface
-     gpio_buffer=(char*) malloc(1024);
      setupGPIO();
+
 
      while(1){
       int gpio_read=gpio->readpipe(gpio_buffer,1024);

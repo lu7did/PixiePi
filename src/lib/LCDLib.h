@@ -63,6 +63,7 @@ class LCDLib
       void createChar(byte n,byte* custom);
       void setCursor(byte c, byte r);
       void print(string s);
+      void println(byte c,byte r,char* s);
       void write(byte c);
       void Blink();
       void noBlink();
@@ -147,6 +148,15 @@ void LCDLib::setCursor(byte c, byte r) {
   c=c&0xf;
   lcdLoc(l+c);
   return;
+}
+//*---------------------------------------------------------------------------------------------------
+//* LCD print (print char*) 
+//*---------------------------------------------------------------------------------------------------
+void LCDLib::println(byte c,byte r,char* s) {
+  char cstr[strlen(s)+8];
+  strcpy(cstr,s);
+  this->setCursor(c,r);
+  typeln(cstr);
 }
 //*---------------------------------------------------------------------------------------------------
 //* LCD print (print string) 
