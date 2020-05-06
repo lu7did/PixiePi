@@ -20,7 +20,7 @@ typedef void (*CALLUPDATE)(MMS* m);
           MMS(int val,char* text,CALLCHANGE pChange,CALLUPDATE pUpdate);
     void  list();
     void  list(int n);
-    void  add(MMS* parent,MMS* child);
+    void  add(MMS* child);
     MMS*  get();
     void  set(int m);
     void  set(char* t);
@@ -147,20 +147,23 @@ void MMS::set(char* t) {
 //*-------------------------------------------------------------------------------------------------
 //* add a child beneath a parent, link both and place child at the end of the current list
 //*-------------------------------------------------------------------------------------------------
-void MMS::add(MMS* parent,MMS* child) {
+void MMS::add(MMS* child) {
 
-   if (parent==NULL) return;
    if (child==NULL) return;
+
+   MMS* parent=this;
 
    if (parent->child==NULL) {
       parent->child=child;
       parent->curr=child;
       parent->last=child;
       child->parent=parent;
+      child->TRACE=parent->TRACE;
       child->next=NULL;
       child->prev=NULL;
       child->last=NULL;
       if(parent->procChange!=NULL) {parent->procChange(child);}
+      (TRACE>=0x02 ? fprintf(stderr,"%s::constructor() tracelevel(%d)\n",PROGRAMID,TRACE) : _NOP);
       return;
    }
 
@@ -177,8 +180,10 @@ void MMS::add(MMS* parent,MMS* child) {
    }
    child->next=NULL;
    child->parent=parent;
+   child->TRACE=parent->TRACE;
    parent->last=child;
    if(parent->procChange!=NULL) {parent->procChange(child);}
+   (TRACE>=0x02 ? fprintf(stderr,"%s::constructor() tracelevel(%d)\n",PROGRAMID,TRACE) : _NOP);
 
 }
 //*-------------------------------------------------------------------------------------------------

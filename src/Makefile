@@ -13,7 +13,7 @@ CFLAGS  = -Wall -g -O3 -Wno-unused-variable
 CXXFLAGS = -std=c++11 -Wall -g -O3 -Wno-unused-variable
 
 
-../bin/PixiePi : PixiePi/PixiePi.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h lib/MMS.h $(OT)/lib/VFOSystem.h $(OT)/lib/CAT817.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h iambic/iambic.c minIni/minIni.c  minIni/minIni.h log.c/log.c iambic/iambic.c log.c/log.h 
+../bin/PixiePi : PixiePi/PixiePi.cpp /home/pi/librpitx/src/librpitx.a lib/GUI.h lib/LCDLib.h lib/MMS.h $(OT)/lib/VFOSystem.h $(OT)/lib/CAT817.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h iambic/iambic.c minIni/minIni.c  minIni/minIni.h log.c/log.c iambic/iambic.c log.c/log.h 
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/PixiePi ./PixiePi/PixiePi.cpp ./minIni/minIni.c ./log.c/log.c $(LDFLAGS)
 
 ../bin/pixie : pixie/pixie.cpp /home/pi/librpitx/src/librpitx.a lib/LCDLib.h $(OT)/lib/VFOSystem.h $(OT)/lib/CAT817.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h iambic/iambic.c minIni/minIni.c  minIni/minIni.h log.c/log.c iambic/iambic.c log.c/log.h 
