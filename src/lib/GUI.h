@@ -1,54 +1,87 @@
-//====================================================================================================================== 
-// analyze events coming from the hardware, evaluate changes on transceiver and apply
-//====================================================================================================================== 
-void processGui() {
+//*----------------------
+void showVFO() {
+
+     if (vfo->vfo == VFOA) {
+        lcd->setCursor(0,0);
+        lcd->write(byte(6));
+        strcpy(LCD_Buffer,"B");
+        lcd->println(0,1,LCD_Buffer);
+
+     } else {
+        strcpy(LCD_Buffer,"A");
+        lcd->println(0,0,LCD_Buffer);
+        lcd->setCursor(0,1);
+        lcd->write(byte(7));
+     }
+
+}
+
+//*----------------------
+void showChange() {
+
+int row=0;
+int alt=0;
+
+     if (vfo->vfo == VFOA) {
+        row=0;
+        alt=1;
+     } else {
+        row=1;
+        alt=0;
+     }
+
+     if (getWord(GSW,FBLINK)==true) {
+
+        lcd->setCursor(1,row);
+        lcd->typeChar((char)126);
+
+        strcpy(LCD_Buffer," ");
+        lcd->println(1,alt,LCD_Buffer);
+
+     } else {
+
+        strcpy(LCD_Buffer," ");
+        lcd->println(1,0,LCD_Buffer);
+        lcd->println(1,1,LCD_Buffer);
+
+     }
 
 }
 //*----------------------
 void showFrequency() {
 
-char LCDBuffer[33];
 
-     if (vfo->vfo == VFOA) {
-        lcd->setCursor(0,0);
-        lcd->write(1);
-        strcpy(LCDBuffer,"B");
-        lcd->println(0,1,LCDBuffer);
-     } else {
-        strcpy(LCDBuffer,"A");
-        lcd->println(0,0,LCDBuffer);
-        lcd->setCursor(0,0);
-        lcd->write(2);
-     }
+     sprintf(LCD_Buffer,"  %5.1f",vfo->get(VFOA)/1000.0);
+     lcd->println(1,0,LCD_Buffer);
 
-     sprintf(LCDBuffer,"  %5.2f",vfo->get(VFOA)/1000.0);
-     lcd->println(1,0,LCDBuffer);
-
-     sprintf(LCDBuffer,"  %5.2f",vfo->get(VFOB)/1000.0);
-     lcd->println(1,1,LCDBuffer);
+     sprintf(LCD_Buffer,"  %5.1f",vfo->get(VFOB)/1000.0);
+     lcd->println(1,1,LCD_Buffer);
 
 }
 //*---------------------
 void showRIT() {
 
-char LCDBuffer[33];
 
      if (getWord(MSW,PTT)==true) {
         return;
      }
-     sprintf(LCDBuffer,"%+03d",vfo->getRIT(vfo->vfo));
-     if (getWord(FT817,RIT)==true) {
-         lcd->println(10,0,LCDBuffer) ;
+
+     strcpy(LCD_Buffer,"    ");
+     lcd->println(10,0,LCD_Buffer) ;
+
+     if (vfo->getRIT(vfo->vfo)==true) {
+        sprintf(LCD_Buffer,"%+04.0f",vfo->valueRIT(vfo->vfo));
+        lcd->println(10,0,LCD_Buffer) ;
      }
 
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showPTT() {
 
-char LCDBuffer[33];
-     if (getWord(MSW,PTT)==true) {  //inverted for testing
-        strcpy(LCDBuffer," ");
-        lcd->println(11,1,LCDBuffer);
+
+     if (getWord(MSW,PTT)==false) {  //inverted for testing
+        strcpy(LCD_Buffer," ");
+        lcd->println(11,1,LCD_Buffer);
         return;
      }
      lcd->setCursor(11,1);
@@ -57,46 +90,47 @@ char LCDBuffer[33];
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showKeyer() {
-char LCDBuffer[33];
+
      switch(keyer->get()->mVal) {
-        case 0 : strcpy(LCDBuffer,"S"); break;
-        case 1 : strcpy(LCDBuffer,"1"); break;
-        case 2 : strcpy(LCDBuffer,"2"); break;
+        case 0 : strcpy(LCD_Buffer,"S"); break;
+        case 1 : strcpy(LCD_Buffer,"1"); break;
+        case 2 : strcpy(LCD_Buffer,"2"); break;
      }
-     lcd->println(12,1,LCDBuffer);
 
-}
-//*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
-void showMark() {
-
-char LCDBuffer[33];
-
-     if (getWord(MSW,PTT)==true) {
-        strcpy(LCDBuffer,"P0");
-        lcd->println(14,0,LCDBuffer);
-        return;
-     }
-     strcpy(LCDBuffer,"Rx");
-     lcd->println(14,0,LCDBuffer);
+     lcd->println(12,1,LCD_Buffer);
 
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showMeter() {
 
      lcd->setCursor(13,1);   //Placeholder Meter till a routine is developed for it
-     lcd->write(5);
-     lcd->write(5);
-     lcd->write(5);
+     lcd->write(byte(255));
+     lcd->write(byte(255));
+     lcd->write(byte(255));
+
+}
+//*---------------------------------- Show Split
+void showSplit() {
+
+     if (vfo->getSplit()==true) {
+       lcd->setCursor(10,1);
+       lcd->write(byte(5));
+     } else {
+       strcpy(LCD_Buffer," ");
+       lcd->println(10,1,LCD_Buffer);
+     }
 
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showLCDVFO() {
 
+     showVFO();
+     showChange();
      showFrequency();
      showPTT();
      showRIT();
+     showSplit();
      showKeyer();
-     showMark();
      showMeter();
 
      return;
@@ -117,6 +151,7 @@ void showGui() {
     if (getWord(GSW,FGUI)==false) return;
 
     setWord(&GSW,FGUI,false);
+
     if (getWord(MSW,CMD)==false) {  //CLI mode, main mode of operation
        showLCDVFO();
 
@@ -133,6 +168,71 @@ void showGui() {
 //*--- CLI mode, UPDATE mode
     showLCDGUI();
 }
+//====================================================================================================================== 
+// analyze events coming from the hardware, evaluate changes on transceiver and apply
+//====================================================================================================================== 
+void processGui() {
+
+     if (getWord(MSW,CMD)==false) {
+
+        if (getWord(GSW,ECW)==true) {  //increase f
+           setWord(&GSW,ECW,false);
+           if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
+              f=vfo->up();
+              TVFO=3000;
+              setWord(&GSW,FBLINK,true);
+              showFrequency();
+              showChange();
+           } else {
+              if (vfo->getRIT()==true) {
+                 float r=vfo->updateRIT(+1);
+                 showRIT();
+              }
+           }
+        }
+
+
+        if (getWord(GSW,ECCW)==true) {  //decrease f
+           setWord(&GSW,ECCW,false);
+           if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
+              f=vfo->down();
+              TVFO=3000;
+              setWord(&GSW,FBLINK,true);
+              showFrequency();
+              showChange();
+           } else {
+              if (vfo->getRIT()==true) {
+                 float r=vfo->updateRIT(-1);
+                 showRIT();
+              }
+           }
+        }
+
+        if (getWord(SSW,FVFO)==true) {
+           setWord(&GSW,FBLINK,false);
+           setWord(&SSW,FVFO,false);
+           showChange();
+        }
+
+        if (getWord(GSW,FAUX)==true) {
+           setWord(&GSW,FAUX,false);
+           vfo->swapVFO();
+           showVFO();
+           showChange();
+        }
+
+        if (getWord(GSW,FAUXL)==true) {
+           setWord(&GSW,FAUXL,false);
+           (TRACE>=0x02 ? fprintf(stderr,"%s:processGUI change RIT vfo(%d) previous(%s)\n",PROGRAMID,vfo->vfo,BOOL2CHAR(vfo->getRIT(vfo->vfo))) : _NOP);
+           vfo->setRIT(vfo->vfo,!vfo->getRIT(vfo->vfo));
+           (TRACE>=0x02 ? fprintf(stderr,"%s:processGUI change RIT vfo(%d) post(%s)\n",PROGRAMID,vfo->vfo,BOOL2CHAR(vfo->getRIT(vfo->vfo))) : _NOP);
+           showRIT();
+        }
+     }
+
+
+}
+
 //====================================================================================================================== 
 // change pin handler (GPIO_AUX and GPIO_SW buttons)
 //====================================================================================================================== 
@@ -365,23 +465,43 @@ byte S4[8] = {0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110}; // S4 Si
 byte S5[8] = {0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111}; // S5 Signal
 //byte NA[8] = {0B01110,0B10001,0B10001,0B10001,0B11111,0B10001,0B10001}; //inverted A
 //byte NB[8] = {0B11110,0B10001,0B10001,0B11110,0B10001,0B10001,0B11110}; //inverted B
-byte NB[8] = {
-	0B00001,
-	0B01110,
-	0B01110,
-	0B00001,
-	0B01110,
-	0B01110,
-	0B00001};
-
+//byte NB[8] = {
+//	0B00001,
+//	0B01110,
+//	0B01110,
+//	0B00001,
+//	0B01110,
+//	0B01110,
+//	0B00001};
 byte NA[8] = {
-	0B10001,
-	0B01110,
-	0B01110,
-	0B01110,
-	0B00000,
-	0B01110,
-	0B01110};
+  0B11111,
+  0B11011,
+  0B10101,
+  0B10101,
+  0B10101,
+  0B10001,
+  0B10101,
+  0B11111
+};
+byte NB[8] = {
+  0B11111,
+  0B10001,
+  0B10101,
+  0B10011,
+  0B10101,
+  0B10101,
+  0B10001,
+  0B11111
+};
+byte NS[8] = {
+  0B11111,
+  0B11001,
+  0B10111,
+  0B10011,
+  0B11101,
+  0B11101,
+  0B10011};
+
 
    lcd=new LCDLib(NULL);
    (TRACE>=0x01 ? fprintf(stderr,"%s:setupLCD() LCD system initialization\n",PROGRAMID) : _NOP);
@@ -394,8 +514,8 @@ byte NA[8] = {
    lcd->createChar(2,S2);
    lcd->createChar(3,S3);
    lcd->createChar(4,S4);
-   lcd->createChar(5,S5);
 
+   lcd->createChar(5,NS);
    lcd->createChar(6,NA);
    lcd->createChar(7,NB);
 
@@ -413,6 +533,8 @@ void setupGPIO() {
     gpio=new gpioWrapper(gpiochangePin);
     gpio->TRACE=TRACE;
 
+   (TRACE>=0x01 ? fprintf(stderr,"%s:setupGPIO() GPIO system initialization\n",PROGRAMID) : _NOP);
+
 //     if (gpio->setPin(GPIO_PTT,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
 //        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PTT) : _NOP);
 //        exit(16);
@@ -421,6 +543,7 @@ void setupGPIO() {
 //        (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PA) : _NOP);
 //        exit(16);
 //     }
+
      if (gpio->setPin(GPIO_AUX,GPIO_IN,GPIO_PUP,GPIO_NLP) == -1) {
         (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_AUX) : _NOP);
         exit(16);

@@ -85,10 +85,15 @@
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
 #include "/home/pi/OrangeThunder/src/lib/gpioWrapper.h"
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
+#include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
 
 #include <iostream>
 #include <cstdlib>    // for std::rand() and std::srand()
 #include <ctime>      // for std::time()
+
+#include <chrono>
+#include <future>
+
 
 void gpiochangePin(int pin, int state);
 void gpiochangeEncoder(int clk,int dt,int state);
@@ -97,6 +102,7 @@ void gpiochangeEncoder(int clk,int dt,int state);
 byte  TRACE=0x01;
 byte  MSW=0x00;
 byte  GSW=0x00;
+byte  SSW=0x00;
 
 int   a;
 int   anyargs;
@@ -108,7 +114,7 @@ const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2018,2020";
 
 LCDLib    *lcd;
-char*     LCD_buffer;
+char*     LCD_Buffer;
 // *----------------------------------------------------------------*
 // *                  GPIO support processing                       *
 // *----------------------------------------------------------------*
@@ -145,8 +151,7 @@ MMS* backof;
 MMS* coolon;
 MMS* coolof;
 
-
-
+int  TVFO=0;
 
 // *----------------------------------------------------------------*
 // *                  CAT Subsytem definitions                      *
@@ -168,6 +173,11 @@ float f=7030000;
 
 #include "../lib/GUI.h"
 
+
+
+struct sigaction sigact;
+CallBackTimer* masterTimer;
+
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getWord Return status according with the setting of the argument bit onto the SW
 //*--------------------------------------------------------------------------------------------------
@@ -187,7 +197,21 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
   }
 
 }
+// ======================================================================================================================
+// sighandler
+// ======================================================================================================================
+static void sighandler(int signum)
+{
 
+   (TRACE >= 0x00 ? fprintf(stderr, "\n%s:sighandler() Signal caught(%d), exiting!\n",PROGRAMID,signum) : _NOP);
+   setWord(&MSW,RUN,false);
+   if (getWord(MSW,RETRY)==true) {
+      (TRACE >= 0x00 ? fprintf(stderr, "\n%s:sighandler() Re-entering SIG(%d), force!\n",PROGRAMID,signum) : _NOP);
+      exit(16);
+   }
+   setWord(&MSW,RETRY,true);
+
+}
 //---------------------------------------------------------------------------
 // CATchangeFreq()
 // CAT Callback when frequency changes
@@ -263,6 +287,19 @@ void CATgetRX() {
 void CATgetTX() {
 
 }
+//--------------------------------------------------------------------------------------------------
+// FT8ISR - interrupt service routine, keep track of the FT8 sequence windows
+//--------------------------------------------------------------------------------------------------
+void ISRHandler() {
+
+   if (TVFO!=0) {
+
+      TVFO--;
+      if (TVFO==0) {
+         setWord(&SSW,FVFO,true);
+      }
+   }
+}
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------
@@ -270,6 +307,20 @@ int main(int argc, char* argv[])
 {
     
      fprintf(stderr,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
+
+//*--- Establish exception handling structure
+
+     sigact.sa_handler = sighandler;
+     sigemptyset(&sigact.sa_mask);
+     sigact.sa_flags = 0;
+
+
+     sigaction(SIGINT, &sigact, NULL);
+     sigaction(SIGTERM, &sigact, NULL);
+     sigaction(SIGQUIT, &sigact, NULL);
+     sigaction(SIGPIPE, &sigact, NULL);
+     signal(SIGPIPE, SIG_IGN);
+
 
 while(true)
         {
@@ -334,21 +385,29 @@ while(true)
 
 //*--- Create memory resources
 
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() Memory resources acquired\n",PROGRAMID) : _NOP);
      gpio_buffer=(char*) malloc(BUFSIZE);
-     LCD_buffer=(char*) malloc(32);
+     LCD_Buffer=(char*) malloc(32);
 
 //*--- Define and initialize LCD interface
 
      setupLCD();
-     sprintf(LCD_buffer,"%s %s(%s)",PROGRAMID,PROG_VERSION,PROG_BUILD);
-     lcd->println(0,0,LCD_buffer);
-     sprintf(LCD_buffer,"%s","Booting..");
-     lcd->println(0,1,LCD_buffer);
+     sprintf(LCD_Buffer,"%s %s(%s)",PROGRAMID,PROG_VERSION,PROG_BUILD);
+     lcd->println(0,0,LCD_Buffer);
+     sprintf(LCD_Buffer,"%s","Booting..");
+     lcd->println(0,1,LCD_Buffer);
+
+//*--- Establish master clock
+
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() Master timer enabled\n",PROGRAMID) : _NOP);
+     masterTimer=new CallBackTimer();
+     masterTimer->start(1,ISRHandler);
+
 
 //*--- Create infrastructure for the execution of the GUI
 
      createMenu();
-
+//*-------------------------------------------------------------------------------------------------------------------
 //*---  Define and initialize GPIO interface
 //*
 //*     clk (GPIO17)----(rotary encoder)------
@@ -362,6 +421,8 @@ while(true)
      setupGPIO();
 
 //*--- Setup the CAT system
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() CAT system initialization\n",PROGRAMID) : _NOP);
+
      cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
      cat->FT817=FT817;
      cat->POWER=DDS_MAXLEVEL;
@@ -373,6 +434,7 @@ while(true)
 
 //*--- Setup VFO System
 
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
      vfo=new genVFO(NULL);
      vfo->TRACE=TRACE;
      vfo->FT817=FT817;
@@ -388,9 +450,13 @@ while(true)
      vfo->vfo=VFOA;
      setWord(&cat->FT817,VFO,VFOA);
 
-     lcd->clear();             //force the LCD to start clean
+//*--- Initialize a startup
+
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() Starting operations\n",PROGRAMID) : _NOP);
      setWord(&GSW,FGUI,true);  //force an initial update of the LCD panel
      setWord(&MSW,RUN,true);   //mark the program to start running
+     lcd->clear();
+     showGui();
 //--------------------------------------------------------------------------------------------------
 // Main program loop
 //--------------------------------------------------------------------------------------------------
@@ -411,7 +477,6 @@ while(true)
 //*--- Read and process  events coming from the GUI interface
 
           processGui();
-          showGui();
      }
 
 
