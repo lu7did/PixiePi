@@ -1,5 +1,3 @@
-
-
 /*
  * PixiePi
  * Raspberry Pi based transceiver controller
@@ -83,10 +81,10 @@
 #include "../log.c/log.h"
 #include "../lib/MMS.h"
 
-#include "/home/pi/OrangeThunder/src/lib/VFOSystem.h"
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
 #include "/home/pi/OrangeThunder/src/lib/gpioWrapper.h"
+#include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 
 #include <iostream>
 #include <cstdlib>    // for std::rand() and std::srand()
@@ -98,6 +96,8 @@ void gpiochangeEncoder(int clk,int dt,int state);
 
 byte  TRACE=0x01;
 byte  MSW=0x00;
+byte  GSW=0x00;
+
 int   a;
 int   anyargs;
 int   lcd_light;
@@ -106,8 +106,6 @@ const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2018,2020";
-
-
 
 LCDLib    *lcd;
 char*     LCD_buffer;
@@ -119,8 +117,56 @@ gpioWrapper* gpio=nullptr;
 char   *gpio_buffer;
 void gpiochangePin();
 
-#include "../lib/GUI.h"
+// *----------------------------------------------------------------*
+// *                  VFO Subsytem definitions                      *
+// *----------------------------------------------------------------*
+genVFO*    vfo=nullptr;
 
+// *----------------------------------------------------------------*
+// *                Manu Subsytem definitions                       *
+// *----------------------------------------------------------------*
+MMS* root;
+MMS* keyer;
+MMS* speed;
+MMS* step;
+MMS* shift;
+MMS* drive;
+MMS* backl;
+MMS* cool;
+MMS* straight;
+MMS* iambicA;
+MMS* iambicB;
+MMS* spval;
+MMS* stval;
+MMS* shval;
+MMS* drval;
+MMS* backon;
+MMS* backof;
+MMS* coolon;
+MMS* coolof;
+
+
+
+
+// *----------------------------------------------------------------*
+// *                  CAT Subsytem definitions                      *
+// *----------------------------------------------------------------*
+void    CATchangeMode();      // Callback when CAT receives a mode change
+void    CATchangeFreq();      // Callback when CAT receives a freq change
+void    CATchangeStatus();    // Callback when CAT receives a status change
+
+CAT817* cat=nullptr;
+byte    FT817;
+char    port[80];
+long    catbaud=4800;
+int     SNR;
+// *----------------------------------------------------------------*
+// *                  CAT support processing                        *
+// *----------------------------------------------------------------*
+float f=7030000;
+
+
+#include "../lib/GUI.h"
 
 //*--------------------------[System Word Handler]---------------------------------------------------
 //* getWord Return status according with the setting of the argument bit onto the SW
@@ -142,6 +188,81 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 
 }
 
+//---------------------------------------------------------------------------
+// CATchangeFreq()
+// CAT Callback when frequency changes
+//---------------------------------------------------------------------------
+void CATchangeFreq() {
+
+   if (getWord(MSW,PTT)==false) {
+     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->SetFrequency) : _NOP);
+     f=cat->SetFrequency;
+     return;
+   }
+   
+  cat->SetFrequency=f;
+  (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeFreq() Frequency change is not allowed(%d)\n",PROGRAMID,(int)f) : _NOP);
+
+}
+//-----------------------------------------------------------------------------------------------------------
+// CATchangeMode
+// Validate the new mode is a supported one
+// At this point only CW,CWR,USB and LSB are supported
+//-----------------------------------------------------------------------------------------------------------
+void CATchangeMode() {
+
+  (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) not supported\n",PROGRAMID,cat->MODE) : _NOP);
+  cat->MODE=MUSB;
+  return;
+
+}
+//------------------------------------------------------------------------------------------------------------
+// CATchangeStatus
+// Detect which change has been produced and operate accordingly
+//------------------------------------------------------------------------------------------------------------
+void CATchangeStatus() {
+
+  (TRACE >= 0x03 ? fprintf(stderr,"%s:CATchangeStatus() FT817(%d) cat.FT817(%d)\n",PROGRAMID,FT817,cat->FT817) : _NOP);
+
+  if (getWord(cat->FT817,PTT) != getWord(MSW,PTT)) {
+     (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeStatus() PTT change request cat.FT817(%d) now is PTT(%s)\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false") : _NOP);
+     //setPTT(getWord(cat->FT817,PTT));
+     setWord(&MSW,PTT,getWord(cat->FT817,PTT));
+  }
+
+  if (getWord(cat->FT817,RIT) != getWord(FT817,RIT)) {        // RIT Changed
+     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() RIT change request cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RIT) ? "true" : "false") : _NOP);
+  }
+
+  if (getWord(cat->FT817,LOCK) != getWord(FT817,LOCK)) {      // LOCK Changed
+     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() LOCK change request cat.FT817(%d) LOCK changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,LOCK) ? "true" : "false") : _NOP);
+  }
+
+  if (getWord(cat->FT817,SPLIT) != getWord(FT817,SPLIT)) {    // SPLIT mode Changed
+     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() SPLIT change request cat.FT817(%d) SPLIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,SPLIT) ? "true" : "false") : _NOP);
+  }
+
+  if (getWord(cat->FT817,VFO) != getWord(FT817,VFO)) {        // VFO Changed
+     (TRACE >=0x01 ? fprintf(stderr,"%s:CATchangeStatus() VFO change request not supported\n",PROGRAMID) : _NOP);
+  }
+  FT817=cat->FT817;
+  return;
+
+}
+//--------------------------------------------------------------------------------------------------
+// Callback to process SNR signal (if available)
+//--------------------------------------------------------------------------------------------------
+void CATgetRX() {
+
+    //cat->RX=cat->snr2code(SNR);
+
+}
+//--------------------------------------------------------------------------------------------------
+// Callback to process Power/SWR signal (if available)
+//--------------------------------------------------------------------------------------------------
+void CATgetTX() {
+
+}
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------
@@ -213,7 +334,7 @@ while(true)
 
 //*--- Create memory resources
 
-     gpio_buffer=(char*) malloc(1024);
+     gpio_buffer=(char*) malloc(BUFSIZE);
      LCD_buffer=(char*) malloc(32);
 
 //*--- Define and initialize LCD interface
@@ -224,23 +345,75 @@ while(true)
      sprintf(LCD_buffer,"%s","Booting..");
      lcd->println(0,1,LCD_buffer);
 
-
 //*--- Create infrastructure for the execution of the GUI
 
      createMenu();
 
 //*---  Define and initialize GPIO interface
+//*
+//*     clk (GPIO17)----(rotary encoder)------
+//*     dt  (GPIO18)
+//*
+//*     aux (GPIO10)----(encoder push)--------
+//*     sw  (GPIO27)----(aux button)---------
+//*
+//*
+//*--------------------------------------------------------------------------------------------------------------------
      setupGPIO();
 
+//*--- Setup the CAT system
+     cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
+     cat->FT817=FT817;
+     cat->POWER=DDS_MAXLEVEL;
+     cat->SetFrequency=f;
+     cat->MODE=MUSB;
+     cat->TRACE=TRACE;
+     cat->open(port,catbaud);
+     cat->getRX=CATgetRX;
 
-     while(1){
-      int gpio_read=gpio->readpipe(gpio_buffer,1024);
+//*--- Setup VFO System
+
+     vfo=new genVFO(NULL);
+     vfo->TRACE=TRACE;
+     vfo->FT817=FT817;
+     vfo->MODE=cat->MODE;
+     vfo->setBand(VFOA,vfo->getBand(f));
+     vfo->setBand(VFOB,vfo->getBand(f));
+     vfo->set(VFOA,f);
+     vfo->set(VFOB,f);
+     vfo->setSplit(false);
+     vfo->setRIT(VFOA,false);
+     vfo->setRIT(VFOB,false);
+
+     vfo->vfo=VFOA;
+     setWord(&cat->FT817,VFO,VFOA);
+
+     lcd->clear();             //force the LCD to start clean
+     setWord(&GSW,FGUI,true);  //force an initial update of the LCD panel
+     setWord(&MSW,RUN,true);   //mark the program to start running
+//--------------------------------------------------------------------------------------------------
+// Main program loop
+//--------------------------------------------------------------------------------------------------
+
+     while(getWord(MSW,RUN)==true){
+
+//*--- Read and process events coming from the CAT subsystem
+      (cat->active==true ? cat->get() : (void) _NOP);
+
+//*--- Read and process events coming from the GPIO subsystem
+
+      int gpio_read=gpio->readpipe(gpio_buffer,BUFSIZE);
           if (gpio_read>0) {
               gpio_buffer[gpio_read]=0x00;
              (TRACE>=0x02 ? fprintf(stderr,"%s",(char*)gpio_buffer) : _NOP);
           }
-          usleep(10000);
+
+//*--- Read and process  events coming from the GUI interface
+
+          processGui();
+          showGui();
      }
+
 
   exit(0);
 }
