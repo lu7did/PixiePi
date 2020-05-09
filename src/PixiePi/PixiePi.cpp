@@ -153,7 +153,7 @@ MMS* coolof;
 
 int  TVFO=0;
 int  TBCK=0;
-
+int  TSAVE=0;
 // *----------------------------------------------------------------*
 // *                  CAT Subsytem definitions                      *
 // *----------------------------------------------------------------*
@@ -305,6 +305,13 @@ void ISRHandler() {
          setWord(&SSW,FBCK,true);
       }
    }
+
+   if (TSAVE!=0) { //Backlight timer
+      TSAVE--;
+      if (TSAVE==0) {
+         setWord(&SSW,FSAVE,true);
+      }
+   }
 }
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
@@ -441,7 +448,7 @@ while(true)
 //*--- Setup VFO System
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
-     vfo=new genVFO(NULL);
+     vfo=new genVFO(NULL,NULL,NULL);
      vfo->TRACE=TRACE;
      vfo->FT817=FT817;
      vfo->MODE=cat->MODE;
@@ -462,9 +469,9 @@ while(true)
      setWord(&GSW,FGUI,true);  //force an initial update of the LCD panel
      setWord(&MSW,RUN,true);   //mark the program to start running
 
-     setWord(&MSW,BCK,true);
-     setBacklight(getWord(MSW,BCK));
+     //setWord(&MSW,BCK,true);
 
+     setBacklight(true);
      lcd->clear();
      showGui();
 //--------------------------------------------------------------------------------------------------

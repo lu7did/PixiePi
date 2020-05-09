@@ -189,6 +189,56 @@ void setBacklight(bool v) {
 
 }
 //====================================================================================================================== 
+// showMenu()
+//====================================================================================================================== 
+void showMenu() {
+
+     MMS*  menu=root->curr;
+     int   i=menu->mVal;
+     char* m=menu->mText;
+
+     MMS*  child=menu->curr;
+     int   j=child->mVal;
+     char* t=child->mText;
+
+     sprintf(LCD_Buffer," %02d %s",i,m);
+     lcd->println(1,0,LCD_Buffer);
+
+     sprintf(LCD_Buffer," %s",t);
+     lcd->println(1,1,t);
+
+     if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {
+        lcd->setCursor(0,1);
+        lcd->typeChar((char)126);
+     }
+}
+//*---  Progress to next Chile
+
+void nextChild(int dir) {
+     root->curr->move(dir);
+}
+//*---  Progress to next Menu item
+
+void nextMenu(int dir) {
+     root->move(dir);
+}
+
+//*---  backup menu
+
+void backupMenu() {
+     root->curr->backup();
+}
+//*---  save menu
+
+void saveMenu() {
+     root->curr->save();
+}
+//*---  restore menu
+
+void restoreMenu() {
+     root->curr->restore();
+}
+//====================================================================================================================== 
 // analyze events coming from the hardware, evaluate changes on transceiver and apply
 //====================================================================================================================== 
 void processGui() {
@@ -232,40 +282,42 @@ void processGui() {
            }
         }
 
-        if (getWord(SSW,FVFO)==true) {
+        if (getWord(SSW,FVFO)==true) {  // manage blinking
            setWord(&GSW,FBLINK,false);
            setWord(&SSW,FVFO,false);
            showChange();
         }
 
-        if (getWord(GSW,FAUX)==true) {
+        if (getWord(GSW,FAUX)==true) {  // swap VFO
            setWord(&GSW,FAUX,false);
            vfo->swapVFO();
            showVFO();
            showChange();
         }
 
-        if (getWord(GSW,FAUXL)==true) {
+        if (getWord(GSW,FAUXL)==true) { // enable RIT
            setWord(&GSW,FAUXL,false);
            vfo->setRIT(vfo->vfo,!vfo->getRIT(vfo->vfo));
            showRIT();
         }
 
-        if (getWord(GSW,FSW)==true) {
+        if (getWord(GSW,FSW)==true) {   // switch to menu mode
            setWord(&GSW,FSW,false);
            setWord(&MSW,CMD,true);
            setWord(&MSW,GUI,false);
-
            lcd->clear();
-           strcpy(LCD_Buffer,"Menu!");
-           lcd->println(0,0,LCD_Buffer);
+           showMenu();
 
         }
 
-        if (getWord(GSW,FSWL)==true) {
+        if (getWord(GSW,FSWL)==true) {  // switch to Split operation
            setWord(&GSW,FSWL,false);
            vfo->setSplit(!vfo->getSplit());
            showSplit();
+           if (vfo->vfo != VFOA) { // split operates VFOA as primary and VFOB as secondary, force that configuration
+              setWord(&GSW,FAUX,true);              
+              processGui(); // recursive call to operate the VFO change
+           }
         }
 
      }
@@ -275,51 +327,82 @@ void processGui() {
 
      if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {
 
-        if (getWord(GSW,FSW)==true) {
+        if (getWord(GSW,FSW)==true) {  //return to VFO mode
            setWord(&GSW,FSW,false);
            setWord(&MSW,CMD,false);
            showLCDVFO();
         }
 
+        if (getWord(GSW,ECW)==true) {  //while in menu mode turn knob clockwise
+           setWord(&GSW,ECW,false);
+           nextMenu(+1);
+	   lcd->clear();
+           showMenu();
+        }
 
-        if (getWord(GSW,FSWL)==true) {
-           setWord(&GSW,FSWL,false);
-           setWord(&MSW,GUI,true);
-
+        if (getWord(GSW,ECCW)==true) {  //while in menu mode turn knob counterclockwise
+           setWord(&GSW,ECCW,false);
+           nextMenu(-1);
            lcd->clear();
-           strcpy(LCD_Buffer,"Options Menu!");
-           lcd->println(0,0,LCD_Buffer);
-
+           showMenu();
         }
 
 
+        if (getWord(GSW,FSWL)==true) {  //while in menu mode transition to GUI mode (backup)
+           setWord(&GSW,FSWL,false);
+           setWord(&MSW,GUI,true);
+           lcd->clear();
+           backupMenu();
+           showMenu();
+        }
 
-
+        if (getWord(SSW,FSAVE)==true) { //restore menu after saving message
+           setWord(&SSW,FSAVE,false);
+           lcd->clear();
+           showMenu();
+        }
      }
+
 //*----- CMD=true GUI=true this is Menu item option panel
 
      if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {
 
-        if (getWord(GSW,FSW)==true) {
+        if (getWord(GSW,ECW)==true) {  //while in menu mode turn knob clockwise
+           setWord(&GSW,ECW,false);
+           nextChild(+1);
+	   lcd->clear();
+           showMenu();
+        }
+
+        if (getWord(GSW,ECCW)==true) {  //while in menu mode turn knob counterclockwise
+           setWord(&GSW,ECCW,false);
+           nextChild(-1);
+           lcd->clear();
+           showMenu();
+        }
+
+        if (getWord(GSW,FSW)==true) {  //in GUI mode return to menu mode without commit of changes
            setWord(&GSW,FSW,false);
            setWord(&MSW,GUI,false);
-
            lcd->clear();
-           strcpy(LCD_Buffer,"Options Restoring");
-           lcd->println(0,0,LCD_Buffer);
+           restoreMenu();
 
         }
 
 
-        if (getWord(GSW,FSWL)==true) {
+        if (getWord(GSW,FSWL)==true) {  //in GUI mode return to menu mode with commit of changes
            setWord(&GSW,FSWL,false);
            setWord(&MSW,GUI,false);
 
            lcd->clear();
-           strcpy(LCD_Buffer,"Options Saving");
+           strcpy(LCD_Buffer,"Saving..");
            lcd->println(0,0,LCD_Buffer);
+           saveMenu();
+           TSAVE=3000;
 
         }
+
+
 
 
      }
@@ -329,7 +412,7 @@ void processGui() {
 
 //*--- Manage backlight timeout
 
-     if (getWord(SSW,FBCK)==true) {
+     if (getWord(SSW,FBCK)==true) {  //backlight timeout
         setBacklight(false);
      }
 }
@@ -444,6 +527,16 @@ void procDriveUpdate(MMS* p) {
 void procBackUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procBackUpdate() \n",PROGRAMID) : _NOP);
+     if (p->mVal==0) {
+        setWord(&MSW,BCK,false);
+        TBCK=BACKLIGHT;
+        return;
+     }
+
+     setWord(&MSW,BCK,true);
+     TBCK=0;
+     lcd->backlight(true);
+     lcd->setCursor(0,0);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -513,16 +606,17 @@ void createMenu() {
 
      keyer=new MMS(0,(char*)"Keyer",NULL,procKeyerUpdate);
      speed=new MMS(1,(char*)"Speed",procSpeedChange,procSpeedUpdate);
-     step= new MMS(1,(char*)"Step",procStepChange,procStepUpdate);
-     shift=new MMS(7,(char*)"Shift",procShiftChange,procShiftUpdate);
-     drive=new MMS(5,(char*)"Drive",procDriveChange,procDriveUpdate);
-     backl=new MMS(3,(char*)"Backlight",NULL,procBackUpdate);
-     cool= new MMS(3,(char*)"Cooler",NULL,procCoolUpdate);
+     step= new MMS(2,(char*)"Step",procStepChange,procStepUpdate);
+     shift=new MMS(3,(char*)"Shift",procShiftChange,procShiftUpdate);
+     drive=new MMS(4,(char*)"Drive",procDriveChange,procDriveUpdate);
+     backl=new MMS(5,(char*)"Backlight",NULL,procBackUpdate);
+     cool= new MMS(6,(char*)"Cooler",NULL,procCoolUpdate);
 
 //*--- Associate menu items to root to establish navigation
 
      root->add(keyer);
      root->add(speed);
+     root->add(step);
      root->add(shift);
      root->add(drive);
      root->add(backl);
