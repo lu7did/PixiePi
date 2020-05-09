@@ -152,6 +152,7 @@ MMS* coolon;
 MMS* coolof;
 
 int  TVFO=0;
+int  TBCK=0;
 
 // *----------------------------------------------------------------*
 // *                  CAT Subsytem definitions                      *
@@ -292,11 +293,16 @@ void CATgetTX() {
 //--------------------------------------------------------------------------------------------------
 void ISRHandler() {
 
-   if (TVFO!=0) {
-
+   if (TVFO!=0) { //VFO change marker
       TVFO--;
       if (TVFO==0) {
          setWord(&SSW,FVFO,true);
+      }
+   }
+   if (TBCK!=0) { //Backlight timer
+      TBCK--;
+      if (TBCK==0) {
+         setWord(&SSW,FBCK,true);
       }
    }
 }
@@ -455,6 +461,10 @@ while(true)
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() Starting operations\n",PROGRAMID) : _NOP);
      setWord(&GSW,FGUI,true);  //force an initial update of the LCD panel
      setWord(&MSW,RUN,true);   //mark the program to start running
+
+     setWord(&MSW,BCK,true);
+     setBacklight(getWord(MSW,BCK));
+
      lcd->clear();
      showGui();
 //--------------------------------------------------------------------------------------------------

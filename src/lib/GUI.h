@@ -1,3 +1,6 @@
+//*=====================================================================================================================
+//* VFO Panel presentation handlers
+//*=====================================================================================================================
 //*----------------------
 void showVFO() {
 
@@ -50,6 +53,10 @@ int alt=0;
 //*----------------------
 void showFrequency() {
 
+
+     strcpy(LCD_Buffer," ");
+     lcd->println(9,0,LCD_Buffer);
+     lcd->println(9,1,LCD_Buffer);
 
      sprintf(LCD_Buffer,"  %5.1f",vfo->get(VFOA)/1000.0);
      lcd->println(1,0,LCD_Buffer);
@@ -169,9 +176,25 @@ void showGui() {
     showLCDGUI();
 }
 //====================================================================================================================== 
+// setBacklight
+//====================================================================================================================== 
+void setBacklight(bool v) {
+
+     
+     (v==true ? TBCK=BACKLIGHT : _NOP);
+     lcd->backlight(v);
+     lcd->setCursor(0,0);
+     setWord(&SSW,FBCK,false);
+
+
+}
+//====================================================================================================================== 
 // analyze events coming from the hardware, evaluate changes on transceiver and apply
 //====================================================================================================================== 
 void processGui() {
+
+
+//*----- CMD=false GUI=* this is VFO panel
 
      if (getWord(MSW,CMD)==false) {
 
@@ -193,6 +216,7 @@ void processGui() {
 
 
         if (getWord(GSW,ECCW)==true) {  //decrease f
+
            setWord(&GSW,ECCW,false);
            if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
               f=vfo->down();
@@ -223,21 +247,103 @@ void processGui() {
 
         if (getWord(GSW,FAUXL)==true) {
            setWord(&GSW,FAUXL,false);
-           (TRACE>=0x02 ? fprintf(stderr,"%s:processGUI change RIT vfo(%d) previous(%s)\n",PROGRAMID,vfo->vfo,BOOL2CHAR(vfo->getRIT(vfo->vfo))) : _NOP);
            vfo->setRIT(vfo->vfo,!vfo->getRIT(vfo->vfo));
-           (TRACE>=0x02 ? fprintf(stderr,"%s:processGUI change RIT vfo(%d) post(%s)\n",PROGRAMID,vfo->vfo,BOOL2CHAR(vfo->getRIT(vfo->vfo))) : _NOP);
            showRIT();
         }
+
+        if (getWord(GSW,FSW)==true) {
+           setWord(&GSW,FSW,false);
+           setWord(&MSW,CMD,true);
+           setWord(&MSW,GUI,false);
+
+           lcd->clear();
+           strcpy(LCD_Buffer,"Menu!");
+           lcd->println(0,0,LCD_Buffer);
+
+        }
+
+        if (getWord(GSW,FSWL)==true) {
+           setWord(&GSW,FSWL,false);
+           vfo->setSplit(!vfo->getSplit());
+           showSplit();
+        }
+
      }
 
 
-}
+//*----- CMD=true GUI=false this is Menu panel
 
+     if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {
+
+        if (getWord(GSW,FSW)==true) {
+           setWord(&GSW,FSW,false);
+           setWord(&MSW,CMD,false);
+           showLCDVFO();
+        }
+
+
+        if (getWord(GSW,FSWL)==true) {
+           setWord(&GSW,FSWL,false);
+           setWord(&MSW,GUI,true);
+
+           lcd->clear();
+           strcpy(LCD_Buffer,"Options Menu!");
+           lcd->println(0,0,LCD_Buffer);
+
+        }
+
+
+
+
+     }
+//*----- CMD=true GUI=true this is Menu item option panel
+
+     if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==true) {
+
+        if (getWord(GSW,FSW)==true) {
+           setWord(&GSW,FSW,false);
+           setWord(&MSW,GUI,false);
+
+           lcd->clear();
+           strcpy(LCD_Buffer,"Options Restoring");
+           lcd->println(0,0,LCD_Buffer);
+
+        }
+
+
+        if (getWord(GSW,FSWL)==true) {
+           setWord(&GSW,FSWL,false);
+           setWord(&MSW,GUI,false);
+
+           lcd->clear();
+           strcpy(LCD_Buffer,"Options Saving");
+           lcd->println(0,0,LCD_Buffer);
+
+        }
+
+
+     }
+
+
+//*------ Miscellaneaous services
+
+//*--- Manage backlight timeout
+
+     if (getWord(SSW,FBCK)==true) {
+        setBacklight(false);
+     }
+}
 //====================================================================================================================== 
 // change pin handler (GPIO_AUX and GPIO_SW buttons)
 //====================================================================================================================== 
 void gpiochangePin(int pin,int state) {
   (TRACE>=0x03 ? fprintf(stderr,"%s:gpiochangePin() received upcall from gpioWrapper object state pin(%d) state(%d)\n",PROGRAMID,pin,state) : _NOP);
+
+//*--- Manager backligth
+
+  setBacklight(true);
+
+//*--- process interrupt
 
   if (getWord(GSW,FAUX)==true || getWord(GSW,FAUXL)==true || getWord(GSW,FSW)==true || getWord(GSW,FSWL)==true) {
      (TRACE>=0x00 ? fprintf(stderr,"%s:gpiochangePin() *** ERROR *** previous button event not consumed yet pin(%d) state(%d)\n",PROGRAMID,pin,state) : _NOP);
@@ -271,10 +377,18 @@ void gpiochangePin(int pin,int state) {
 // ======================================================================================================================
 void gpiochangeEncoder(int clk,int dt,int state) {
 
+//*--- Manage backlight
+
+     setBacklight(true);
+
+//*--- Process encoder interrupt
+
      (TRACE >=0x03 ? fprintf(stderr,"%s:gpiochangeEncoder() Encoder changed (%d)\n",PROGRAMID,state) : _NOP);
      if (getWord(GSW,ECW)==true || getWord(GSW,ECCW)==true) {
         (TRACE>=0x00 ? fprintf(stderr,"%s:gpiochangeEncoder() *** ERROR *** previous encoder event not consumed yet state(%d)\n",PROGRAMID,state) : _NOP);
      }
+
+//*--- Rotary event to left or right
 
      if (state>0) {
         setWord(&GSW,ECW,true);
@@ -390,8 +504,12 @@ void createMenu() {
 
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Initialize menu structure\n",PROGRAMID) : _NOP);
 
+//*--- Create root menu item
+
      root=new MMS(0,(char*)"root",NULL,NULL);
      root->TRACE=0x00;
+
+//*--- Create first child level (actual menu)
 
      keyer=new MMS(0,(char*)"Keyer",NULL,procKeyerUpdate);
      speed=new MMS(1,(char*)"Speed",procSpeedChange,procSpeedUpdate);
@@ -401,6 +519,8 @@ void createMenu() {
      backl=new MMS(3,(char*)"Backlight",NULL,procBackUpdate);
      cool= new MMS(3,(char*)"Cooler",NULL,procCoolUpdate);
 
+//*--- Associate menu items to root to establish navigation
+
      root->add(keyer);
      root->add(speed);
      root->add(shift);
@@ -408,43 +528,47 @@ void createMenu() {
      root->add(backl);
      root->add(cool);
 
+//*--- Create second level items, actual options
+
      straight=new MMS(0,(char*)"Straight",NULL,NULL);
      iambicA =new MMS(1,(char*)"Iambic A",NULL,NULL);
      iambicB =new MMS(2,(char*)"Iambic B",NULL,NULL);
+
+     spval=new MMS(3,(char*)"*",NULL,NULL);
+     stval=new MMS(1,(char*)"*",NULL,NULL);
+     shval=new MMS(6,(char*)"*",NULL,NULL);
+     drval=new MMS(6,(char*)"*",NULL,NULL);
+
+     backon=new MMS(0,(char*)"Backlight On",NULL,NULL);
+     backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
+     coolon=new MMS(0,(char*)"Cooler On",NULL,NULL);
+     coolof=new MMS(1,(char*)"Cooler Off",NULL,NULL);
+
+//*--- associate options to menu items
 
      keyer->add(straight);
      keyer->add(iambicA);
      keyer->add(iambicB);
 
-
-     spval=new MMS(3,(char*)"*",NULL,NULL);
-
      speed->add(spval);
      speed->lowerLimit(1);
      speed->upperLimit(10);
 
-     stval=new MMS(1,(char*)"*",NULL,NULL);
      step->add(stval);
      step->lowerLimit(1);
      step->upperLimit(5);
 
-     shval=new MMS(6,(char*)"*",NULL,NULL);
      shift->add(shval);
      shift->lowerLimit(4);
      shift->upperLimit(8);
 
-     drval=new MMS(6,(char*)"*",NULL,NULL);
      drive->add(drval);
      drive->lowerLimit(0);
      drive->upperLimit(8);
 
-     backon=new MMS(0,(char*)"Backlight On",NULL,NULL);
-     backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
      backl->add(backon);
      backl->add(backof);
 
-     coolon=new MMS(0,(char*)"Cooler On",NULL,NULL);
-     coolof=new MMS(1,(char*)"Cooler Off",NULL,NULL);
      cool->add(coolon);
      cool->add(coolof);
 
@@ -456,6 +580,9 @@ void createMenu() {
 //*--------------------------------------------------------------------------------------------------
 void setupLCD() {
 
+
+//*--- Special characters used in the GUI
+
 byte TX[8] = {0B11111,0B10001,0B11011,0B11011,0B11011,0B11011,0B11111}; // Inverted T (Transmission Mode)
 byte SP[8] = {31,17,23,17,29,17,31};    //Inverted S (Split)
 byte S1[8] = {0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000}; // S1 Signal
@@ -463,45 +590,12 @@ byte S2[8] = {0B11000,0B11000,0B11000,0B11000,0B11000,0B11000,0B11000}; // S2 Si
 byte S3[8] = {0B11100,0B11100,0B11100,0B11100,0B11100,0B11100,0B11100}; // S3 Signal
 byte S4[8] = {0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110}; // S4 Signal
 byte S5[8] = {0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111}; // S5 Signal
-//byte NA[8] = {0B01110,0B10001,0B10001,0B10001,0B11111,0B10001,0B10001}; //inverted A
-//byte NB[8] = {0B11110,0B10001,0B10001,0B11110,0B10001,0B10001,0B11110}; //inverted B
-//byte NB[8] = {
-//	0B00001,
-//	0B01110,
-//	0B01110,
-//	0B00001,
-//	0B01110,
-//	0B01110,
-//	0B00001};
-byte NA[8] = {
-  0B11111,
-  0B11011,
-  0B10101,
-  0B10101,
-  0B10101,
-  0B10001,
-  0B10101,
-  0B11111
-};
-byte NB[8] = {
-  0B11111,
-  0B10001,
-  0B10101,
-  0B10011,
-  0B10101,
-  0B10101,
-  0B10001,
-  0B11111
-};
-byte NS[8] = {
-  0B11111,
-  0B11001,
-  0B10111,
-  0B10011,
-  0B11101,
-  0B11101,
-  0B10011};
+byte NA[8] = {0B11111,0B11011,0B10101,0B10101,0B10101,0B10001,0B10101}; // Inverted A
+byte NB[8] = {0B11111,0B10001,0B10101,0B10011,0B10101,0B10101,0B10001}; // Inverted B
+byte NS[8] = {0B11111,0B11001,0B10111,0B10011,0B11101,0B11101,0B10011}; // Inverted S
 
+
+//*--- setup LCD configuration
 
    lcd=new LCDLib(NULL);
    (TRACE>=0x01 ? fprintf(stderr,"%s:setupLCD() LCD system initialization\n",PROGRAMID) : _NOP);
