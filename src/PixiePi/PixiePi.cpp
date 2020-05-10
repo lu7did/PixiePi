@@ -87,6 +87,7 @@
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 #include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
 
+
 #include <iostream>
 #include <cstdlib>    // for std::rand() and std::srand()
 #include <ctime>      // for std::time()
@@ -162,7 +163,7 @@ void    CATchangeFreq();      // Callback when CAT receives a freq change
 void    CATchangeStatus();    // Callback when CAT receives a status change
 
 CAT817* cat=nullptr;
-byte    FT817;
+//byte    FT817;
 char    port[80];
 long    catbaud=4800;
 int     SNR;
@@ -173,7 +174,7 @@ float f=7030000;
 
 
 #include "../lib/GUI.h"
-
+#include "../lib/VFO.h"
 
 
 struct sigaction sigact;
@@ -247,7 +248,7 @@ void CATchangeMode() {
 //------------------------------------------------------------------------------------------------------------
 void CATchangeStatus() {
 
-  (TRACE >= 0x03 ? fprintf(stderr,"%s:CATchangeStatus() FT817(%d) cat.FT817(%d)\n",PROGRAMID,FT817,cat->FT817) : _NOP);
+  (TRACE >= 0x03 ? fprintf(stderr,"%s:CATchangeStatus() FT817(%d) cat.FT817(%d)\n",PROGRAMID,vfo->FT817,cat->FT817) : _NOP);
 
   if (getWord(cat->FT817,PTT) != getWord(MSW,PTT)) {
      (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeStatus() PTT change request cat.FT817(%d) now is PTT(%s)\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false") : _NOP);
@@ -255,22 +256,22 @@ void CATchangeStatus() {
      setWord(&MSW,PTT,getWord(cat->FT817,PTT));
   }
 
-  if (getWord(cat->FT817,RIT) != getWord(FT817,RIT)) {        // RIT Changed
+  if (getWord(cat->FT817,RIT) != getWord(vfo->FT817,RIT)) {        // RIT Changed
      (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() RIT change request cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RIT) ? "true" : "false") : _NOP);
   }
 
-  if (getWord(cat->FT817,LOCK) != getWord(FT817,LOCK)) {      // LOCK Changed
+  if (getWord(cat->FT817,LOCK) != getWord(vfo->FT817,LOCK)) {      // LOCK Changed
      (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() LOCK change request cat.FT817(%d) LOCK changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,LOCK) ? "true" : "false") : _NOP);
   }
 
-  if (getWord(cat->FT817,SPLIT) != getWord(FT817,SPLIT)) {    // SPLIT mode Changed
+  if (getWord(cat->FT817,SPLIT) != getWord(vfo->FT817,SPLIT)) {    // SPLIT mode Changed
      (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() SPLIT change request cat.FT817(%d) SPLIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,SPLIT) ? "true" : "false") : _NOP);
   }
 
-  if (getWord(cat->FT817,VFO) != getWord(FT817,VFO)) {        // VFO Changed
+  if (getWord(cat->FT817,VFO) != getWord(vfo->FT817,VFO)) {        // VFO Changed
      (TRACE >=0x01 ? fprintf(stderr,"%s:CATchangeStatus() VFO change request not supported\n",PROGRAMID) : _NOP);
   }
-  FT817=cat->FT817;
+  vfo->FT817=cat->FT817;
   return;
 
 }
@@ -433,25 +434,13 @@ while(true)
 //*--------------------------------------------------------------------------------------------------------------------
      setupGPIO();
 
-//*--- Setup the CAT system
-    (TRACE>=0x01 ? fprintf(stderr,"%s:main() CAT system initialization\n",PROGRAMID) : _NOP);
-
-     cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
-     cat->FT817=FT817;
-     cat->POWER=DDS_MAXLEVEL;
-     cat->SetFrequency=f;
-     cat->MODE=MUSB;
-     cat->TRACE=TRACE;
-     cat->open(port,catbaud);
-     cat->getRX=CATgetRX;
-
 //*--- Setup VFO System
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
-     vfo=new genVFO(NULL,NULL,NULL);
+     vfo=new genVFO(&freqVfoHandler,NULL,NULL);
      vfo->TRACE=TRACE;
-     vfo->FT817=FT817;
-     vfo->MODE=cat->MODE;
+     vfo->FT817=0x00;
+     vfo->setMode(MCW);
      vfo->setBand(VFOA,vfo->getBand(f));
      vfo->setBand(VFOB,vfo->getBand(f));
      vfo->set(VFOA,f);
@@ -461,7 +450,20 @@ while(true)
      vfo->setRIT(VFOB,false);
 
      vfo->vfo=VFOA;
-     setWord(&cat->FT817,VFO,VFOA);
+     setWord(&vfo->FT817,VFO,VFOA);
+
+//*--- Setup the CAT system
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() CAT system initialization\n",PROGRAMID) : _NOP);
+
+     cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
+     cat->FT817=vfo->FT817;
+     cat->POWER=DDS_MAXLEVEL;
+     cat->SetFrequency=f;
+     cat->MODE=MUSB;
+     cat->TRACE=TRACE;
+     cat->open(port,catbaud);
+     cat->getRX=CATgetRX;
+
 
 //*--- Initialize a startup
 
@@ -474,6 +476,7 @@ while(true)
      setBacklight(true);
      lcd->clear();
      showGui();
+     gpio->writePin(GPIO_COOLER,1);
 //--------------------------------------------------------------------------------------------------
 // Main program loop
 //--------------------------------------------------------------------------------------------------
@@ -495,7 +498,9 @@ while(true)
 
           processGui();
      }
-
+  gpio->writePin(GPIO_COOLER,1);
+  setBacklight(false);
+  lcd->clear();
 
   exit(0);
 }

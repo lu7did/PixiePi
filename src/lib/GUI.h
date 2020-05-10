@@ -4,6 +4,8 @@
 //*----------------------
 void showVFO() {
 
+     if (getWord(MSW,CMD)==true) {return;}
+
      if (vfo->vfo == VFOA) {
         lcd->setCursor(0,0);
         lcd->write(byte(6));
@@ -24,6 +26,8 @@ void showChange() {
 
 int row=0;
 int alt=0;
+
+     if (getWord(MSW,CMD)==true) {return;}
 
      if (vfo->vfo == VFOA) {
         row=0;
@@ -53,6 +57,7 @@ int alt=0;
 //*----------------------
 void showFrequency() {
 
+     if (getWord(MSW,CMD)==true) {return;}
 
      strcpy(LCD_Buffer," ");
      lcd->println(9,0,LCD_Buffer);
@@ -68,6 +73,7 @@ void showFrequency() {
 //*---------------------
 void showRIT() {
 
+     if (getWord(MSW,CMD)==true) {return;}
 
      if (getWord(MSW,PTT)==true) {
         return;
@@ -85,6 +91,7 @@ void showRIT() {
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showPTT() {
 
+     if (getWord(MSW,CMD)==true) {return;}
 
      if (getWord(MSW,PTT)==false) {  //inverted for testing
         strcpy(LCD_Buffer," ");
@@ -98,6 +105,8 @@ void showPTT() {
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showKeyer() {
 
+     if (getWord(MSW,CMD)==true) {return;}
+
      switch(keyer->get()->mVal) {
         case 0 : strcpy(LCD_Buffer,"S"); break;
         case 1 : strcpy(LCD_Buffer,"1"); break;
@@ -110,6 +119,8 @@ void showKeyer() {
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showMeter() {
 
+     if (getWord(MSW,CMD)==true) {return;}
+
      lcd->setCursor(13,1);   //Placeholder Meter till a routine is developed for it
      lcd->write(byte(255));
      lcd->write(byte(255));
@@ -118,6 +129,8 @@ void showMeter() {
 }
 //*---------------------------------- Show Split
 void showSplit() {
+
+     if (getWord(MSW,CMD)==true) {return;}
 
      if (vfo->getSplit()==true) {
        lcd->setCursor(10,1);
@@ -130,6 +143,8 @@ void showSplit() {
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showLCDVFO() {
+
+     if (getWord(MSW,CMD)==true) {return;}
 
      showVFO();
      showChange();
@@ -156,7 +171,6 @@ void showLCDGUI() {
 void showGui() {
 
     if (getWord(GSW,FGUI)==false) return;
-
     setWord(&GSW,FGUI,false);
 
     if (getWord(MSW,CMD)==false) {  //CLI mode, main mode of operation
@@ -723,10 +737,10 @@ void setupGPIO() {
 
    (TRACE>=0x01 ? fprintf(stderr,"%s:setupGPIO() GPIO system initialization\n",PROGRAMID) : _NOP);
 
-//     if (gpio->setPin(GPIO_PTT,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
-//        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PTT) : _NOP);
-//        exit(16);
-//     }
+   if (gpio->setPin(GPIO_PTT,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
+      (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PTT) : _NOP);
+       exit(16);
+   }
 //     if (gpio->setPin(GPIO_PA,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
 //        (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PA) : _NOP);
 //        exit(16);
@@ -745,10 +759,11 @@ void setupGPIO() {
 //        exit(16);
 //     }
 
-//     if (gpio->setPin(GPIO_COOLER,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
-//        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_COOLER) : _NOP);
-//        exit(16);
-//     }
+     if (gpio->setPin(GPIO_COOLER,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
+        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_COOLER) : _NOP);
+        exit(16);
+    }
+
     if (gpio->setEncoder(gpiochangeEncoder) == -1) {
         (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s-%s)\n",PROGRAMID,(char*)GPIO_CLK,(char*)GPIO_DT) : _NOP);
         exit(16);
