@@ -309,6 +309,7 @@ void processGui() {
            setWord(&SSW,FKEYUP,false);
            setPTT(false);
         }
+
         if (getWord(SSW,FKEYDOWN)==true) {
            setWord(&SSW,FKEYDOWN,false);
            setPTT(true);
@@ -874,24 +875,25 @@ void updateSW(int gpio, int level, uint32_t tick)
         endPush = std::chrono::system_clock::now();
         int lapPush=std::chrono::duration_cast<std::chrono::milliseconds>(endPush - startPush).count();
         if (getWord(GSW,FSW)==true || getWord(GSW,FSWL)==true) {
-              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() Last SW signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
-              return;
-           }
-           if (lapPush < MINSWPUSH) {
-              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW pulsetoo short! ignored!\n",PROGRAMID) : _NOP) ;
-           } else {
-             if (lapPush > MAXSWPUSH) {
-                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW long pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
-                setWord(&GSW,FSWL,true);
-             } else {
-                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW brief pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
-                setWord(&GSW,FSW,true);
-             }
+           (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() Last SW signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
            return;
-           }
         }
-        startPush = std::chrono::system_clock::now();
-        int pushSW=gpioRead(GPIO_SW);
+        if (lapPush < MINSWPUSH) {
+           (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW pulsetoo short! ignored!\n",PROGRAMID) : _NOP) ;
+           return;
+        } else {
+           if (lapPush > MAXSWPUSH) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW long pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
+              setWord(&GSW,FSWL,true);
+           } else {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW brief pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
+              setWord(&GSW,FSW,true);
+           }
+           return;
+        }
+     }
+     startPush = std::chrono::system_clock::now();
+     int pushSW=gpioRead(GPIO_SW);
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler routine for Rotary Encoder Push button
@@ -905,38 +907,46 @@ void updateAUX(int gpio, int level, uint32_t tick)
         if (getWord(GSW,FAUX)==true || getWord(GSW,FAUXL)==true) {
               (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() Last AUX signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
               return;
-           }
-           if (lapAux < MINSWPUSH) {
-              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX pulsetoo short! ignored!\n",PROGRAMID) : _NOP);
-           } else {
-             if (lapAux > MAXSWPUSH) {
-                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX long pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
-                setWord(&GSW,FAUXL,true);
-             } else {
-                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX brief pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
-                setWord(&GSW,FAUX,true);
-             }
-           return;
-           }
         }
-        startAux = std::chrono::system_clock::now();
-        int pushAUX=gpioRead(GPIO_AUX);
+        if (lapAux < MINSWPUSH) {
+           (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX pulsetoo short! ignored!\n",PROGRAMID) : _NOP);
+           return;
+        } else {
+           if (lapAux > MAXSWPUSH) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX long pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
+              setWord(&GSW,FAUXL,true);
+           } else {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX brief pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
+              setWord(&GSW,FAUX,true);
+           }
+           return;
+        }
+     }
+     startAux = std::chrono::system_clock::now();
+     int pushAUX=gpioRead(GPIO_AUX);
 }
 //*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
 //* Interrupt handler routine for Rotary Encoder Push button
 //*--------------------------------------------------------------------------------------------------
 void updateKeyer(int gpio, int level, uint32_t tick)
 {
+     if (level>1) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) Pending signals level(%d), ignored! tick(%d)\n",PROGRAMID,gpio,level,tick) : _NOP);
+         return;
+     }
+
      setBacklight(true);
+
      if (getWord(GSW,FKEYUP)==true || getWord(GSW,FKEYDOWN)==true) {
-        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Last Keyer signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Last Keyer signal pending processsing, ignored! tick(%d)\n",PROGRAMID,tick) : _NOP);
         return;
      }
+
      if (level == 0) {
-        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) Keyer down\n",PROGRAMID,gpio) : _NOP);
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) level(%d) tick(%d) Keyer down\n",PROGRAMID,gpio,level,tick) : _NOP);
         setWord(&SSW,FKEYDOWN,true);
      } else {
-        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) Keyer up\n",PROGRAMID,gpio) : _NOP);
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) level(%d) tick(%d) Keyer up\n",PROGRAMID,gpio,level,tick) : _NOP);
         setWord(&SSW,FKEYUP,true);
      }
 }
@@ -968,6 +978,18 @@ void setupGPIO() {
     gpioSetMode(GPIO_SW, PI_INPUT);
     gpioSetPullUpDown(GPIO_SW,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_SW,updateSW);
+    usleep(100000);
+
+    //gpioSetMode(GPIO_RIGHT,PI_INPUT);
+    //gpioSetPullUpDown(GPIO_RIGHT,PI_PUD_UP);
+    //gpioSetAlertFunc(GPIO_RIGHT,updateKeyer);
+    //gpioSetISRFunc(GPIO_RIGHT,EITHER_EDGE,-1,updateKeyer);
+    //usleep(100000);
+
+    gpioSetMode(GPIO_LEFT,PI_INPUT);
+    gpioSetPullUpDown(GPIO_LEFT,PI_PUD_UP);
+    //gpioSetISRFunc(GPIO_LEFT,EITHER_EDGE,-1,updateKeyer);
+    gpioSetAlertFunc(GPIO_LEFT,updateKeyer);
     usleep(100000);
 
     gpioSetMode(GPIO_CLK, PI_INPUT);

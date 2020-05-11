@@ -72,18 +72,18 @@
 #include "/home/pi/librpitx/src/librpitx.h"
 
 //*---- Program specific includes
-
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
-#include "../lib/ClassMenu.h"
+
+//#include "/home/pi/OrangeThunder/src/OT/OT.h"
+//#include "../lib/ClassMenu.h"
 #include "../lib/LCDLib.h"
-#include "../lib/DDS.h"
-#include "../minIni/minIni.h"
-#include "../log.c/log.h"
+//#include "../lib/DDS.h"
+//#include "../minIni/minIni.h"
+//#include "../log.c/log.h"
 #include "../lib/MMS.h"
 
-#include "/home/pi/OrangeThunder/src/OT/OT.h"
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
-#include "/home/pi/OrangeThunder/src/lib/gpioWrapper.h"
+//#include "/home/pi/OrangeThunder/src/lib/gpioWrapper.h"
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 #include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
 
@@ -95,23 +95,37 @@
 #include <chrono>
 #include <future>
 
-//void gpiochangePin(int pin, int state);
-//void gpiochangeEncoder(int clk,int dt,int state);
-
 
 byte  TRACE=0x02;
 byte  MSW=0x00;
 byte  GSW=0x00;
 byte  SSW=0x00;
 
-int   a;
-int   anyargs;
-int   lcd_light;
+void setPTT(bool f);
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2018,2020";
+
+
+extern "C" {
+bool running=true;
+bool ready=false;
+
+#include "../lib/iambic.c"
+
+}
+
+
+
+//void gpiochangePin(int pin, int state);
+//void gpiochangeEncoder(int clk,int dt,int state);
+
+
+int   a;
+int   anyargs;
+int   lcd_light;
 
 LCDLib    *lcd;
 char*     LCD_Buffer;
@@ -132,6 +146,12 @@ auto endPush=std::chrono::system_clock::now();
 
 auto startAux=std::chrono::system_clock::now();
 auto endAux=std::chrono::system_clock::now();
+
+auto startLeft=std::chrono::system_clock::now();
+auto endLeft=std::chrono::system_clock::now();
+
+auto startRight=std::chrono::system_clock::now();
+auto endRight=std::chrono::system_clock::now();
 
 int value=0;
 int lastEncoded=0;
@@ -463,7 +483,7 @@ while(true)
 //*--- Setup VFO System
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
-     vfo=new genVFO(&freqVfoHandler,NULL,NULL);
+     vfo=new genVFO(&freqVfoHandler,NULL,NULL,NULL);
      vfo->TRACE=TRACE;
      vfo->FT817=0x00;
      vfo->setMode(MCW);
@@ -497,6 +517,11 @@ while(true)
      setWord(&GSW,FGUI,true);  //force an initial update of the LCD panel
      setWord(&MSW,RUN,true);   //mark the program to start running
 
+
+//*--- start the keyer
+
+    iambic_init();
+
      //setWord(&MSW,BCK,true);
 
      setBacklight(true);
@@ -527,8 +552,12 @@ while(true)
 //*--- Read and process  events coming from the GUI interface
 
           processGui();
-          usleep(10000);
      }
+ 
+//*--- Stop the keyer
+
+  iambic_close();
+
 //  gpio->writePin(GPIO_COOLER,1);
   setBacklight(false);
   lcd->clear();
