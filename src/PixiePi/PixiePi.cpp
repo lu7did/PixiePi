@@ -95,12 +95,11 @@
 #include <chrono>
 #include <future>
 
+//void gpiochangePin(int pin, int state);
+//void gpiochangeEncoder(int clk,int dt,int state);
 
-void gpiochangePin(int pin, int state);
-void gpiochangeEncoder(int clk,int dt,int state);
 
-
-byte  TRACE=0x01;
+byte  TRACE=0x02;
 byte  MSW=0x00;
 byte  GSW=0x00;
 byte  SSW=0x00;
@@ -120,9 +119,24 @@ char*     LCD_Buffer;
 // *                  GPIO support processing                       *
 // *----------------------------------------------------------------*
 // --- gpio object
-gpioWrapper* gpio=nullptr;
-char   *gpio_buffer;
-void gpiochangePin();
+//gpioWrapper* gpio=nullptr;
+//char   *gpio_buffer;
+//void gpiochangePin();
+
+//*--- debouncing logic setup
+auto startEncoder=std::chrono::system_clock::now();
+auto endEncoder=std::chrono::system_clock::now();
+
+auto startPush=std::chrono::system_clock::now();
+auto endPush=std::chrono::system_clock::now();
+
+auto startAux=std::chrono::system_clock::now();
+auto endAux=std::chrono::system_clock::now();
+
+int value=0;
+int lastEncoded=0;
+int counter=0;
+int clkLastState=0; 
 
 // *----------------------------------------------------------------*
 // *                  VFO Subsytem definitions                      *
@@ -134,12 +148,14 @@ genVFO*    vfo=nullptr;
 // *----------------------------------------------------------------*
 MMS* root;
 MMS* keyer;
+MMS* mode;
 MMS* speed;
 MMS* step;
 MMS* shift;
 MMS* drive;
 MMS* backl;
 MMS* cool;
+MMS* beacon;
 MMS* straight;
 MMS* iambicA;
 MMS* iambicB;
@@ -147,10 +163,13 @@ MMS* spval;
 MMS* stval;
 MMS* shval;
 MMS* drval;
+MMS* modval;
 MMS* backon;
 MMS* backof;
 MMS* coolon;
 MMS* coolof;
+MMS* bcnon;
+MMS* bcnoff;
 
 int  TVFO=0;
 int  TBCK=0;
@@ -256,8 +275,8 @@ void CATchangeStatus() {
      setWord(&MSW,PTT,getWord(cat->FT817,PTT));
   }
 
-  if (getWord(cat->FT817,RIT) != getWord(vfo->FT817,RIT)) {        // RIT Changed
-     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() RIT change request cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RIT) ? "true" : "false") : _NOP);
+  if (getWord(cat->FT817,RITX) != getWord(vfo->FT817,RITX)) {        // RIT Changed
+     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() RIT change request cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RITX) ? "true" : "false") : _NOP);
   }
 
   if (getWord(cat->FT817,LOCK) != getWord(vfo->FT817,LOCK)) {      // LOCK Changed
@@ -301,7 +320,7 @@ void ISRHandler() {
       }
    }
    if (TBCK!=0) { //Backlight timer
-      TBCK--;
+      (getWord(MSW,BCK)==true ? TBCK-- : _NOP);
       if (TBCK==0) {
          setWord(&SSW,FBCK,true);
       }
@@ -319,21 +338,28 @@ void ISRHandler() {
 //*--------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    
+     std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock    
      fprintf(stderr,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
 
 //*--- Establish exception handling structure
 
-     sigact.sa_handler = sighandler;
-     sigemptyset(&sigact.sa_mask);
-     sigact.sa_flags = 0;
+//     sigact.sa_handler = sighandler;
+//     sigemptyset(&sigact.sa_mask);
+//     sigact.sa_flags = 0;
 
 
-     sigaction(SIGINT, &sigact, NULL);
-     sigaction(SIGTERM, &sigact, NULL);
-     sigaction(SIGQUIT, &sigact, NULL);
-     sigaction(SIGPIPE, &sigact, NULL);
-     signal(SIGPIPE, SIG_IGN);
+//     sigaction(SIGINT, &sigact, NULL);
+//     sigaction(SIGTERM, &sigact, NULL);
+//     sigaction(SIGQUIT, &sigact, NULL);
+//     sigaction(SIGPIPE, &sigact, NULL);
+//     signal(SIGPIPE, SIG_IGN);
+
+     for (int i = 0; i < 64; i++) {
+        if (i != SIGALRM && i != 17 && i != 28) {
+           signal(i,sighandler);
+        }
+     }
+
 
 
 while(true)
@@ -400,7 +426,7 @@ while(true)
 //*--- Create memory resources
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() Memory resources acquired\n",PROGRAMID) : _NOP);
-     gpio_buffer=(char*) malloc(BUFSIZE);
+//     gpio_buffer=(char*) malloc(BUFSIZE);
      LCD_Buffer=(char*) malloc(32);
 
 //*--- Define and initialize LCD interface
@@ -432,7 +458,7 @@ while(true)
 //*
 //*
 //*--------------------------------------------------------------------------------------------------------------------
-     setupGPIO();
+      setupGPIO();
 
 //*--- Setup VFO System
 
@@ -476,31 +502,39 @@ while(true)
      setBacklight(true);
      lcd->clear();
      showGui();
-     gpio->writePin(GPIO_COOLER,1);
+
+     setCooler(true);
+     setPTT(false);
+
+     //gpio->writePin(GPIO_COOLER,1);
 //--------------------------------------------------------------------------------------------------
 // Main program loop
 //--------------------------------------------------------------------------------------------------
 
-     while(getWord(MSW,RUN)==true){
+     while(getWord(MSW,RUN)==true) {
 
 //*--- Read and process events coming from the CAT subsystem
       (cat->active==true ? cat->get() : (void) _NOP);
 
 //*--- Read and process events coming from the GPIO subsystem
 
-      int gpio_read=gpio->readpipe(gpio_buffer,BUFSIZE);
-          if (gpio_read>0) {
-              gpio_buffer[gpio_read]=0x00;
-             (TRACE>=0x02 ? fprintf(stderr,"%s",(char*)gpio_buffer) : _NOP);
-          }
+//      int gpio_read=gpio->readpipe(gpio_buffer,BUFSIZE);
+//          if (gpio_read>0) {
+//              gpio_buffer[gpio_read]=0x00;
+//             (TRACE>=0x02 ? fprintf(stderr,"%s",(char*)gpio_buffer) : _NOP);
+//          }
 
 //*--- Read and process  events coming from the GUI interface
 
           processGui();
+          usleep(10000);
      }
-  gpio->writePin(GPIO_COOLER,1);
+//  gpio->writePin(GPIO_COOLER,1);
   setBacklight(false);
   lcd->clear();
+
+  setCooler(false);
+  setPTT(false);
 
   exit(0);
 }

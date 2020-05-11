@@ -1,6 +1,21 @@
+
 //*=====================================================================================================================
 //* VFO Panel presentation handlers
 //*=====================================================================================================================
+
+void showMode() {
+
+char m[8];
+
+   if (vfo==nullptr) {
+      strcpy(m,"cw");   
+      return;
+   } else {
+     vfo->code2mode(vfo->MODE,m);
+   }
+   lcd->println(13,0,m);
+
+}
 //*----------------------
 void showVFO() {
 
@@ -154,6 +169,7 @@ void showLCDVFO() {
      showSplit();
      showKeyer();
      showMeter();
+     showMode();
 
      return;
 }
@@ -195,11 +211,16 @@ void showGui() {
 void setBacklight(bool v) {
 
      
+     if (getWord(MSW,BCK)==false) {
+         TBCK=BACKLIGHT;
+         return;
+     }
+
      (v==true ? TBCK=BACKLIGHT : _NOP);
      lcd->backlight(v);
      lcd->setCursor(0,0);
      setWord(&SSW,FBCK,false);
-
+     usleep(50000);
 
 }
 //====================================================================================================================== 
@@ -253,6 +274,28 @@ void restoreMenu() {
      root->curr->restore();
 }
 //====================================================================================================================== 
+// actuators for GPIO controlled lines
+//====================================================================================================================== 
+//*----- Cooler
+void setCooler(bool f) {
+
+    (f==true ? gpioWrite(GPIO_COOLER,1) : gpioWrite(GPIO_COOLER,0));
+    setWord(&MSW,COOLER,f);
+    (TRACE>=0x02 ? fprintf(stderr,"%s:setCooler() Cooler set(%s)\n",PROGRAMID,BOOL2CHAR(f)) : _NOP);
+
+    return;
+}
+//*----- PTT
+void setPTT(bool f) {
+
+    (f==true ? gpioWrite(GPIO_PTT,1) : gpioWrite(GPIO_PTT,0));
+    setWord(&MSW,PTT,f);
+    showPTT();
+    (TRACE>=0x02 ? fprintf(stderr,"%s:setPTT() PTT set(%s)\n",PROGRAMID,BOOL2CHAR(f)) : _NOP);
+    return;
+}
+
+//====================================================================================================================== 
 // analyze events coming from the hardware, evaluate changes on transceiver and apply
 //====================================================================================================================== 
 void processGui() {
@@ -261,6 +304,15 @@ void processGui() {
 //*----- CMD=false GUI=* this is VFO panel
 
      if (getWord(MSW,CMD)==false) {
+
+        if (getWord(SSW,FKEYUP)==true) {
+           setWord(&SSW,FKEYUP,false);
+           setPTT(false);
+        }
+        if (getWord(SSW,FKEYDOWN)==true) {
+           setWord(&SSW,FKEYDOWN,false);
+           setPTT(true);
+        }
 
         if (getWord(GSW,ECW)==true) {  //increase f
            setWord(&GSW,ECW,false);
@@ -433,7 +485,8 @@ void processGui() {
 //====================================================================================================================== 
 // change pin handler (GPIO_AUX and GPIO_SW buttons)
 //====================================================================================================================== 
-void gpiochangePin(int pin,int state) {
+void gpiochangePin(int pin,int state,uint32_t tick) {
+
   (TRACE>=0x03 ? fprintf(stderr,"%s:gpiochangePin() received upcall from gpioWrapper object state pin(%d) state(%d)\n",PROGRAMID,pin,state) : _NOP);
 
 //*--- Manager backligth
@@ -472,9 +525,11 @@ void gpiochangePin(int pin,int state) {
 // ======================================================================================================================
 // change pin handler (GPIO_AUX and GPIO_SW buttons)
 // ======================================================================================================================
-void gpiochangeEncoder(int clk,int dt,int state) {
+void gpiochangeEncoder(int gpio,int state,uint32_t tick) {
 
 //*--- Manage backlight
+
+return;
 
      setBacklight(true);
 
@@ -522,6 +577,14 @@ void procStepUpdate(MMS* p) {
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI update events
 //*--------------------------------------------------------------------------------------------------
+void procModeUpdate(MMS* p) {
+
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procModeUpdate() \n",PROGRAMID) : _NOP);
+
+}
+//*--------------------------------------------------------------------------------------------------
+//* handler for GUI update events
+//*--------------------------------------------------------------------------------------------------
 void procShiftUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procShiftUpdate() \n",PROGRAMID) : _NOP);
@@ -558,7 +621,15 @@ void procBackUpdate(MMS* p) {
 //*--------------------------------------------------------------------------------------------------
 void procCoolUpdate(MMS* p) {
 
-     (TRACE>=0x02 ? fprintf(stderr,"%s:procCoolUpdate() \n",PROGRAMID) : _NOP);
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procCoolUpdate()\n",PROGRAMID) : _NOP);
+
+}
+//*--------------------------------------------------------------------------------------------------
+//* handler for GUI update events
+//*--------------------------------------------------------------------------------------------------
+void procBeaconUpdate(MMS* p) {
+
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procBeaconUpdate()\n",PROGRAMID) : _NOP);
 
 }
 
@@ -570,6 +641,17 @@ void procSpeedChange(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procSpeedChange() \n",PROGRAMID) : _NOP);
      sprintf(p->mText,"%2d wpm",p->mVal*5);
+
+}
+//*--------------------------------------------------------------------------------------------------
+void procModeChange(MMS* p) {
+
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procModeChange() \n",PROGRAMID) : _NOP);
+     if (vfo==nullptr) {
+        strcpy(p->mText,"cw");
+     } else {
+        vfo->code2mode(p->mVal,p->mText);
+     }
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -618,23 +700,27 @@ void createMenu() {
 
 //*--- Create first child level (actual menu)
 
-     keyer=new MMS(0,(char*)"Keyer",NULL,procKeyerUpdate);
-     speed=new MMS(1,(char*)"Speed",procSpeedChange,procSpeedUpdate);
-     step= new MMS(2,(char*)"Step",procStepChange,procStepUpdate);
-     shift=new MMS(3,(char*)"Shift",procShiftChange,procShiftUpdate);
-     drive=new MMS(4,(char*)"Drive",procDriveChange,procDriveUpdate);
-     backl=new MMS(5,(char*)"Backlight",NULL,procBackUpdate);
-     cool= new MMS(6,(char*)"Cooler",NULL,procCoolUpdate);
+     keyer=  new MMS(0,(char*)"Keyer",NULL,procKeyerUpdate);
+     mode=   new MMS(1,(char*)"Mode",procModeChange,procModeUpdate);
+     speed=  new MMS(2,(char*)"Speed",procSpeedChange,procSpeedUpdate);
+     step=   new MMS(3,(char*)"Step",procStepChange,procStepUpdate);
+     shift=  new MMS(4,(char*)"Shift",procShiftChange,procShiftUpdate);
+     drive=  new MMS(5,(char*)"Drive",procDriveChange,procDriveUpdate);
+     backl=  new MMS(6,(char*)"Backlight",NULL,procBackUpdate);
+     cool=   new MMS(7,(char*)"Cooler",NULL,procCoolUpdate);
+     beacon= new MMS(8,(char*)"Beacon",NULL,procBeaconUpdate);
 
 //*--- Associate menu items to root to establish navigation
 
      root->add(keyer);
      root->add(speed);
+     root->add(mode);
      root->add(step);
      root->add(shift);
      root->add(drive);
      root->add(backl);
      root->add(cool);
+     root->add(beacon);
 
 //*--- Create second level items, actual options
 
@@ -642,10 +728,14 @@ void createMenu() {
      iambicA =new MMS(1,(char*)"Iambic A",NULL,NULL);
      iambicB =new MMS(2,(char*)"Iambic B",NULL,NULL);
 
+     bcnoff=new MMS(0,(char*)"Beacon Off",NULL,NULL);
+     bcnon =new MMS(1,(char*)"Beacon On",NULL,NULL);
+
      spval=new MMS(3,(char*)"*",NULL,NULL);
      stval=new MMS(1,(char*)"*",NULL,NULL);
      shval=new MMS(6,(char*)"*",NULL,NULL);
      drval=new MMS(6,(char*)"*",NULL,NULL);
+     modval=new MMS(2,(char*)"*",NULL,NULL);
 
      backon=new MMS(0,(char*)"Backlight On",NULL,NULL);
      backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
@@ -657,6 +747,8 @@ void createMenu() {
      keyer->add(straight);
      keyer->add(iambicA);
      keyer->add(iambicB);
+
+     mode->add(modval);
 
      speed->add(spval);
      speed->lowerLimit(1);
@@ -679,6 +771,9 @@ void createMenu() {
 
      cool->add(coolon);
      cool->add(coolof);
+
+     beacon->add(bcnoff);
+     beacon->add(bcnon);
 
      (TRACE>=0x02 ? root->list() : (void) _NOP );
 
@@ -727,53 +822,161 @@ byte NS[8] = {0B11111,0B11001,0B10111,0B10011,0B11101,0B11101,0B10011}; // Inver
    lcd->print("Loading...");
 
 }
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler for Rotary Encoder CW and CCW control
+//*--------------------------------------------------------------------------------------------------
+void updateEncoders(int gpio, int level, uint32_t tick)
+{
+        if (level != 0) {  //ignore non falling part of the interruption
+           return;
+        }
+
+        setBacklight(true);
+
+        if (getWord(GSW,ECW)==true || getWord(GSW,ECCW) ==true) { //exit if pending to service a previous one
+           (TRACE>=0x02 ? fprintf(stderr,"%s:updateEnconders() Last CW/CCW signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
+           return;
+        }
+
+        int clkState=gpioRead(GPIO_CLK);
+        int dtState= gpioRead(GPIO_DT);
+
+        endEncoder = std::chrono::system_clock::now();
+
+        int lapEncoder=std::chrono::duration_cast<std::chrono::milliseconds>(endEncoder - startEncoder).count();
+
+        if ( lapEncoder  < MINENCLAP )  {
+           (TRACE>=0x02 ? fprintf(stderr,"%s:updateEnconders() CW/CCW signal too close from last, ignored lap(%d)!\n",PROGRAMID,lapEncoder) : _NOP);
+           return;
+        }
+
+        if (dtState != clkState) {
+          counter++;
+          setWord(&GSW,ECCW,true);
+        } else {
+          counter--;
+          setWord(&GSW,ECW,true);
+        }
+
+        clkLastState=clkState;        
+        startEncoder = std::chrono::system_clock::now();
+
+}
+
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler routine for Rotary Encoder Push button
+//*--------------------------------------------------------------------------------------------------
+void updateSW(int gpio, int level, uint32_t tick)
+{
+
+     setBacklight(true);
+     if (level != 0) {
+        endPush = std::chrono::system_clock::now();
+        int lapPush=std::chrono::duration_cast<std::chrono::milliseconds>(endPush - startPush).count();
+        if (getWord(GSW,FSW)==true || getWord(GSW,FSWL)==true) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() Last SW signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
+              return;
+           }
+           if (lapPush < MINSWPUSH) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW pulsetoo short! ignored!\n",PROGRAMID) : _NOP) ;
+           } else {
+             if (lapPush > MAXSWPUSH) {
+                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW long pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
+                setWord(&GSW,FSWL,true);
+             } else {
+                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() SW brief pulse detected lap(%d)\n",PROGRAMID,lapPush) : _NOP);
+                setWord(&GSW,FSW,true);
+             }
+           return;
+           }
+        }
+        startPush = std::chrono::system_clock::now();
+        int pushSW=gpioRead(GPIO_SW);
+}
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler routine for Rotary Encoder Push button
+//*--------------------------------------------------------------------------------------------------
+void updateAUX(int gpio, int level, uint32_t tick)
+{
+     setBacklight(true);
+     if (level != 0) {
+        endAux = std::chrono::system_clock::now();
+        int lapAux=std::chrono::duration_cast<std::chrono::milliseconds>(endAux - startAux).count();
+        if (getWord(GSW,FAUX)==true || getWord(GSW,FAUXL)==true) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() Last AUX signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
+              return;
+           }
+           if (lapAux < MINSWPUSH) {
+              (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX pulsetoo short! ignored!\n",PROGRAMID) : _NOP);
+           } else {
+             if (lapAux > MAXSWPUSH) {
+                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX long pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
+                setWord(&GSW,FAUXL,true);
+             } else {
+                (TRACE>=0x02 ? fprintf(stderr,"%s:updateSW() AUX brief pulse detected lap(%d)\n",PROGRAMID,lapAux) : _NOP);
+                setWord(&GSW,FAUX,true);
+             }
+           return;
+           }
+        }
+        startAux = std::chrono::system_clock::now();
+        int pushAUX=gpioRead(GPIO_AUX);
+}
+//*--------------------------[Rotary Encoder Interrupt Handler]--------------------------------------
+//* Interrupt handler routine for Rotary Encoder Push button
+//*--------------------------------------------------------------------------------------------------
+void updateKeyer(int gpio, int level, uint32_t tick)
+{
+     setBacklight(true);
+     if (getWord(GSW,FKEYUP)==true || getWord(GSW,FKEYDOWN)==true) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Last Keyer signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
+        return;
+     }
+     if (level == 0) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) Keyer down\n",PROGRAMID,gpio) : _NOP);
+        setWord(&SSW,FKEYDOWN,true);
+     } else {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:updateKeyer() Pin(%d) Keyer up\n",PROGRAMID,gpio) : _NOP);
+        setWord(&SSW,FKEYUP,true);
+     }
+}
 //*--------------------------------------------------------------------------------------------------
 //* setupGPIO setup the GPIO definitions
 //*--------------------------------------------------------------------------------------------------
 void setupGPIO() {
 
-    gpio=new gpioWrapper(gpiochangePin);
-    gpio->TRACE=TRACE;
-
-   (TRACE>=0x01 ? fprintf(stderr,"%s:setupGPIO() GPIO system initialization\n",PROGRAMID) : _NOP);
-
-   if (gpio->setPin(GPIO_PTT,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
-      (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PTT) : _NOP);
-       exit(16);
-   }
-//     if (gpio->setPin(GPIO_PA,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
-//        (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_PA) : _NOP);
-//        exit(16);
-//     }
-
-     if (gpio->setPin(GPIO_AUX,GPIO_IN,GPIO_PUP,GPIO_NLP) == -1) {
-        (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_AUX) : _NOP);
-        exit(16);
-     }
-     if (gpio->setPin(GPIO_SW,GPIO_IN,GPIO_PUP,GPIO_NLP) == -1) {
-        (TRACE>=0x0 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_SW) : _NOP);
-        exit(16);
-     }
-//     if (gpio->setPin(GPIO_KEYER,GPIO_IN,GPIO_PUP,GPIO_NLP) == -1) {
-//        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_KEYER) : _NOP);
-//        exit(16);
-//     }
-
-     if (gpio->setPin(GPIO_COOLER,GPIO_OUT,GPIO_PUP,GPIO_NLP) == -1) {
-        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s)\n",PROGRAMID,(char*)GPIO_COOLER) : _NOP);
+    if(gpioInitialise()<0) {
+        (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Cannot initialize GPIO\n",PROGRAMID) : _NOP);
         exit(16);
     }
 
-    if (gpio->setEncoder(gpiochangeEncoder) == -1) {
-        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to initialize pin(%s-%s)\n",PROGRAMID,(char*)GPIO_CLK,(char*)GPIO_DT) : _NOP);
-        exit(16);
-     }
 
-     if (gpio->start() == -1) {
-        (TRACE>=0x00 ? fprintf(stderr,"%s:main() failure to start gpioWrapper object\n",PROGRAMID) : _NOP);
-        exit(8);
-     }
+//*---- Turn cooler on
 
-     usleep(1000);
+    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
+    gpioWrite(GPIO_COOLER, 1);
+    usleep(100000);
+ 
+
+    gpioSetMode(GPIO_AUX, PI_INPUT);
+    gpioSetPullUpDown(GPIO_AUX,PI_PUD_UP);
+    gpioSetAlertFunc(GPIO_AUX,updateAUX);
+    usleep(100000);
+
+//*---- Configure Encoder
+
+    gpioSetMode(GPIO_SW, PI_INPUT);
+    gpioSetPullUpDown(GPIO_SW,PI_PUD_UP);
+    gpioSetAlertFunc(GPIO_SW,updateSW);
+    usleep(100000);
+
+    gpioSetMode(GPIO_CLK, PI_INPUT);
+    gpioSetPullUpDown(GPIO_CLK,PI_PUD_UP);
+    usleep(100000);
+    gpioSetISRFunc(GPIO_CLK, FALLING_EDGE,0,updateEncoders);
+
+    gpioSetMode(GPIO_DT, PI_INPUT);
+    gpioSetPullUpDown(GPIO_DT,PI_PUD_UP);
+    usleep(100000);
 
 }

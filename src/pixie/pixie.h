@@ -124,9 +124,9 @@ enum {
 #define FT3       0B00000100
 #define FTU       0B00001000
 #define FTD       0B00010000
-#define FVFO      0B00100000
+#define FVFOX     0B00100000
 #define FDOG      0B01000000
-#define FBCK      0B10000000
+#define FBCKX     0B10000000
 
 //*--- Master System Word (MSW)
 

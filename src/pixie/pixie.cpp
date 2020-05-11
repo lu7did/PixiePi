@@ -598,10 +598,10 @@ void CATchangeStatus() {
 
 //*---------------------
 
-       if (getWord(cat.FT817,RIT) != getWord(FT817,RIT)) {        //* RIT Changed
+       if (getWord(cat.FT817,RITX) != getWord(FT817,RITX)) {        //* RIT Changed
           log_info("CATchangeStatus():RIT");
-          setWord(&FT817,RIT,getWord(cat.FT817,RIT));
-          (getWord(FT817,RIT)==true ? rit.mItem=1 : rit.mItem=0);
+          setWord(&FT817,RITX,getWord(cat.FT817,RITX));
+          (getWord(FT817,RITX)==true ? rit.mItem=1 : rit.mItem=0);
           RitUpdate();
        }
 
@@ -1371,7 +1371,7 @@ int main(int argc, char* argv[])
    shift=ini_getl("VFO","VFO_SHIFT",VFO_SHIFT,inifile);
 
    setWord(&FT817,SPLIT,ini_getl("VFO","SPLIT",0,inifile));
-   setWord(&FT817,RIT,ini_getl("VFO","RIT",0,inifile));
+   setWord(&FT817,RITX,ini_getl("VFO","RIT",0,inifile));
    setWord(&FT817,LOCK,ini_getl("VFO","LOCK",0,inifile));
    //setWord(&FT817,TXONLY,ini_getl("VFO","TXONLY",0,inifile));
    log_fatal("Transceiver configuration");
@@ -1764,7 +1764,7 @@ int main(int argc, char* argv[])
     sprintf(iniStr,"%d",mode);
     nIni = ini_puts("VFO", "MODE",iniStr,inifile);
 
-    sprintf(iniStr,"%d",getWord(FT817,RIT));
+    sprintf(iniStr,"%d",getWord(FT817,RITX));
     nIni = ini_puts("VFO", "RIT",iniStr,inifile);
 
     sprintf(iniStr,"%d",getWord(FT817,LOCK));

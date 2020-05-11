@@ -15,4 +15,5 @@ char* b;
 
    vfo->vfo2str(vfo->vfo,b);
    (TRACE>=0x02 ? fprintf(stderr,"%s:freqVfoHandler() VFO(%s) fA(%5.0f) fB(%5.0f) PTT(%s)\n",PROGRAMID,b,vfo->get(VFOA),vfo->get(VFOB),BOOL2CHAR(getWord(vfo->FT817,PTT))) : _NOP);
+
 }
