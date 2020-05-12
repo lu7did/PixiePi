@@ -94,7 +94,7 @@
 
 #include <chrono>
 #include <future>
-
+#define SIGTERM_MSG "SIGTERM received.\n"
 
 byte  TRACE=0x02;
 byte  MSW=0x00;
@@ -102,6 +102,7 @@ byte  GSW=0x00;
 byte  SSW=0x00;
 
 void setPTT(bool f);
+static void sighandler(int signum);
 //-------------------- GLOBAL VARIABLES ----------------------------
 const char   *PROGRAMID="PixiePi";
 const char   *PROG_VERSION="1.0";
@@ -381,7 +382,6 @@ int main(int argc, char* argv[])
      }
 
 
-
 while(true)
         {
                 a = getopt(argc, argv, "f:eds:hg:i:p:A:C:D:E:F:G:M:S:");
@@ -560,11 +560,11 @@ while(true)
 
 //  gpio->writePin(GPIO_COOLER,1);
   setBacklight(false);
-  lcd->clear();
+//  lcd->clear();
 
   setCooler(false);
   setPTT(false);
-
+  gpioTerminate();
   exit(0);
 }
 

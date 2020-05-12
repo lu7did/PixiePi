@@ -211,16 +211,16 @@ void showGui() {
 void setBacklight(bool v) {
 
      
-     if (getWord(MSW,BCK)==false) {
-         TBCK=BACKLIGHT;
-         return;
-     }
-
      (v==true ? TBCK=BACKLIGHT : _NOP);
      lcd->backlight(v);
      lcd->setCursor(0,0);
      setWord(&SSW,FBCK,false);
      usleep(50000);
+     if (getWord(MSW,BCK)==false) {
+         TBCK=BACKLIGHT;
+         return;
+     }
+
 
 }
 //====================================================================================================================== 
@@ -1001,4 +1001,10 @@ void setupGPIO() {
     gpioSetPullUpDown(GPIO_DT,PI_PUD_UP);
     usleep(100000);
 
+
+    for (int i=0;i<64;i++) {
+
+        gpioSetSignalFunc(i,sighandler);
+
+    }
 }
