@@ -520,7 +520,7 @@ while(true)
 
 //*--- start the keyer
 
-    iambic_init();
+     iambic_init();
 
      //setWord(&MSW,BCK,true);
 
@@ -539,15 +539,7 @@ while(true)
      while(getWord(MSW,RUN)==true) {
 
 //*--- Read and process events coming from the CAT subsystem
-      (cat->active==true ? cat->get() : (void) _NOP);
-
-//*--- Read and process events coming from the GPIO subsystem
-
-//      int gpio_read=gpio->readpipe(gpio_buffer,BUFSIZE);
-//          if (gpio_read>0) {
-//              gpio_buffer[gpio_read]=0x00;
-//             (TRACE>=0x02 ? fprintf(stderr,"%s",(char*)gpio_buffer) : _NOP);
-//          }
+          (cat->active==true ? cat->get() : (void) _NOP);
 
 //*--- Read and process  events coming from the GUI interface
 

@@ -9,6 +9,7 @@ char m[8];
 
    if (vfo==nullptr) {
       strcpy(m,"cw");   
+      usleep(100000);
       return;
    } else {
      vfo->code2mode(vfo->MODE,m);
@@ -33,7 +34,6 @@ void showVFO() {
         lcd->setCursor(0,1);
         lcd->write(byte(7));
      }
-
 }
 
 //*----------------------
@@ -115,7 +115,6 @@ void showPTT() {
      }
      lcd->setCursor(11,1);
      lcd->write(0);
-
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showKeyer() {
@@ -129,7 +128,6 @@ void showKeyer() {
      }
 
      lcd->println(12,1,LCD_Buffer);
-
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showMeter() {
@@ -154,7 +152,6 @@ void showSplit() {
        strcpy(LCD_Buffer," ");
        lcd->println(10,1,LCD_Buffer);
      }
-
 }
 //*---------------------------------- Show Main Transceiver LCD Dialog (VFO)
 void showLCDVFO() {
@@ -210,18 +207,22 @@ void showGui() {
 //====================================================================================================================== 
 void setBacklight(bool v) {
 
-     
-     (v==true ? TBCK=BACKLIGHT : _NOP);
+     if (getWord(MSW,BCK)==false) {
+        TBCK=BACKLIGHT;
+        return;
+     }
+
+     if (TBCK>0) {
+        TBCK=BACKLIGHT;
+        setWord(&SSW,FBCK,false);
+        return;
+     }
+     TBCK=BACKLIGHT; 
      lcd->backlight(v);
      lcd->setCursor(0,0);
      setWord(&SSW,FBCK,false);
-     usleep(50000);
-     if (getWord(MSW,BCK)==false) {
-         TBCK=BACKLIGHT;
-         return;
-     }
 
-
+     usleep(10000);
 }
 //====================================================================================================================== 
 // showMenu()
@@ -305,18 +306,9 @@ void processGui() {
 
      if (getWord(MSW,CMD)==false) {
 
-        if (getWord(SSW,FKEYUP)==true) {
-           setWord(&SSW,FKEYUP,false);
-           setPTT(false);
-        }
-
-        if (getWord(SSW,FKEYDOWN)==true) {
-           setWord(&SSW,FKEYDOWN,false);
-           setPTT(true);
-        }
-
         if (getWord(GSW,ECW)==true) {  //increase f
            setWord(&GSW,ECW,false);
+           setWord(&GSW,ECCW,false);
            if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
               f=vfo->up();
               TVFO=3000;
@@ -335,6 +327,7 @@ void processGui() {
         if (getWord(GSW,ECCW)==true) {  //decrease f
 
            setWord(&GSW,ECCW,false);
+           setWord(&GSW,ECW,false);
            if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
               f=vfo->down();
               TVFO=3000;
@@ -832,7 +825,7 @@ void updateEncoders(int gpio, int level, uint32_t tick)
            return;
         }
 
-        setBacklight(true);
+        //setBacklight(true);
 
         if (getWord(GSW,ECW)==true || getWord(GSW,ECCW) ==true) { //exit if pending to service a previous one
            (TRACE>=0x02 ? fprintf(stderr,"%s:updateEnconders() Last CW/CCW signal pending processsing, ignored!\n",PROGRAMID) : _NOP);
