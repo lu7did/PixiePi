@@ -89,8 +89,8 @@ void showFrequency() {
 void showRIT() {
 
      if (getWord(MSW,CMD)==true) {return;}
-
-     if (getWord(MSW,PTT)==true) {
+     if (vfo==nullptr) {return;}
+     if (vfo->getPTT()==true) {
         return;
      }
 
@@ -107,8 +107,8 @@ void showRIT() {
 void showPTT() {
 
      if (getWord(MSW,CMD)==true) {return;}
-
-     if (getWord(MSW,PTT)==false) {  //inverted for testing
+     if (vfo==nullptr) {return; }
+     if (vfo->getPTT()==false) {  //inverted for testing
         strcpy(LCD_Buffer," ");
         lcd->println(11,1,LCD_Buffer);
         return;
@@ -311,7 +311,7 @@ void processGui() {
         if (getWord(GSW,ECW)==true) {  //increase f
            setWord(&GSW,ECW,false);
            setWord(&GSW,ECCW,false);
-           if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
+           if (vfo->getPTT()==false && vfo->getRIT()==false) { 
               f=vfo->up();
               TVFO=3000;
               setWord(&GSW,FBLINK,true);
@@ -330,7 +330,7 @@ void processGui() {
 
            setWord(&GSW,ECCW,false);
            setWord(&GSW,ECW,false);
-           if (getWord(MSW,PTT)==false && vfo->getRIT()==false) { 
+           if (vfo->getPTT()==false && vfo->getRIT()==false) { 
               f=vfo->down();
               TVFO=3000;
               setWord(&GSW,FBLINK,true);

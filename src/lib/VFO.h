@@ -41,6 +41,7 @@ void changeVfoHandler(byte S) {
          setWord(&cat->FT817,SPLIT,getWord(vfo->FT817,SPLIT));
       }
       showVFO();
+      showSplit();
       showChange();
    }
    if (getWord(S,RITX)==true) {
@@ -55,6 +56,8 @@ void changeVfoHandler(byte S) {
       if (cat!=nullptr) {
          setWord(&cat->FT817,PTT,getWord(vfo->FT817,PTT));
       }
+      setWord(&MSW,PTT,getWord(cat->FT817,PTT));
+      //vfo->setPTT(getWord(cat->FT817,PTT));
       showPTT();
    }
    if (getWord(S,VFO)==true) {
@@ -77,6 +80,7 @@ char* b;
    if (cat!=nullptr) {
       cat->MODE=vfo->MODE;
    }
+   showMode();
    (TRACE>=0x02 ? fprintf(stderr,"%s:modeVfoHandler() mode(%s) On\n",PROGRAMID,b) : _NOP);
 
 }
@@ -87,8 +91,9 @@ char* b;
 void CATchangeFreq() {
 
    if (cat==nullptr) {return;}
+   if (vfo==nullptr) {return;}
 
-   if (getWord(MSW,PTT)==false) {
+   if (vfo->getPTT()==false) {
      (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->f) : _NOP);
      vfo->set(cat->f);
      return;
@@ -106,9 +111,8 @@ void CATchangeFreq() {
 //-----------------------------------------------------------------------------------------------------------
 void CATchangeMode() {
 
-  (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) not supported\n",PROGRAMID,cat->MODE) : _NOP);
-
-  vfo->MODE=cat->MODE;
+  (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) changed\n",PROGRAMID,cat->MODE) : _NOP);
+  vfo->setMode(cat->MODE);
   return;
 
 }
