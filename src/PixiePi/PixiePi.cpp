@@ -551,8 +551,10 @@ while(true)
   iambic_close();
 
 //  gpio->writePin(GPIO_COOLER,1);
-  setBacklight(false);
-//  lcd->clear();
+
+  lcd->backlight(false);
+  lcd->setCursor(0,0);
+  lcd->clear();
 
   setCooler(false);
   setPTT(false);
