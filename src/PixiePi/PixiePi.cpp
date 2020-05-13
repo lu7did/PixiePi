@@ -73,17 +73,9 @@
 
 //*---- Program specific includes
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
-
-//#include "/home/pi/OrangeThunder/src/OT/OT.h"
-//#include "../lib/ClassMenu.h"
 #include "../lib/LCDLib.h"
-//#include "../lib/DDS.h"
-//#include "../minIni/minIni.h"
-//#include "../log.c/log.h"
 #include "../lib/MMS.h"
-
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
-//#include "/home/pi/OrangeThunder/src/lib/gpioWrapper.h"
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 #include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
 
@@ -117,12 +109,6 @@ bool ready=false;
 #include "../lib/iambic.c"
 
 }
-
-
-
-//void gpiochangePin(int pin, int state);
-//void gpiochangeEncoder(int clk,int dt,int state);
-
 
 int   a;
 int   anyargs;
@@ -206,12 +192,20 @@ CAT817* cat=nullptr;
 //byte    FT817;
 char    port[80];
 long    catbaud=4800;
+
 int     SNR;
 // *----------------------------------------------------------------*
 // *                  CAT support processing                        *
 // *----------------------------------------------------------------*
 float f=7030000;
-
+byte  s=20;
+byte  m=MCW;
+char  callsign[16];
+char  grid[16];
+byte  l=7;
+bool  b=false;
+float x=600.0;
+byte  k=0;
 
 #include "../lib/GUI.h"
 #include "../lib/VFO.h"
@@ -254,81 +248,6 @@ static void sighandler(int signum)
    setWord(&MSW,RETRY,true);
 
 }
-//---------------------------------------------------------------------------
-// CATchangeFreq()
-// CAT Callback when frequency changes
-//---------------------------------------------------------------------------
-void CATchangeFreq() {
-
-   if (getWord(MSW,PTT)==false) {
-     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeFreq() cat.SetFrequency(%d) request while transmitting, ignored!\n",PROGRAMID,(int)cat->SetFrequency) : _NOP);
-     f=cat->SetFrequency;
-     return;
-   }
-   
-  cat->SetFrequency=f;
-  (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeFreq() Frequency change is not allowed(%d)\n",PROGRAMID,(int)f) : _NOP);
-
-}
-//-----------------------------------------------------------------------------------------------------------
-// CATchangeMode
-// Validate the new mode is a supported one
-// At this point only CW,CWR,USB and LSB are supported
-//-----------------------------------------------------------------------------------------------------------
-void CATchangeMode() {
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) not supported\n",PROGRAMID,cat->MODE) : _NOP);
-  cat->MODE=MUSB;
-  return;
-
-}
-//------------------------------------------------------------------------------------------------------------
-// CATchangeStatus
-// Detect which change has been produced and operate accordingly
-//------------------------------------------------------------------------------------------------------------
-void CATchangeStatus() {
-
-  (TRACE >= 0x03 ? fprintf(stderr,"%s:CATchangeStatus() FT817(%d) cat.FT817(%d)\n",PROGRAMID,vfo->FT817,cat->FT817) : _NOP);
-
-  if (getWord(cat->FT817,PTT) != getWord(MSW,PTT)) {
-     (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeStatus() PTT change request cat.FT817(%d) now is PTT(%s)\n",PROGRAMID,cat->FT817,getWord(cat->FT817,PTT) ? "true" : "false") : _NOP);
-     //setPTT(getWord(cat->FT817,PTT));
-     setWord(&MSW,PTT,getWord(cat->FT817,PTT));
-  }
-
-  if (getWord(cat->FT817,RITX) != getWord(vfo->FT817,RITX)) {        // RIT Changed
-     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() RIT change request cat.FT817(%d) RIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,RITX) ? "true" : "false") : _NOP);
-  }
-
-  if (getWord(cat->FT817,LOCK) != getWord(vfo->FT817,LOCK)) {      // LOCK Changed
-     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() LOCK change request cat.FT817(%d) LOCK changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,LOCK) ? "true" : "false") : _NOP);
-  }
-
-  if (getWord(cat->FT817,SPLIT) != getWord(vfo->FT817,SPLIT)) {    // SPLIT mode Changed
-     (TRACE>=0x01 ? fprintf(stderr,"%s:CATchangeStatus() SPLIT change request cat.FT817(%d) SPLIT changed to %s ignored\n",PROGRAMID,cat->FT817,getWord(cat->FT817,SPLIT) ? "true" : "false") : _NOP);
-  }
-
-  if (getWord(cat->FT817,VFO) != getWord(vfo->FT817,VFO)) {        // VFO Changed
-     (TRACE >=0x01 ? fprintf(stderr,"%s:CATchangeStatus() VFO change request not supported\n",PROGRAMID) : _NOP);
-  }
-  vfo->FT817=cat->FT817;
-  return;
-
-}
-//--------------------------------------------------------------------------------------------------
-// Callback to process SNR signal (if available)
-//--------------------------------------------------------------------------------------------------
-void CATgetRX() {
-
-    //cat->RX=cat->snr2code(SNR);
-
-}
-//--------------------------------------------------------------------------------------------------
-// Callback to process Power/SWR signal (if available)
-//--------------------------------------------------------------------------------------------------
-void CATgetTX() {
-
-}
 //--------------------------------------------------------------------------------------------------
 // FT8ISR - interrupt service routine, keep track of the FT8 sequence windows
 //--------------------------------------------------------------------------------------------------
@@ -354,6 +273,29 @@ void ISRHandler() {
       }
    }
 }
+
+//*-------------------------------------------------------------------------------------------------
+//* print_usage
+//* help message at program startup
+//*-------------------------------------------------------------------------------------------------
+void print_usage(void)
+{
+
+fprintf(stderr,"\n%s version %s build (%s)\n"
+"Usage:\nPixiaPi [-f frequency {Hz}]\n"
+"                [-s keyer speed {5..50 wpm default=20}]\n"
+"                [-m mode {0=LSB,1=USB,2=CW,3=CWR,4=AM,5=FM,6=WFM,7=PKT,8=DIG default=CW}]\n"
+"                [-c {callsign}]\n"
+"                [-g {grid locator}]\n"
+"                [-l {power level (0..7 default=7}]\n"
+"                [-p {CAT port}]\n"
+"                [-b Beacon enabled default=off]\n"
+"                [-v Verbose {0,1,2,3 default=0}]\n"
+"                [-x Shift {600..800Hz default=600}]\n"
+"                [-k Keyer {0=Straight,1=Iambic A,2=Iambic B default=0}]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
+
+}
+
 //*--------------------------------------------------------------------------------------------------
 //* main execution of the program
 //*--------------------------------------------------------------------------------------------------
@@ -361,19 +303,6 @@ int main(int argc, char* argv[])
 {
      std::srand(static_cast<unsigned int>(std::time(nullptr))); // set initial seed value to system clock    
      fprintf(stderr,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
-
-//*--- Establish exception handling structure
-
-//     sigact.sa_handler = sighandler;
-//     sigemptyset(&sigact.sa_mask);
-//     sigact.sa_flags = 0;
-
-
-//     sigaction(SIGINT, &sigact, NULL);
-//     sigaction(SIGTERM, &sigact, NULL);
-//     sigaction(SIGQUIT, &sigact, NULL);
-//     sigaction(SIGPIPE, &sigact, NULL);
-//     signal(SIGPIPE, SIG_IGN);
 
      for (int i = 0; i < 64; i++) {
         if (i != SIGALRM && i != 17 && i != 28) {
@@ -384,7 +313,7 @@ int main(int argc, char* argv[])
 
 while(true)
         {
-                a = getopt(argc, argv, "f:eds:hg:i:p:A:C:D:E:F:G:M:S:");
+                a = getopt(argc, argv, "f:s:m:c:g:l:p:bv:x:k:h?");
 
                 if(a == -1) 
                 {
@@ -399,45 +328,58 @@ while(true)
                 switch(a)
                 {
 
-                case 'A': 
+                case 'f': 
+	                f=atof(optarg);
+                        fprintf(stderr,"%s:main() args(f)=%5.0f\n",PROGRAMID,f);
                         break;
-                case 'i':
+                case 's':
+                        s=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(speed)=%d\n",PROGRAMID,s);
                         break;
-                case 'C':
+                case 'm':
+                        m=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(mode)=%d\n",PROGRAMID,m);
                         break;
-                case 'D':
+                case 'c':
+                        strcpy(callsign,optarg);
+                        fprintf(stderr,"%s:main() args(callsign)=%s\n",PROGRAMID,callsign);
                         break;
-                case 'E': 
+                case 'g': 
+                        strcpy(grid,optarg);
+                        fprintf(stderr,"%s:main() args(grid)=%s\n",PROGRAMID,grid);
                         break;
-
-                case 'F':
+                case 'l':
+                        l=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(level)=%d\n",PROGRAMID,l);
                         break;
-                case 'G':     // gain in dB 
+                case 'p':     // gain in dB 
+                        strcpy(port,optarg);
+                        fprintf(stderr,"%s:main() args(port)=%s\n",PROGRAMID,port);
                         break;
-                case 'M':
+                case 'b':
+                        b=true;
+                        fprintf(stderr,"%s:main() args(port)=%s\n",PROGRAMID,BOOL2CHAR(b));
                         break;
-                case 'S':
+                case 'v':
+                        TRACE=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(verbose)=%d\n",PROGRAMID,TRACE);
                         break;
-                case 'W':
+                case 'x':
+			x=atof(optarg);
+                        fprintf(stderr,"%s:main() args(shift)=%5.0f\n",PROGRAMID,x);
                         break;
-                case 'f': // Frequency
-                        break;
-		case 'g': // GPIO
-			break;
-                case 'p': //ppm
-                        break;
-                case 'd': //debug
-                        break;
-                case 'h': // help
-                        break;
-                case 's': //serial port
+                case 'k': // keyer mode
+                        k=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(keyer)=%d\n",PROGRAMID,k);
                         break;
                 case -1:
-                break;
+                        break;
                 case '?':
+                        print_usage();
                         exit(1);
                         break;
                 default:
+                        print_usage();
                         exit(1);
                         break;
                 }
@@ -483,7 +425,7 @@ while(true)
 //*--- Setup VFO System
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
-     vfo=new genVFO(&freqVfoHandler,NULL,NULL,NULL);
+     vfo=new genVFO(&freqVfoHandler,&ritVfoHandler,&modeVfoHandler,&changeVfoHandler);
      vfo->TRACE=TRACE;
      vfo->FT817=0x00;
      vfo->setMode(MCW);
@@ -503,12 +445,11 @@ while(true)
 
      cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
      cat->FT817=vfo->FT817;
-     cat->POWER=DDS_MAXLEVEL;
-     cat->SetFrequency=f;
-     cat->MODE=MUSB;
+     cat->POWER=l;
+     cat->f=f;
+     cat->MODE=m;
      cat->TRACE=TRACE;
      cat->open(port,catbaud);
-     cat->getRX=CATgetRX;
 
 
 //*--- Initialize a startup

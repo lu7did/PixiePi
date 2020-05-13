@@ -526,10 +526,10 @@ void changeFreq(float f) {
 void CATchangeFreq() {
 
   //
-  log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.SetFrequency,(int)f);
+  log_trace("CATchangeFreq(): cat.SetFrequency(%d) SetFrequency(%d)",(int)cat.f,(int)f);
 
-  f=cat.SetFrequency;
-  log_info("CAT Frequency set to %10.0f",cat.SetFrequency);
+  f=cat.f;
+  log_info("CAT Frequency set to %10.0f",cat.f);
   long int fx=(long int)f;
   log_trace("changeFreq: Frequency set to f(%d)",fx);
   dds->power=ddspower;
@@ -1645,7 +1645,7 @@ int main(int argc, char* argv[])
 
     //cat.TRACE=trace;
     cat.open(port,catbaud);
-    cat.SetFrequency=f;
+    cat.f=f;
 
     setWord(&FT817,PTT,false);
 
@@ -1704,7 +1704,7 @@ int main(int argc, char* argv[])
                 (rit.mItem!=0 ? f = (float) (vx.get(vx.vfoAB)+ritofs) : freq=(float) vx.get(vx.vfoAB));
                 if (freq != dds->f) {
                    f=freq;
-                   cat.SetFrequency=f;
+                   cat.f=f;
                    dds->set(f);
                 }
              }

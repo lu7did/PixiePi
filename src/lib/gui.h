@@ -289,7 +289,7 @@ void saveMenu() {
 
       if (vx.vfoAB != vfo.mItem) {      //Switch from VFO A to B or viceversa
          vx.vfoAB=vfo.mItem;
-         cat.SetFrequency=(float)vx.get(vx.vfoAB);
+         cat.f=(float)vx.get(vx.vfoAB);
          (vx.vfoAB==VFOA ? setWord(&cat.FT817,VFO,false) : setWord(&cat.FT817,VFO,true));
          CATchangeFreq();
          CATchangeStatus();         

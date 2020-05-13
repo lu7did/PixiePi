@@ -86,6 +86,20 @@ Boston, MA  02110-1301, USA.
 static void* keyer_thread(void *arg);
 static pthread_t keyer_thread_id;
 
+enum {
+    CHECK = 0,
+    PREDOT,
+    PREDASH,
+    SENDDOT,
+    SENDDASH,
+    DOTDELAY,
+    DASHDELAY,
+    DOTHELD,
+    DASHHELD,
+    LETTERSPACE,
+    EXITLOOP
+};
+
 
 static int dot_memory = 0;
 static int dash_memory = 0;

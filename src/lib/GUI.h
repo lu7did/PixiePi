@@ -55,8 +55,8 @@ int alt=0;
      if (getWord(GSW,FBLINK)==true) {
 
         lcd->setCursor(1,row);
-        lcd->typeChar((char)126);
 
+        (vfo->vfodir == 1 ? lcd->typeChar((char)126) : lcd->typeChar((char)127) );
         strcpy(LCD_Buffer," ");
         lcd->println(1,alt,LCD_Buffer);
 
@@ -287,11 +287,13 @@ void setCooler(bool f) {
     return;
 }
 //*----- PTT
+
 void setPTT(bool f) {
 
     (f==true ? gpioWrite(GPIO_PTT,1) : gpioWrite(GPIO_PTT,0));
     setWord(&MSW,PTT,f);
-    showPTT();
+    if (vfo!=nullptr) vfo->setPTT(f);
+    //showPTT();
     (TRACE>=0x02 ? fprintf(stderr,"%s:setPTT() PTT set(%s)\n",PROGRAMID,BOOL2CHAR(f)) : _NOP);
     return;
 }
@@ -313,12 +315,12 @@ void processGui() {
               f=vfo->up();
               TVFO=3000;
               setWord(&GSW,FBLINK,true);
-              showFrequency();
-              showChange();
+              //showFrequency();
+              //showChange();
            } else {
               if (vfo->getRIT()==true) {
                  float r=vfo->updateRIT(+1);
-                 showRIT();
+                 //showRIT();
               }
            }
         }
@@ -332,12 +334,12 @@ void processGui() {
               f=vfo->down();
               TVFO=3000;
               setWord(&GSW,FBLINK,true);
-              showFrequency();
-              showChange();
+              //showFrequency();
+              //showChange();
            } else {
               if (vfo->getRIT()==true) {
                  float r=vfo->updateRIT(-1);
-                 showRIT();
+                 //showRIT();
               }
            }
         }
@@ -350,15 +352,16 @@ void processGui() {
 
         if (getWord(GSW,FAUX)==true) {  // swap VFO
            setWord(&GSW,FAUX,false);
+           setWord(&SSW,FBLINK,true);
            vfo->swapVFO();
-           showVFO();
-           showChange();
+           //showVFO();
+           //showChange();
         }
 
         if (getWord(GSW,FAUXL)==true) { // enable RIT
            setWord(&GSW,FAUXL,false);
            vfo->setRIT(vfo->vfo,!vfo->getRIT(vfo->vfo));
-           showRIT();
+           //showRIT();
         }
 
         if (getWord(GSW,FSW)==true) {   // switch to menu mode
@@ -373,7 +376,7 @@ void processGui() {
         if (getWord(GSW,FSWL)==true) {  // switch to Split operation
            setWord(&GSW,FSWL,false);
            vfo->setSplit(!vfo->getSplit());
-           showSplit();
+           //showSplit();
            if (vfo->vfo != VFOA) { // split operates VFOA as primary and VFOB as secondary, force that configuration
               setWord(&GSW,FAUX,true);              
               processGui(); // recursive call to operate the VFO change
@@ -707,8 +710,8 @@ void createMenu() {
 //*--- Associate menu items to root to establish navigation
 
      root->add(keyer);
-     root->add(speed);
      root->add(mode);
+     root->add(speed);
      root->add(step);
      root->add(shift);
      root->add(drive);
