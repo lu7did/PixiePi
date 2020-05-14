@@ -133,11 +133,35 @@ void showKeyer() {
 void showMeter() {
 
      if (getWord(MSW,CMD)==true) {return;}
-
      lcd->setCursor(13,1);   //Placeholder Meter till a routine is developed for it
-     lcd->write(byte(255));
-     lcd->write(byte(255));
-     lcd->write(byte(255));
+
+     if (vfo==nullptr) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:showMeter() vfo pointer is NULL, request ignored\n",PROGRAMID) : _NOP);
+        return;}
+
+     
+int  n= ((vfo->POWER+1)*2) & 0x0f;      
+     (TRACE>=0x02 ? fprintf(stderr,"%s:showMeter() POWER(%d) segments(%d)\n",PROGRAMID,vfo->POWER,n) : _NOP);
+
+     switch(n) {
+
+      case 0 : {lcd->write(byte(1))    ;lcd->write(byte(32))  ;lcd->write(byte(32));break;}
+      case 1 : {lcd->write(byte(2))    ;lcd->write(byte(32))  ;lcd->write(byte(32));break;}
+      case 2 : {lcd->write(byte(3))    ;lcd->write(byte(32))  ;lcd->write(byte(32));break;}
+      case 3 : {lcd->write(byte(4))    ;lcd->write(byte(32))  ;lcd->write(byte(32));break;}
+      case 4 : {lcd->write(byte(255))  ;lcd->write(byte(32))  ;lcd->write(byte(32));break;}
+      case 5 : {lcd->write(byte(255))  ;lcd->write(byte(1))   ;lcd->write(byte(32));break;}
+      case 6 : {lcd->write(byte(255))  ;lcd->write(byte(2))   ;lcd->write(byte(32));break;}
+      case 7 : {lcd->write(byte(255))  ;lcd->write(byte(3))   ;lcd->write(byte(32));break;}
+      case 8 : {lcd->write(byte(255))  ;lcd->write(byte(4))   ;lcd->write(byte(32));break;}
+      case 9 : {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(32));break;}
+      case 10: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(1));break;}
+      case 11: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(2));break;}
+      case 12: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(3));break;}
+      case 13: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(4));break;}
+      case 14: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(255));break;}
+      case 15: {lcd->write(byte(255))  ;lcd->write(byte(255)) ;lcd->write(byte(255));break;}
+     }
 
 }
 //*---------------------------------- Show Split
@@ -553,6 +577,13 @@ return;
 void procKeyerUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procKeyerUpdate() \n",PROGRAMID) : _NOP);
+     if (p->mVal < 0) {
+        p->mVal=0;
+     }
+     if (p->mVal > 2) {
+        p->mVal=2;
+     }
+     cw_keyer_mode=p->mVal;
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -608,7 +639,7 @@ void procBackUpdate(MMS* p) {
      }
 
      setWord(&MSW,BCK,true);
-     TBCK=0;
+     TBCK=p->mVal*1000;
      lcd->backlight(true);
      lcd->setCursor(0,0);
 
@@ -641,6 +672,18 @@ void procSpeedChange(MMS* p) {
 
 }
 //*--------------------------------------------------------------------------------------------------
+void procKeyerChange(MMS* p) {
+
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procKeyerChange() \n",PROGRAMID) : _NOP);
+     if (p->mVal>2) {p->mVal=2;}
+     if (p->mVal<0) {p->mVal=0;}
+     switch(p->mVal) {
+       case 0 : { sprintf(p->mText,"%2d Straight",p->mVal); break;}
+       case 1 : { sprintf(p->mText,"%2d Iambic A",p->mVal); break;}
+       case 2 : { sprintf(p->mText,"%2d Iambic B",p->mVal); break;}
+     }
+}
+//*--------------------------------------------------------------------------------------------------
 void procModeChange(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procModeChange() \n",PROGRAMID) : _NOP);
@@ -666,18 +709,30 @@ void procShiftChange(MMS* p) {
 
 }
 //*--------------------------------------------------------------------------------------------------
+void procBacklChange(MMS* p) {
+
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procBacklChange() \n",PROGRAMID) : _NOP);
+     sprintf(p->mText,"%3d secs",p->mVal);
+
+}
+//*--------------------------------------------------------------------------------------------------
 void procDriveChange(MMS* p) {
 
 char f[8];
-char l[2];
-
-     strcpy(l,"X");
+char lev[2];
+int  k = 255;
+char c = k;
+     sprintf(lev,"%c", c); //prints A
+     p->mVal=p->mVal & 0x0f;
      strcpy(f,"       ");
      for (int i=0;i<p->mVal;i++) {
-         f[i]=l[0];
+         f[i]=lev[0];
      }
      (TRACE>=0x02 ? fprintf(stderr,"%s:procDriveChange %d [%s] \n",PROGRAMID,p->mVal,f) : _NOP);
      sprintf(p->mText," %d [%s]",p->mVal,f);
+
+     if (vfo!=nullptr) {vfo->POWER=p->mVal;cat->POWER=vfo->POWER;}
+     showMeter();
 
 }
 
@@ -697,13 +752,13 @@ void createMenu() {
 
 //*--- Create first child level (actual menu)
 
-     keyer=  new MMS(0,(char*)"Keyer",NULL,procKeyerUpdate);
+     keyer=  new MMS(0,(char*)"Keyer",procKeyerChange,procKeyerUpdate);
      mode=   new MMS(1,(char*)"Mode",procModeChange,procModeUpdate);
      speed=  new MMS(2,(char*)"Speed",procSpeedChange,procSpeedUpdate);
      step=   new MMS(3,(char*)"Step",procStepChange,procStepUpdate);
      shift=  new MMS(4,(char*)"Shift",procShiftChange,procShiftUpdate);
      drive=  new MMS(5,(char*)"Drive",procDriveChange,procDriveUpdate);
-     backl=  new MMS(6,(char*)"Backlight",NULL,procBackUpdate);
+     backl=  new MMS(6,(char*)"Backlight",procBacklChange,procBackUpdate);
      cool=   new MMS(7,(char*)"Cooler",NULL,procCoolUpdate);
      beacon= new MMS(8,(char*)"Beacon",NULL,procBeaconUpdate);
 
@@ -719,25 +774,65 @@ void createMenu() {
      root->add(cool);
      root->add(beacon);
 
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() First menu structure created\n",PROGRAMID) : _NOP);
+
+
 //*--- Create second level items, actual options
 
      straight=new MMS(0,(char*)"Straight",NULL,NULL);
      iambicA =new MMS(1,(char*)"Iambic A",NULL,NULL);
      iambicB =new MMS(2,(char*)"Iambic B",NULL,NULL);
 
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Keyer created\n",PROGRAMID) : _NOP);
+
+
      bcnoff=new MMS(0,(char*)"Beacon Off",NULL,NULL);
      bcnon =new MMS(1,(char*)"Beacon On",NULL,NULL);
 
-     spval=new MMS(3,(char*)"*",NULL,NULL);
-     stval=new MMS(1,(char*)"*",NULL,NULL);
-     shval=new MMS(6,(char*)"*",NULL,NULL);
-     drval=new MMS(6,(char*)"*",NULL,NULL);
-     modval=new MMS(2,(char*)"*",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Beacon created\n",PROGRAMID) : _NOP);
 
-     backon=new MMS(0,(char*)"Backlight On",NULL,NULL);
-     backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
+
+//   spval=new MMS(3,(char*)"*",NULL,NULL);
+     spval=new MMS((s/5),(char*)"*",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Keyer speed created speed(%d)\n",PROGRAMID,(s/5)) : _NOP);
+
+
+
+     stval=new MMS(1,(char*)"*",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Step structure created\n",PROGRAMID) : _NOP);
+
+
+int  sh=(int)x/100;
+     shval=new MMS(sh,(char*)"*",NULL,NULL);
+//   shval=new MMS(6,(char*)"*",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Shift menu structure created shift(%d)\n",PROGRAMID,sh) : _NOP);
+
+
+
+//   drval=new MMS(6,(char*)"*",NULL,NULL);
+     drval=new MMS(l,(char*)"*",NULL,NULL);  //initialize with level
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Drive menu structure created\n",PROGRAMID) : _NOP);
+
+
+     if (vfo==nullptr) {
+        modval=new MMS(m,(char*)"*",NULL,NULL);
+     } else {
+        modval=new MMS(vfo->MODE,(char*)"*",NULL,NULL);
+     }
+
+//   modval=new MMS(2,(char*)"*",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Mode menu structure created\n",PROGRAMID) : _NOP);
+
+
+
+     backval=new MMS(backlight,(char*)"*",NULL,NULL);
+//     backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Backlight menu structure created backlight(%d)\n",PROGRAMID,backlight) : _NOP);
+
+
      coolon=new MMS(0,(char*)"Cooler On",NULL,NULL);
      coolof=new MMS(1,(char*)"Cooler Off",NULL,NULL);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Cooler menu structure created\n",PROGRAMID) : _NOP);
 
 //*--- associate options to menu items
 
@@ -763,15 +858,18 @@ void createMenu() {
      drive->lowerLimit(0);
      drive->upperLimit(8);
 
-     backl->add(backon);
-     backl->add(backof);
+     backl->add(backval);
+     backl->lowerLimit(0);
+     backl->upperLimit(60);
+
+//     backl->add(backof);
 
      cool->add(coolon);
      cool->add(coolof);
 
      beacon->add(bcnoff);
      beacon->add(bcnon);
-
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID) : _NOP);
      (TRACE>=0x02 ? root->list() : (void) _NOP );
 
 }
@@ -785,14 +883,14 @@ void setupLCD() {
 
 byte TX[8] = {0B11111,0B10001,0B11011,0B11011,0B11011,0B11011,0B11111}; // Inverted T (Transmission Mode)
 byte SP[8] = {31,17,23,17,29,17,31};    //Inverted S (Split)
-byte S1[8] = {0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000}; // S1 Signal
-byte S2[8] = {0B11000,0B11000,0B11000,0B11000,0B11000,0B11000,0B11000}; // S2 Signal
-byte S3[8] = {0B11100,0B11100,0B11100,0B11100,0B11100,0B11100,0B11100}; // S3 Signal
-byte S4[8] = {0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110}; // S4 Signal
-byte S5[8] = {0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111}; // S5 Signal
-byte NA[8] = {0B11111,0B11011,0B10101,0B10101,0B10101,0B10001,0B10101}; // Inverted A
-byte NB[8] = {0B11111,0B10001,0B10101,0B10011,0B10101,0B10101,0B10001}; // Inverted B
-byte NS[8] = {0B11111,0B11001,0B10111,0B10011,0B11101,0B11101,0B10011}; // Inverted S
+byte S1[8] = {0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000,0B10000}; // S1 Signal
+byte S2[8] = {0B11000,0B11000,0B11000,0B11000,0B11000,0B11000,0B11000,0B11000}; // S2 Signal
+byte S3[8] = {0B11100,0B11100,0B11100,0B11100,0B11100,0B11100,0B11100,0B11100}; // S3 Signal
+byte S4[8] = {0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110,0B11110}; // S4 Signal
+byte S5[8] = {0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111,0B11111}; // S5 Signal
+byte NA[8] = {0B11111,0B11011,0B10101,0B10101,0B10101,0B10001,0B10101,0B00000}; // Inverted A
+byte NB[8] = {0B11111,0B10001,0B10101,0B10011,0B10101,0B10101,0B10001,0B00000}; // Inverted B
+byte NS[8] = {0B11111,0B11001,0B10111,0B10011,0B11101,0B11101,0B10011,0B00000}; // Inverted S
 
 
 //*--- setup LCD configuration
@@ -976,15 +1074,8 @@ void setupGPIO() {
     gpioSetAlertFunc(GPIO_SW,updateSW);
     usleep(100000);
 
-    //gpioSetMode(GPIO_RIGHT,PI_INPUT);
-    //gpioSetPullUpDown(GPIO_RIGHT,PI_PUD_UP);
-    //gpioSetAlertFunc(GPIO_RIGHT,updateKeyer);
-    //gpioSetISRFunc(GPIO_RIGHT,EITHER_EDGE,-1,updateKeyer);
-    //usleep(100000);
-
     gpioSetMode(GPIO_LEFT,PI_INPUT);
     gpioSetPullUpDown(GPIO_LEFT,PI_PUD_UP);
-    //gpioSetISRFunc(GPIO_LEFT,EITHER_EDGE,-1,updateKeyer);
     gpioSetAlertFunc(GPIO_LEFT,updateKeyer);
     usleep(100000);
 

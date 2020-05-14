@@ -119,11 +119,6 @@ char*     LCD_Buffer;
 // *----------------------------------------------------------------*
 // *                  GPIO support processing                       *
 // *----------------------------------------------------------------*
-// --- gpio object
-//gpioWrapper* gpio=nullptr;
-//char   *gpio_buffer;
-//void gpiochangePin();
-
 //*--- debouncing logic setup
 auto startEncoder=std::chrono::system_clock::now();
 auto endEncoder=std::chrono::system_clock::now();
@@ -171,8 +166,7 @@ MMS* stval;
 MMS* shval;
 MMS* drval;
 MMS* modval;
-MMS* backon;
-MMS* backof;
+MMS* backval;
 MMS* coolon;
 MMS* coolof;
 MMS* bcnon;
@@ -189,7 +183,6 @@ void    CATchangeFreq();      // Callback when CAT receives a freq change
 void    CATchangeStatus();    // Callback when CAT receives a status change
 
 CAT817* cat=nullptr;
-//byte    FT817;
 char    port[80];
 long    catbaud=4800;
 
@@ -203,9 +196,10 @@ byte  m=MCW;
 char  callsign[16];
 char  grid[16];
 byte  l=7;
-bool  b=false;
+int   b=0;
 float x=600.0;
 byte  k=0;
+int   backlight=0;
 
 #include "../lib/GUI.h"
 #include "../lib/VFO.h"
@@ -289,9 +283,10 @@ fprintf(stderr,"\n%s version %s build (%s)\n"
 "                [-g {grid locator}]\n"
 "                [-l {power level (0..7 default=7}]\n"
 "                [-p {CAT port}]\n"
-"                [-b Beacon enabled default=off]\n"
+"                [-b Beacon enabled {0=inactive 1..60 minutes}]\n"
 "                [-v Verbose {0,1,2,3 default=0}]\n"
 "                [-x Shift {600..800Hz default=600}]\n"
+"                [-B Backlight timeout {0..60 minutes default=0 (not activated)}]\n"
 "                [-k Keyer {0=Straight,1=Iambic A,2=Iambic B default=0}]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
 }
@@ -313,7 +308,7 @@ int main(int argc, char* argv[])
 
 while(true)
         {
-                a = getopt(argc, argv, "f:s:m:c:g:l:p:bv:x:k:h?");
+                a = getopt(argc, argv, "f:s:m:c:g:l:p:b:B:v:x:k:h?");
 
                 if(a == -1) 
                 {
@@ -357,8 +352,12 @@ while(true)
                         fprintf(stderr,"%s:main() args(port)=%s\n",PROGRAMID,port);
                         break;
                 case 'b':
-                        b=true;
-                        fprintf(stderr,"%s:main() args(port)=%s\n",PROGRAMID,BOOL2CHAR(b));
+                        b=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(beacon)=%d secs\n",PROGRAMID,b);
+                        break;
+                case 'B':
+                        backlight=atoi(optarg);
+                        fprintf(stderr,"%s:main() args(backlight)=%d secs\n",PROGRAMID,backlight);
                         break;
                 case 'v':
                         TRACE=atoi(optarg);
@@ -388,7 +387,6 @@ while(true)
 //*--- Create memory resources
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() Memory resources acquired\n",PROGRAMID) : _NOP);
-//     gpio_buffer=(char*) malloc(BUFSIZE);
      LCD_Buffer=(char*) malloc(32);
 
 //*--- Define and initialize LCD interface
@@ -406,22 +404,6 @@ while(true)
      masterTimer->start(1,ISRHandler);
 
 
-//*--- Create infrastructure for the execution of the GUI
-
-     createMenu();
-//*-------------------------------------------------------------------------------------------------------------------
-//*---  Define and initialize GPIO interface
-//*
-//*     clk (GPIO17)----(rotary encoder)------
-//*     dt  (GPIO18)
-//*
-//*     aux (GPIO10)----(encoder push)--------
-//*     sw  (GPIO27)----(aux button)---------
-//*
-//*
-//*--------------------------------------------------------------------------------------------------------------------
-      setupGPIO();
-
 //*--- Setup VFO System
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() VFO sub-system initialization\n",PROGRAMID) : _NOP);
@@ -436,20 +418,41 @@ while(true)
      vfo->setSplit(false);
      vfo->setRIT(VFOA,false);
      vfo->setRIT(VFOB,false);
+     vfo->POWER=(l & 0x0f);
 
      vfo->vfo=VFOA;
      setWord(&vfo->FT817,VFO,VFOA);
 
 //*--- Setup the CAT system
+
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() CAT system initialization\n",PROGRAMID) : _NOP);
 
      cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
      cat->FT817=vfo->FT817;
-     cat->POWER=l;
+     cat->POWER=vfo->POWER;
      cat->f=f;
      cat->MODE=m;
      cat->TRACE=TRACE;
      cat->open(port,catbaud);
+
+
+//*--- Create infrastructure for the execution of the GUI
+
+     createMenu();
+
+//*-------------------------------------------------------------------------------------------------------------------
+//*---  Define and initialize GPIO interface
+//*
+//*     clk (GPIO17)----(rotary encoder)------
+//*     dt  (GPIO18)
+//*
+//*     aux (GPIO10)----(encoder push)--------
+//*     sw  (GPIO27)----(aux button)---------
+//*
+//*
+//*--------------------------------------------------------------------------------------------------------------------
+
+      setupGPIO();
 
 
 //*--- Initialize a startup
@@ -461,9 +464,8 @@ while(true)
 
 //*--- start the keyer
 
+     cw_keyer_mode=k;
      iambic_init();
-
-     //setWord(&MSW,BCK,true);
 
      setBacklight(true);
      lcd->clear();
