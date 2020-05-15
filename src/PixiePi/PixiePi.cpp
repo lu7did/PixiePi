@@ -75,6 +75,7 @@
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
 #include "../lib/LCDLib.h"
 #include "../lib/MMS.h"
+#include "../lib/DDS.h"
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 #include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
@@ -144,6 +145,12 @@ int clkLastState=0;
 // *                  VFO Subsytem definitions                      *
 // *----------------------------------------------------------------*
 genVFO*    vfo=nullptr;
+
+
+// *----------------------------------------------------------------*
+// *                  DDS Subsytem definitions                      *
+// *----------------------------------------------------------------*
+DDS*       dds=nullptr;
 
 // *----------------------------------------------------------------*
 // *                Manu Subsytem definitions                       *
@@ -423,6 +430,22 @@ while(true)
      vfo->vfo=VFOA;
      setWord(&vfo->FT817,VFO,VFOA);
 
+//*--- Setup the DDS subsystem
+
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS sub-system initialization\n",PROGRAMID) : _NOP);
+
+     dds=new DDS(NULL);
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS initialized\n",PROGRAMID) : _NOP);
+
+     dds->TRACE=TRACE;
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS TRACE set\n",PROGRAMID) : _NOP);
+
+     dds->POWER=vfo->POWER;
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS POWER set\n",PROGRAMID) : _NOP);
+
+     dds->start(f);
+    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS started freq(%5.0f)\n",PROGRAMID,dds->f) : _NOP);
+
 //*--- Setup the CAT system
 
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() CAT system initialization\n",PROGRAMID) : _NOP);
@@ -430,7 +453,7 @@ while(true)
      cat=new CAT817(CATchangeFreq,CATchangeStatus,CATchangeMode,CATgetRX,CATgetTX);
      cat->FT817=vfo->FT817;
      cat->POWER=vfo->POWER;
-     cat->f=f;
+     cat->f=vfo->get();
      cat->MODE=m;
      cat->TRACE=TRACE;
      cat->open(port,catbaud);
@@ -490,6 +513,10 @@ while(true)
      }
  
 //*--- Stop the keyer
+
+  (TRACE>=0x01 ? fprintf(stderr,"%s:main() Ending operations\n",PROGRAMID) : _NOP);
+  dds->stop();
+  delete(dds);
 
   iambic_close();
 

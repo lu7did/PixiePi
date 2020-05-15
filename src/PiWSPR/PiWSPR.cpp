@@ -101,7 +101,7 @@ char   port[80];
 byte   gpio=GPIO04;
 char   callsign[10];
 char   locator[10];
-int    power=10;
+int    POWER=10;
 int    ntx=0;
 int    nskip=0;
 byte   ptt=GPIO12;
@@ -253,8 +253,8 @@ int main(int argc, char *argv[])
 		     fprintf(stderr,"Frequency: %10.0f Hz\n",SetFrequency);
                      break;
         	case 'd': //power
-			power=atoi(optarg);
-			fprintf(stderr,"Power: %d dBm\n",power);
+			POWER=atoi(optarg);
+			fprintf(stderr,"Power: %d dBm\n",POWER);
 			break;
 		case 'c': //callsign
 			sprintf(callsign,optarg);
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
     dds->gpio=gpio;
-    dds->power=DDS_MAXLEVEL;
+    dds->POWER=DDS_MAXLEVEL;
     dds->setppm(1000.0);
 
 //*--- Seed random number generator
@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
 
 //--- Generate WSPR message
 
-    sprintf(wspr_message, "%s %s %d", callsign,locator,power);
+    sprintf(wspr_message, "%s %s %d", callsign,locator,POWER);
     wspr.code_wspr(wspr_message, wspr_symbols);
     printf("WSPR Message\n");
     printf("------------\n");

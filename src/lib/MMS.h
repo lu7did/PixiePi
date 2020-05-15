@@ -32,7 +32,7 @@ typedef void (*CALLUPDATE)(MMS* m);
     void  restore();
 
          int   mVal;
-         byte  TRACE=0x00;
+         byte  TRACE=0x02;
          char  mText[32];
          int   bupmVal;
          char  bupmText[32];
@@ -84,6 +84,7 @@ MMS::MMS(int val,char* text,CALLCHANGE pChange,CALLUPDATE pUpdate) {
    this->bupmVal=0;
    this->mLower=-1;
    this->mUpper=-1;
+
    strcpy(this->mText,text);
    strcpy(this->bupmText,"");
 
@@ -94,9 +95,16 @@ MMS::MMS(int val,char* text,CALLCHANGE pChange,CALLUPDATE pUpdate) {
 void MMS::save() {
 
    if (this->mVal != this->bupmVal || strcmp(this->mText,this->bupmText) != 0 || this->curr != this->bupcurr) {
-      if (this->procUpdate != NULL) { this->procUpdate(this); }
+      (TRACE>=0x02 ? fprintf(stderr,"%s::save() conditions for update met mVal(%d) bupmVal(%d) mText(%s) bupmText(%s)\n",PROGRAMID,this->mVal,this->bupmVal,this->mText,this->bupmText) : _NOP);
+      if (this->procUpdate != NULL) {
+          this->procUpdate(this);
+          (TRACE>=0x02 ? fprintf(stderr,"%s::save() procUpdate(%s)\n",PROGRAMID,this->mText) : _NOP);
+      }
       this->backup();
+   } else {
+     (TRACE>=0x02 ? fprintf(stderr,"%s::save() procUpdate condition not met\n",PROGRAMID) : _NOP);
    }
+
    return;
 }
 //*-------------------------------------------------------------------------------------------------
@@ -283,12 +291,12 @@ void MMS::restore() {
 void MMS::list(int n) {
 
   MMS* p=this;
-
   while (p!=NULL) {
-     fprintf(stderr,"<%d> %*s Val(%d)--Text(%s) Parent(%s) First Child(%s) Current Child(%s) Lower(%d) Upper(%d)\n",n, n, "", p->mVal,p->mText,(p->parent==NULL ? "Nil" : p->parent->mText),(p->child==NULL ? "Nil" : p->child->mText),(p->curr==NULL ? "Nil" : p->curr->mText),p->mLower,p->mUpper);
+     fprintf(stderr,"<%d> %*s Val(%d)--Text(%s) First(%s) Current Child(%s) Lower(%d) Upper(%d) Last(%s)\n",n, n, "", p->mVal,p->mText,(p->child==NULL ? "Nil" : p->child->mText),(p->curr==NULL ? "Nil" : p->curr->mText),p->mLower,p->mUpper,(p->last==NULL ? "Nil" : p->last->mText));
      MMS* z=p->child;
      if (z!=NULL) {
         z->list(n+1);
+        if (n==1) {return;}
      }
      p=p->next;
   }
@@ -296,5 +304,7 @@ void MMS::list(int n) {
 }
 // -------
 void MMS::list() {
+
   this->list(1);
+
 }

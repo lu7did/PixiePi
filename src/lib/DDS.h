@@ -61,10 +61,11 @@ class DDS
       CALLBACKDDS changeFreq=NULL;
 
       float get();
-      void set(float f);
-      void start(float f);
-      void stop();
-      void setppm(float ppm);
+      void  set(float f);
+      void  start(float f);
+      void  start();
+      void  stop();
+      void  setppm(float ppm);
 
       float       f;
       //clkgpio     *clk=new clkgpio;
@@ -74,9 +75,10 @@ class DDS
       padgpio     pad;
       byte        gpio=GPIO_DDS;
       float       ppm=1000.0;
-      byte        power=DDS_MAXLEVEL;
+      byte        POWER=DDS_MAXLEVEL;
       byte 	  TRACE=0x00;
       byte        MSW=0x00;
+      bool        active=false;
 
 // --- Program initialization
 const char   *PROGRAMID="DDS";
@@ -103,7 +105,7 @@ DDS::DDS(CALLBACKDDS c)
 
  if (c!=NULL) {changeFreq=c;}   //* Callback of change VFO frequency
 
- gengpio.setpulloff(GPIO_DDS);
+// gengpio.setpulloff(GPIO_DDS);
  gpio=GPIO_DDS;
  usleep(10000);
 
@@ -111,30 +113,40 @@ DDS::DDS(CALLBACKDDS c)
  (TRACE>=0x01 ? fprintf(stderr,"%s::DDS object successfully created\n",PROGRAMID) : _NOP);
 }
 //*------------------------------------------------------------------------
+//* start
+//* start on the defined frequency
+//*------------------------------------------------------------------------
+void DDS::start() {
+     this->start(f);
+     return;
+}
+//*------------------------------------------------------------------------
 //* open
 //* start the dds
 //*------------------------------------------------------------------------
 void DDS::start(float freq) {
 
-  clk=new clkgpio;
-  usleep(10000);
+     if (this->active==true) {return;}
 
-  clk->SetAdvancedPllMode(true);
-  usleep(10000);
+     f=freq;
+     //generalgpio gengpio;
+     gengpio.setpulloff(gpio);
+     //padgpio pad;
+     pad.setlevel(POWER);
+     clk=new clkgpio;
+     clk->SetAdvancedPllMode(true);
+     if(ppm!=1000) {   //ppm is set else use ntp
+        clk->Setppm(ppm);
+     }
+     clk->SetCenterFrequency(f,10);
+     clk->SetFrequency(000);
+     clk->enableclk(gpio);
 
-  gengpio.setpulloff(gpio);
-  usleep(100000);
-
-  pad.setlevel(power);
-  usleep(100000);
-
-  setppm(ppm);
-  set(freq);
-
-  setWord(&MSW,RUN,true);
-  usleep(10000);
- (TRACE>=0x01 ? fprintf(stderr,"%s::start() GPIO(%d) power(%d) freq(%g) started!\n",PROGRAMID,this->gpio,this->power,this->f) : _NOP);
-
+     usleep(1000);
+     setWord(&MSW,RUN,true);
+     usleep(1000);
+     (TRACE>=0x00 ? fprintf(stderr,"%s::start() GPIO(%d) power(%d) freq(%g) started!\n",PROGRAMID,this->gpio,this->POWER,this->f) : _NOP);
+     this->active=true;
 }
 //*-----------------------------------------------------------------------
 //* close
@@ -142,15 +154,16 @@ void DDS::start(float freq) {
 //*-----------------------------------------------------------------------
 void DDS::stop() {
 
-    clk->disableclk(gpio);
-    usleep(100000);
+     if (this->active==false) {return;}
 
-    delete(clk);
-    usleep(100000);
+     clk->disableclk(gpio);
+     //clk->disableclk(20);
+     delete(clk);
+     usleep(10000);
 
-    setWord(&MSW,RUN,false);
+     setWord(&MSW,RUN,false);
     (TRACE>=0x01 ? fprintf(stderr,"%s::stop() stopped!\n",PROGRAMID) : _NOP);
-
+    this->active=false;
 }
 
 //*-------------------------------------------------------------------------
@@ -168,32 +181,44 @@ float DDS::get() {
 //*-------------------------------------------------------------------------
 void DDS::set(float freq) {
 
-   
+   (TRACE>=0x02 ? fprintf(stderr,"%s:set() Freq(%5.0f) active(%s)\n",PROGRAMID,freq,BOOL2CHAR(this->active)) : _NOP);
+   if (this->active==false) {
+      (TRACE>=0x02 ? fprintf(stderr,"%s:set() not active\n",PROGRAMID) : _NOP);
+       return;
+   }   
    int fx=(int)freq;
    this->f=freq;
+
    if (changeFreq!=NULL && getWord(MSW,RUN)==true) {
+      (TRACE>=0x02 ? fprintf(stderr,"%s:set() executing hook\n",PROGRAMID) : _NOP);
       changeFreq(f);
    }
 
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() setpulloff(%d)\n",PROGRAMID,gpio) : _NOP);
    gengpio.setpulloff(gpio);
-   usleep(10000);
+   usleep(1000);
 
-   pad.setlevel(power);
-   usleep(10000);
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() padlevel(%d)\n",PROGRAMID,POWER) : _NOP);
+   pad.setlevel(POWER);
+   usleep(1000);
 
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetAdvancedPllMode\n",PROGRAMID) : _NOP);
    clk->SetAdvancedPllMode(true);
-   usleep(10000);
+   usleep(1000);
 
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetCenterFrequency\n",PROGRAMID) : _NOP);
    clk->SetCenterFrequency(this->f,10);
-   usleep(10000);
+   usleep(1000);
 
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetFrequency\n",PROGRAMID) : _NOP);
    clk->SetFrequency(000);
-   usleep(10000);
+   usleep(1000);
 
+  (TRACE>=0x02 ? fprintf(stderr,"%s:set() enableclk\n",PROGRAMID) : _NOP);
    clk->enableclk(gpio);
-   usleep(10000);
+   usleep(1000);
 
-   (TRACE==0x01 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
+   (TRACE==0x02 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
 
 }
 //*------------------------------------------------------------------------

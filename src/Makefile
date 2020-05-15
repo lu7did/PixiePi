@@ -10,7 +10,7 @@ OT = /home/pi/OrangeThunder/src
 CXXFLAGS = -std=c++11 -Wall -g -O3 -Wno-unused-variable
 LDFLAGS = /home/pi/librpitx/src/librpitx.a -lm -lrt -lpthread -lwiringPi -lwiringPiDev -lpigpio 
 CFLAGS  = -Wall -g -O3 -Wno-unused-variable
-CXXFLAGS = -std=c++11 -Wall -g -O3 -Wno-unused-variable
+CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
 
 
 ../bin/PixiePi : PixiePi/PixiePi.cpp /home/pi/librpitx/src/librpitx.a lib/GUI.h lib/LCDLib.h lib/MMS.h $(OT)/lib/gpioWrapper.h $(OT)/lib/genVFO.h $(OT)/lib/CAT817.h lib/ClassMenu.h pixie/pixie.h lib/gui.h lib/DDS.h lib/iambic.c lib/VFO.h

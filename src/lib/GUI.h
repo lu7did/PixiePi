@@ -21,6 +21,7 @@ char m[8];
 void showVFO() {
 
      if (getWord(MSW,CMD)==true) {return;}
+     if (vfo==nullptr) {return;}
 
      if (vfo->vfo == VFOA) {
         lcd->setCursor(0,0);
@@ -43,6 +44,7 @@ int row=0;
 int alt=0;
 
      if (getWord(MSW,CMD)==true) {return;}
+     if (vfo==nullptr) {return;}
 
      if (vfo->vfo == VFOA) {
         row=0;
@@ -73,6 +75,7 @@ int alt=0;
 void showFrequency() {
 
      if (getWord(MSW,CMD)==true) {return;}
+     if (vfo==nullptr) {return;}
 
      strcpy(LCD_Buffer," ");
      lcd->println(9,0,LCD_Buffer);
@@ -168,7 +171,7 @@ int  n= ((vfo->POWER+1)*2) & 0x0f;
 void showSplit() {
 
      if (getWord(MSW,CMD)==true) {return;}
-
+     if (vfo==nullptr) {return;}
      if (vfo->getSplit()==true) {
        lcd->setCursor(10,1);
        lcd->write(byte(5));
@@ -286,16 +289,19 @@ void nextMenu(int dir) {
 //*---  backup menu
 
 void backupMenu() {
+     (TRACE>=0x02 ? fprintf(stderr,"%s:backupMenu() Saving mVal(%d) mText(%s)\n",PROGRAMID,root->curr->mVal,root->curr->mText) : _NOP);
      root->curr->backup();
 }
 //*---  save menu
 
 void saveMenu() {
+     (TRACE>=0x02 ? fprintf(stderr,"%s:saveMenu() Saving mVal(%d) mText(%s)\n",PROGRAMID,root->curr->mVal,root->curr->mText) : _NOP);
      root->curr->save();
 }
 //*---  restore menu
 
 void restoreMenu() {
+     (TRACE>=0x02 ? fprintf(stderr,"%s:restoreMenu() Saving mVal(%d) mText(%s)\n",PROGRAMID,root->curr->mVal,root->curr->mText) : _NOP);
      root->curr->restore();
 }
 //====================================================================================================================== 
@@ -316,9 +322,15 @@ void setPTT(bool f) {
 
     (f==true ? gpioWrite(GPIO_PTT,1) : gpioWrite(GPIO_PTT,0));
     setWord(&MSW,PTT,f);
-    if (vfo!=nullptr) vfo->setPTT(f);
+    if (vfo!=nullptr) {
+       float fx= vfo->setPTT(f);
+       if(dds!=nullptr) {
+          (TRACE>=0x02 ? fprintf(stderr,"%s:setPTT() PTT set DDS Freq(%5.0f)\n",PROGRAMID,fx) : _NOP);
+          dds->set(fx);
+       }
+    }
     //showPTT();
-    (TRACE>=0x02 ? fprintf(stderr,"%s:setPTT() PTT set(%s)\n",PROGRAMID,BOOL2CHAR(f)) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setPTT() PTT set(%s)\n",PROGRAMID,BOOL2CHAR(f)) : _NOP);
     return;
 }
 
@@ -584,6 +596,7 @@ void procKeyerUpdate(MMS* p) {
         p->mVal=2;
      }
      cw_keyer_mode=p->mVal;
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procKeyerUpdate() keyer mode is now(%d)\n",PROGRAMID,cw_keyer_mode) : _NOP);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -687,6 +700,9 @@ void procKeyerChange(MMS* p) {
 void procModeChange(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procModeChange() \n",PROGRAMID) : _NOP);
+     if (p->mVal<0x00) {p->mVal=0x00;}
+     if (p->mVal>0x0C) {p->mVal=0x0C;}
+
      if (vfo==nullptr) {
         strcpy(p->mText,"cw");
      } else {
@@ -826,7 +842,7 @@ int  sh=(int)x/100;
 
 
      backval=new MMS(backlight,(char*)"*",NULL,NULL);
-//     backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
+//   backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Backlight menu structure created backlight(%d)\n",PROGRAMID,backlight) : _NOP);
 
 
@@ -841,6 +857,8 @@ int  sh=(int)x/100;
      keyer->add(iambicB);
 
      mode->add(modval);
+     mode->lowerLimit(0);
+     mode->upperLimit(12);
 
      speed->add(spval);
      speed->lowerLimit(1);
@@ -869,8 +887,9 @@ int  sh=(int)x/100;
 
      beacon->add(bcnoff);
      beacon->add(bcnon);
-     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID) : _NOP);
-     (TRACE>=0x02 ? root->list() : (void) _NOP );
+     fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID);
+     root->list();
+     fprintf(stderr,"%s:createMenu() *** END ***Menu associations structure finalized\n",PROGRAMID);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -1049,6 +1068,7 @@ void updateKeyer(int gpio, int level, uint32_t tick)
 //*--------------------------------------------------------------------------------------------------
 void setupGPIO() {
 
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Starting....\n",PROGRAMID) : _NOP);
     if(gpioInitialise()<0) {
         (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Cannot initialize GPIO\n",PROGRAMID) : _NOP);
         exit(16);
@@ -1056,29 +1076,31 @@ void setupGPIO() {
 
 
 //*---- Turn cooler on
-
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_COOLER, PI_OUTPUT);
     gpioWrite(GPIO_COOLER, 1);
     usleep(100000);
  
-
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup AUX\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_AUX, PI_INPUT);
     gpioSetPullUpDown(GPIO_AUX,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_AUX,updateAUX);
     usleep(100000);
 
 //*---- Configure Encoder
-
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder Push\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_SW, PI_INPUT);
     gpioSetPullUpDown(GPIO_SW,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_SW,updateSW);
     usleep(100000);
 
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Keyer\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_LEFT,PI_INPUT);
     gpioSetPullUpDown(GPIO_LEFT,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_LEFT,updateKeyer);
     usleep(100000);
 
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_CLK, PI_INPUT);
     gpioSetPullUpDown(GPIO_CLK,PI_PUD_UP);
     usleep(100000);
@@ -1088,10 +1110,12 @@ void setupGPIO() {
     gpioSetPullUpDown(GPIO_DT,PI_PUD_UP);
     usleep(100000);
 
-
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup GPIO Handler\n",PROGRAMID) : _NOP);
     for (int i=0;i<64;i++) {
 
         gpioSetSignalFunc(i,sighandler);
 
     }
+    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() End of setup for GPIO Handler\n",PROGRAMID) : _NOP);
+
 }

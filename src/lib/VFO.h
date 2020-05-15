@@ -1,5 +1,5 @@
 //*=====================================================================================================================
-//* Manage transceiver functionality and link between VFO, CAT, GUI  and DDS subsystems
+//* hook to manage changes in frequency
 //*=====================================================================================================================
 void freqVfoHandler(float f) {  // handler to receiver VFO upcalls for frequency changes
 
@@ -18,6 +18,9 @@ char* b;
    (TRACE>=0x02 ? fprintf(stderr,"%s:freqVfoHandler() VFO(%s) f(%5.0f) fA(%5.0f) fB(%5.0f) PTT(%s)\n",PROGRAMID,b,f,vfo->get(VFOA),vfo->get(VFOB),BOOL2CHAR(getWord(vfo->FT817,PTT))) : _NOP);
 
 }
+//*=====================================================================================================================
+//* hook to manage changes in RIT
+//*=====================================================================================================================
 void ritVfoHandler(float r) {
 char* b;
 
@@ -32,10 +35,13 @@ char* b;
    }
    showRIT();
 }
-
+//*=====================================================================================================================
+//* hook to manage changes in status (SPLIT, RIT, PTT, etc)
+//*=====================================================================================================================
 void changeVfoHandler(byte S) {
 
    if (getWord(S,SPLIT)==true) {
+      if(vfo==nullptr) {return;}
       (TRACE>=0x02 ? fprintf(stderr,"%s:changeVfoHandler() change SPLIT S(%s) On\n",PROGRAMID,BOOL2CHAR(getWord(vfo->FT817,SPLIT))) : _NOP);
       if (cat!=nullptr) {
          setWord(&cat->FT817,SPLIT,getWord(vfo->FT817,SPLIT));
@@ -45,6 +51,7 @@ void changeVfoHandler(byte S) {
       showChange();
    }
    if (getWord(S,RITX)==true) {
+      if(vfo==nullptr) {return;}
       (TRACE>=0x02 ? fprintf(stderr,"%s:changeVfoHandler() change RIT S(%s) On\n",PROGRAMID,BOOL2CHAR(getWord(vfo->FT817,RITX))) : _NOP);
       if (cat!=nullptr) {
          setWord(&cat->FT817,RITX,getWord(vfo->FT817,RITX));
@@ -52,15 +59,16 @@ void changeVfoHandler(byte S) {
       showRIT();
    }
    if (getWord(S,PTT)==true) {
+      if (vfo==nullptr) {return;}
       (TRACE>=0x02 ? fprintf(stderr,"%s:changeVfoHandler() change PTT S(%s) On\n",PROGRAMID,BOOL2CHAR(getWord(vfo->FT817,PTT))) : _NOP);
       if (cat!=nullptr) {
          setWord(&cat->FT817,PTT,getWord(vfo->FT817,PTT));
+         setWord(&MSW,PTT,getWord(cat->FT817,PTT));
       }
-      setWord(&MSW,PTT,getWord(cat->FT817,PTT));
-      //vfo->setPTT(getWord(cat->FT817,PTT));
       showPTT();
    }
    if (getWord(S,VFO)==true) {
+      if (vfo==nullptr) {return;}
       (TRACE>=0x02 ? fprintf(stderr,"%s:changeVfoHandler() change VFO S(%s) On\n",PROGRAMID,BOOL2CHAR(getWord(vfo->FT817,VFO))) : _NOP);
       if (cat!=nullptr) {
          setWord(&cat->FT817,VFO,getWord(vfo->FT817,VFO));
@@ -70,7 +78,9 @@ void changeVfoHandler(byte S) {
    }
 
 }
-
+//*=====================================================================================================================
+//* hook to manage changes in mode
+//*=====================================================================================================================
 void modeVfoHandler(byte m) {
 
 char* b;
