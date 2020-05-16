@@ -7,8 +7,9 @@
 
 while true;
    do
-   sudo /home/pi/PixiePi/bin/PiWSPR -f 40m -c LU7DID -l GF05 -d 20 $1
-   sleep 120 
+   sudo PiWSPR -f 40m -c LU7DID -l GF05 -d 7 $1
+   echo "Sleeping for 100 secs"
+   sleep 100 
 
 done
 

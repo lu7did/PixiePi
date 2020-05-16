@@ -66,6 +66,7 @@ typedef bool boolean;
 #include "../lib/WSPR.h"
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
 #include "../lib/DDS.h"
+#include "../lib/LCDLib.h"
 
 //----------------------------------------------------------------------------
 //  Program parameter definitions
@@ -96,19 +97,15 @@ byte   memstatus=0;
 byte   ntimes=1;
 int    a;
 int    anyargs = 0;
-float  SetFrequency=7095600;
+int    lcd_light;
+float  f=7095600;
 float  ppm=1000.0;
-bool   running=true;
-byte   keepalive=0;
-bool   first=true;
-char   port[80];
 byte   gpio=GPIO_DDS;;
 char   callsign[10];
 char   locator[10];
 int    POWER=7;
 int    ntx=0;
 int    nskip=0;
-byte   ptt=GPIO_PTT;
 
 char   wspr_message[40];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
@@ -120,6 +117,8 @@ bool WSPRwindow=false;
 
 DDS    *dds=new DDS(NULL);
 WSPR   wspr(NULL);
+LCDLib *lcd;
+char*  LCD_Buffer;
 
 //=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //                              ROUTINE STRUCTURE
@@ -157,7 +156,6 @@ Usage:\n\
 \t-c set callsign (ej LU7DID)\n\
 \t-l set locator (ej GF05)\n\
 \t-d set power in dBm\n\
-\t-n set GPIO port for PTT (default: GPIO12)\n\
 \t-i set number of windows to skip between transmission (0 none, default)\n\
 \t-g set GPIO port (4 or 20)\n\
 \t-x force WSPR Window now (test only)\n\
@@ -171,7 +169,12 @@ Usage:\n\
 static void terminate(int num)
 {
     fprintf(stderr,"\n Received signal INT(%d %s)\n",num,strsignal(num));
-    running=false;
+    if (getWord(MSW,RETRY)==true) {
+       fprintf(stderr,"\n Re-entry of termination signal force exit INT(%d %s)\n",num,strsignal(num));
+       exit(16);
+    }
+    setWord(&MSW,RUN,false);
+    setWord(&MSW,RETRY,true);
 }
 //---------------------------------------------------------------------------------------------
 // MAIN Program
@@ -187,7 +190,7 @@ int main(int argc, char *argv[])
 
    while(1)
         {
-                a = getopt(argc, argv, "f:ed:hs:g:p:n:v:c:l:x");
+                a = getopt(argc, argv, "f:ed:hs:g:p:v:c:l:x");
         
                 if(a == -1) 
                 {
@@ -207,46 +210,46 @@ int main(int argc, char *argv[])
                      break; 
                 case 'f': // Frequency
                      if (!strcasecmp(optarg,"LF")) {
-                        SetFrequency=137500.0;
+                        f=137500.0;
                      } else if (!strcasecmp(optarg,"LF-15")) {
-                               SetFrequency=137612.5;
+                               f=137612.5;
                             } else if (!strcasecmp(optarg,"MF")) {
-                                      SetFrequency=475700.0;
+                                      f=475700.0;
                                    } else if (!strcasecmp(optarg,"MF-15")) {
-                                             SetFrequency=475812.5;
+                                             f=475812.5;
                                           } else if (!strcasecmp(optarg,"160m")) {
-                                                    SetFrequency=1838100.0;
+                                                    f=1838100.0;
                                                  } else if (!strcasecmp(optarg,"160m-15")) {
-                                                           SetFrequency=1838212.5;
+                                                           f=1838212.5;
                                                         } else if (!strcasecmp(optarg,"80m")) {
-                                                                  SetFrequency=3594100.0;
+                                                                  f=3594100.0;
                                                                } else if (!strcasecmp(optarg,"60m")) {
-                                                                         SetFrequency=5288700.0;
+                                                                         f=5288700.0;
                                                                       } else if (!strcasecmp(optarg,"40m")) {
-                                                                                SetFrequency=7038600.0;
+                                                                                f=7038600.0;
                                                                              } else if (!strcasecmp(optarg,"30m")) {
-                                                                                       SetFrequency=10140200.0;
+                                                                                       f=10140200.0;
                                                                                     } else if (!strcasecmp(optarg,"20m")) {
-                                                                                              SetFrequency=14097100.0;
+                                                                                              f=14097100.0;
                                                                                            } else if (!strcasecmp(optarg,"17m")) {
-                                                                                                     SetFrequency=18106100.0;
+                                                                                                     f=18106100.0;
                                                                                                   } else if (!strcasecmp(optarg,"15m")) {
-                                                                                                            SetFrequency=21096100.0;
+                                                                                                            f=21096100.0;
                                                                                                          } else if (!strcasecmp(optarg,"12m")) {
-                                                                                                                   SetFrequency=24926100.0;
+                                                                                                                   f=24926100.0;
                                                                                                                 } else if (!strcasecmp(optarg,"10m")) {
-                                                                                                                          SetFrequency=28126100.0;
+                                                                                                                          f=28126100.0;
                                                                                                                        } else if (!strcasecmp(optarg,"6m")) {
-                                                                                                                                 SetFrequency=50294500.0;
+                                                                                                                                 f=50294500.0;
                                                                                                                               } else if (!strcasecmp(optarg,"4m")) {
-                                                                                                                                        SetFrequency=70092500.0;
+                                                                                                                                        f=70092500.0;
                                                                                                                                      } else if (!strcasecmp(optarg,"2m")) {
-                                                                                                                                               SetFrequency=144490500.0;
+                                                                                                                                               f=144490500.0;
                                                                                                                                             } else {
-                                                                                                                                               SetFrequency = atof(optarg);
+                                                                                                                                               f = atof(optarg);
                                                                                                                                             }
                      
-		     fprintf(stderr,"Frequency: %10.0f Hz\n",SetFrequency);
+		     fprintf(stderr,"Frequency: %10.0f Hz\n",f);
                      break;
         	case 'd': //power
 			POWER=atoi(optarg);
@@ -264,13 +267,6 @@ int main(int argc, char *argv[])
 			sprintf(locator,optarg);
 			fprintf(stderr,"Locator: %s\n",locator);
 			break;
-                case 'n': // GPIO PTT
-                        ptt=atoi(optarg);
-                        if (gpio < 1 || gpio > 19) {
-                           ptt=GPIO_PTT;
-                        }
-                        fprintf(stderr,"PTT Out: GPIO%d\n",ptt);
-                        break;
                 case 'g': // GPIO
                         gpio = atoi(optarg);
                         if (gpio != GPIO_DDS) {
@@ -315,25 +311,6 @@ int main(int argc, char *argv[])
         }
     }
 
-//*--- Initialize GPIO management (PTT)
-
-    if(gpioInitialise()<0) {
-       fprintf(stderr,"Cannot initialize GPIO\n");
-       return -1;
-    }
-
-
-//--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
-
-    dds->gpio=gpio;
-    dds->POWER=POWER;
-    dds->setppm(1000.0);
-
-//*--- Seed random number generator
-
-    srand(time(0));
-
-
 //--- Convert librpitx power level to WSPR power level
 //  0   10mW 10 dBm
 //  1
@@ -345,9 +322,62 @@ int main(int argc, char *argv[])
 //  7    1W  30 dBm
 //--- Generate WSPR message
 int WSPRPower=20;
+
     if (POWER>=0 && POWER <3) {WSPRPower=10;}
     if (POWER>=3 && POWER <7) {WSPRPower=20;}
     if (POWER>=7) {WSPRPower=30;}
+
+
+//*-----------------------------------------------------------------------------------------
+//* Setup LCD Display 
+//*-----------------------------------------------------------------------------------------
+    LCD_Buffer=(char*) malloc(32);
+    lcd=new LCDLib(NULL);
+
+    lcd->begin(16,2);
+    lcd->clear();
+    lcd->createChar(0,TX);
+    lcd_light=LCD_ON;
+    lcd->backlight(true);
+    lcd->setCursor(0,0);
+  
+    sprintf(LCD_Buffer,"%s %s(%s)",PROGRAMID,PROG_VERSION,PROG_BUILD);
+    lcd->println(0,0,LCD_Buffer);
+
+    sprintf(LCD_Buffer,"%s %s %d",callsign,locator,WSPRPower);
+    lcd->println(0,1,LCD_Buffer);
+
+//*--- Initialize GPIO management (PTT)
+
+    if(gpioInitialise()<0) {
+       fprintf(stderr,"Cannot initialize GPIO\n");
+       return -1;
+    }
+
+    for (int i=0;i<64;i++) {
+
+        gpioSetSignalFunc(i,terminate);
+
+    }
+
+//*---- Turn cooler on
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
+
+    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
+    usleep(1000);
+    gpioSetMode(GPIO_PTT, PI_OUTPUT);
+    usleep(1000);
+
+//--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
+
+    dds->gpio=gpio;
+    dds->POWER=POWER;
+    dds->setppm(1000.0);
+
+//*--- Seed random number generator
+
+    srand(time(0));
+
 
     sprintf(wspr_message, "%s %s %d", callsign,locator,WSPRPower);
     wspr.code_wspr(wspr_message, wspr_symbols);
@@ -365,7 +395,7 @@ int WSPRPower=20;
     now=time(0);
     dt=ctime(&now);
 
-    float f=SetFrequency+WSPR_SHIFT+WSPR_BAND;
+    float freq=f+WSPR_SHIFT+WSPR_BAND;
 //*-------------------------------------------------------------------
 // Wait for next WSPR window (even minutes)
 //*-------------------------------------------------------------------
@@ -394,20 +424,24 @@ int WSPRPower=20;
 
     int j=0;
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
-    f+=wspr_offset;
+    freq+=wspr_offset;
     fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
-    dds->start(f);
+    dds->start(freq);
 
 //*---- Turn on Transmitter
+    lcd->setCursor(15,1);
+    lcd->write(0);
 
-    gpioWrite(ptt,true);
+    gpioWrite(GPIO_PTT,true);
+    gpioWrite(GPIO_COOLER,true);
     usleep(1000);
-    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",SetFrequency,f,wspr_offset);
+    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",f,freq,wspr_offset);
     signal(SIGINT, terminate); 
-    while (j<WSPR_LENGTH && running==true){
+    setWord(&MSW,RUN,true);
+    while (j<WSPR_LENGTH && getWord(MSW,RUN)==true){
        int t=wspr_symbols[j];
        if ((t >= 0) && (t <= 3) ) {
-          float frequency=(f + (t * 1.4648));
+          float frequency=(freq + (t * 1.4648));
           dds->set(frequency);
           usleep(1000);
        }
@@ -418,7 +452,14 @@ int WSPRPower=20;
 //*--- Finalize beacon
 
     fprintf(stderr,"Turning off TX\n");
-    gpioWrite(ptt,false);
+    gpioWrite(GPIO_PTT,false);
+    gpioWrite(GPIO_COOLER,false);
+
+//*--- Turn off LCD
+
+    lcd->backlight(false);
+    lcd->setCursor(0,0);
+    lcd->clear();
 
     dds->stop();
     usleep(100000);

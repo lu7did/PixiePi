@@ -1,0 +1,11 @@
+#!/bin/sh
+#*-----------------------------------------------------------------------
+#* Synchronize ntp with ntpd server pool
+#*-----------------------------------------------------------------------
+sudo /etc/init.d/ntp stop >> ntpd.sync.log
+sudo ntpd -q -g >> ntpd.sync.log
+sudo /etc/init.d/ntp start >> ntpd.sync.log
+
+echo 'date' " ntpd syncrhonization completed " >> ntpd.sync.log
+
+exit 0

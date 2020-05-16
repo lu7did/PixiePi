@@ -38,7 +38,7 @@
 #include <iomanip>
 #include "/home/pi/librpitx/src/librpitx.h"
 //#include "/home/pi/PixiePi/src/lib/DDS.h"
-#include "/home/pi/OrangeThunder/src/OT/OT.h"
+//#include "/home/pi/OrangeThunder/src/OT/OT.h"
 
 typedef unsigned char byte;
 typedef bool boolean;
