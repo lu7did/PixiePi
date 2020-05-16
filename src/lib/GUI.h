@@ -685,18 +685,23 @@ void procBackUpdate(MMS* p) {
 //*--------------------------------------------------------------------------------------------------
 void procCoolUpdate(MMS* p) {
 
+     
      (TRACE>=0x02 ? fprintf(stderr,"%s:procCoolUpdate()\n",PROGRAMID) : _NOP);
 
 }
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI update events
 //*--------------------------------------------------------------------------------------------------
-void procBeaconUpdate(MMS* p) {
+void procPaddleUpdate(MMS* p) {
 
-     (TRACE>=0x02 ? fprintf(stderr,"%s:procBeaconUpdate()\n",PROGRAMID) : _NOP);
+     
+     (TRACE>=0x02 ? fprintf(stderr,"%s:procPaddleUpdate()\n",PROGRAMID) : _NOP);
+     if (p->mVal <0 || p->mVal>1) {
+        return;
+     }
+     rev=p->mVal;
 
 }
-
 //*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=**=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI change events
@@ -799,6 +804,7 @@ void createMenu() {
      drive=  new MMS(5,(char*)"Drive",procDriveChange,procDriveUpdate);
      backl=  new MMS(6,(char*)"Backlight",procBacklChange,procBackUpdate);
      cool=   new MMS(7,(char*)"Cooler",NULL,procCoolUpdate);
+     paddle= new MMS(8,(char*)"Paddle",NULL,procPaddleUpdate);
 
 //*--- Associate menu items to root to establish navigation
 
@@ -810,6 +816,7 @@ void createMenu() {
      root->add(drive);
      root->add(backl);
      root->add(cool);
+     root->add(paddle);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() First menu structure created\n",PROGRAMID) : _NOP);
 
 
@@ -819,7 +826,8 @@ void createMenu() {
      iambicA =new MMS(1,(char*)"Iambic A",NULL,NULL);
      iambicB =new MMS(2,(char*)"Iambic B",NULL,NULL);
 
-     
+     paddir=new MMS(0,(char*)"Direct",NULL,NULL);
+     padrev=new MMS(1,(char*)"Reversed",NULL,NULL);     
 
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Keyer created\n",PROGRAMID) : _NOP);
 
@@ -887,8 +895,16 @@ int  sh=(int)x;
      cool->add(coolon);
      cool->add(coolof);
 
+     if (rev==0) {
+        paddle->add(paddir);
+        paddle->add(padrev);
+     } else {
+        paddle->add(padrev);
+        paddle->add(paddir);
+     }
+
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID) : _NOP);
-     root->list();
+     (TRACE>=0x01 ? root->list() : (void)_NOP);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -1075,31 +1091,31 @@ void setupGPIO() {
 
 
 //*---- Turn cooler on
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_COOLER, PI_OUTPUT);
     gpioWrite(GPIO_COOLER, 1);
     usleep(100000);
  
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup AUX\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup AUX\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_AUX, PI_INPUT);
     gpioSetPullUpDown(GPIO_AUX,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_AUX,updateAUX);
     usleep(100000);
 
 //*---- Configure Encoder
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder Push\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder Push\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_SW, PI_INPUT);
     gpioSetPullUpDown(GPIO_SW,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_SW,updateSW);
     usleep(100000);
 
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Keyer\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Keyer\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_LEFT,PI_INPUT);
     gpioSetPullUpDown(GPIO_LEFT,PI_PUD_UP);
     gpioSetAlertFunc(GPIO_LEFT,updateKeyer);
     usleep(100000);
 
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Encoder\n",PROGRAMID) : _NOP);
     gpioSetMode(GPIO_CLK, PI_INPUT);
     gpioSetPullUpDown(GPIO_CLK,PI_PUD_UP);
     usleep(100000);
@@ -1109,12 +1125,12 @@ void setupGPIO() {
     gpioSetPullUpDown(GPIO_DT,PI_PUD_UP);
     usleep(100000);
 
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() Setup GPIO Handler\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup GPIO Handler\n",PROGRAMID) : _NOP);
     for (int i=0;i<64;i++) {
 
         gpioSetSignalFunc(i,sighandler);
 
     }
-    (TRACE>=0x00 ? fprintf(stderr,"%s:setupGPIO() End of setup for GPIO Handler\n",PROGRAMID) : _NOP);
+    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() End of setup for GPIO Handler\n",PROGRAMID) : _NOP);
 
 }

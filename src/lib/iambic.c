@@ -157,9 +157,9 @@ void keyer_update() {
 void keyer_event(int gpio, int level, uint32_t tick) {
     int state = (cw_active_state == 0) ? (level == 0) : (level != 0);
 
-    if (gpio == GPIO_LEFT) {
+    if (  (rev==0 ? gpio == GPIO_LEFT : gpio == GPIO_RIGHT)  ) {
         kcwl = state;
-        (TRACE>=0x02 ? fprintf(stderr,"%s:keyer_event: LEFT_PADDLE event detected\n",PROGID) : _NOP);
+        (TRACE>=0x02 ? fprintf(stderr,"%s:keyer_event: PADDLE event detected\n",PROGID) : _NOP);
     }
     else  // RIGHT_PADDLE_GPIO
      {   kcwr = state;
@@ -474,7 +474,7 @@ int iambic_init()  {
         return 1;
     }
     int i=0;
-    (TRACE>=0x00 ? fprintf(stderr,"%s:iambic_init: Ready to operate\n",PROGID) : _NOP);
+    (TRACE>=0x02 ? fprintf(stderr,"%s:iambic_init: Ready to operate\n",PROGID) : _NOP);
 
     i = sem_init(&cw_event, 0, 0);
     i |= pthread_create(&keyer_thread_id, NULL, keyer_thread, NULL);

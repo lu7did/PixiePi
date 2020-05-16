@@ -76,6 +76,7 @@
 #include "../lib/LCDLib.h"
 #include "../lib/MMS.h"
 #include "../lib/DDS.h"
+#include "../minIni/minIni.h"
 #include "/home/pi/OrangeThunder/src/lib/CAT817.h"
 #include "/home/pi/OrangeThunder/src/lib/genVFO.h"
 #include "/home/pi/OrangeThunder/src/lib/CallBackTimer.h"
@@ -89,7 +90,7 @@
 #include <future>
 #define SIGTERM_MSG "SIGTERM received.\n"
 
-byte  TRACE=0x02;
+byte  TRACE=0x00;
 byte  MSW=0x00;
 byte  GSW=0x00;
 byte  SSW=0x00;
@@ -102,14 +103,6 @@ const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
 const char   *COPYRIGHT="(c) LU7DID 2018,2020";
 
-
-extern "C" {
-bool running=true;
-bool ready=false;
-
-#include "../lib/iambic.c"
-
-}
 
 int   a;
 int   anyargs;
@@ -140,6 +133,14 @@ int value=0;
 int lastEncoded=0;
 int counter=0;
 int clkLastState=0; 
+
+//* --- Define minIni related parameters (configuration persistence)
+
+char inifile[80];
+char iniStr[100];
+long nIni;
+int  sIni,kIni;
+char iniSection[50];
 
 // *----------------------------------------------------------------*
 // *                  VFO Subsytem definitions                      *
@@ -178,6 +179,9 @@ MMS* coolon;
 MMS* coolof;
 MMS* bcnon;
 MMS* bcnoff;
+MMS* paddle;
+MMS* padrev;
+MMS* paddir;
 
 int  TVFO=0;
 int  TBCK=0;
@@ -209,6 +213,18 @@ byte  k=0;
 int   backlight=0;
 bool  cooler=false;
 byte  st=3;
+byte  rev=0;
+//*-------------------------------------------------------------------------
+//* include iambic as external module
+//*-------------------------------------------------------------------------
+extern "C" {
+bool running=true;
+bool ready=false;
+
+#include "../lib/iambic.c"
+
+}
+
 
 #include "../lib/GUI.h"
 #include "../lib/VFO.h"
@@ -290,6 +306,7 @@ fprintf(stderr,"\n%s version %s build (%s)\n"
 "                [-S tunning step {0..11 default=3 (100Hz)}]\n"
 "                [-m mode {0=LSB,1=USB,2=CW,3=CWR,4=AM,5=FM,6=WFM,7=PKT,8=DIG default=CW}]\n"
 "                [-c cooler activated {defaul not, argument turns it on!}]\n"
+"                [-r reverse keyer paddles {defaul not}]\n"
 "                [-l {power level (0..7 default=7}]\n"
 "                [-p {CAT port}]\n"
 "                [-v Verbose {0,1,2,3 default=0}]\n"
@@ -314,9 +331,28 @@ int main(int argc, char* argv[])
      }
 
 
+//*---- Persistence implementation (the arguments will override)
+
+     strcpy(inifile,"./PixiePi.cfg");
+     TRACE=ini_getl("MISC","TRACE",0,inifile);
+     backlight=ini_getl("MISC","BACKLIGHT",0,inifile);
+     l=ini_getl("VFO","POWER",7,inifile);
+     nIni=ini_gets("CAT", "PORT", "/tmp/ttyv1", port, sizearray(port), inifile);
+     catbaud=ini_getl("CAT","BAUD",CATBAUD,inifile);
+     k=ini_getl("KEYER","KEYER_MODE",KEYER_STRAIGHT,inifile);
+     s=ini_getl("KEYER","KEYER_SPEED",15,inifile);
+     rev=ini_getl("KEYER","REVERSE",0,inifile);
+     st=ini_getl("VFO","STEP",3,inifile);
+     x=(float)ini_getl("VFO","SHIFT",600,inifile);
+     m=ini_getl("VFO","MODE",2,inifile);
+     (ini_getl("MISC","COOLER",0,inifile)==0 ? cooler=false : cooler=true);
+     f=(float)ini_getl("VFO","F",7030000,inifile);
+
+//*--------- Process arguments to override persistence
+
 while(true)
         {
-                a = getopt(argc, argv, "f:s:S:m:c:l:p:b:v:x:k:h?");
+                a = getopt(argc, argv, "f:s:S:m:crl:p:b:v:x:k:h?");
 
                 if(a == -1) 
                 {
@@ -353,6 +389,10 @@ while(true)
                 case 'c':
                         cooler=true;
                         fprintf(stderr,"%s:main() args(cooler)=%s\n",PROGRAMID,BOOL2CHAR(cooler));
+                        break;
+                case 'r':
+                        rev=1;
+                        fprintf(stderr,"%s:main() args(paddle reversed)=%d\n",PROGRAMID,rev);
                         break;
                 case 'l':
                         l=atoi(optarg);
@@ -394,6 +434,10 @@ while(true)
                         break;
                 }
         }
+
+
+
+//*---
 
 
 //*--- Create memory resources
@@ -504,11 +548,11 @@ while(true)
      setCooler(cooler);
      setPTT(false);
 
-     //gpio->writePin(GPIO_COOLER,1);
+
 //--------------------------------------------------------------------------------------------------
 // Main program loop
 //--------------------------------------------------------------------------------------------------
-
+     (TRACE>=0x00 ? fprintf(stderr,"%s:main() Starting operation\n",PROGRAMID) : _NOP);
      while(getWord(MSW,RUN)==true) {
 
 //*--- Read and process events coming from the CAT subsystem
@@ -527,14 +571,63 @@ while(true)
 
   iambic_close();
 
-//  gpio->writePin(GPIO_COOLER,1);
+//*---- save persistence
+//*---- Persistence implementation (the arguments will override)
+
+  strcpy(inifile,"./PixiePi.cfg");
+
+  sprintf(iniStr,"%d",TRACE);
+  nIni = ini_puts("MISC","TRACE",iniStr,inifile);
+
+  sprintf(iniStr,"%d",backlight);
+  nIni = ini_puts("MISC","BACKLIGHT",iniStr,inifile);
+
+  sprintf(iniStr,"%d",vfo->POWER);
+  nIni = ini_puts("VFO","POWER",iniStr,inifile);
+
+  sprintf(iniStr,"%s",port);
+  nIni = ini_puts("CAT","PORT",iniStr,inifile);
+
+  sprintf(iniStr,"%ld",catbaud);
+  nIni = ini_puts("VFO","POWER",iniStr,inifile);
+
+  sprintf(iniStr,"%d",cw_keyer_mode);
+  nIni = ini_puts("KEYER","KEYER_MODE",iniStr,inifile);
+
+  sprintf(iniStr,"%d",cw_keyer_speed);
+  nIni = ini_puts("KEYER","KEYER_SPEED",iniStr,inifile);
+
+  sprintf(iniStr,"%d",rev);
+  nIni = ini_puts("KEYER","REVERSE",iniStr,inifile);
+
+  sprintf(iniStr,"%d",vfo->getStep());
+  nIni = ini_puts("VFO","STEP",iniStr,inifile);
+
+  sprintf(iniStr,"%d",(int)vfo->getShift());
+  nIni = ini_puts("VFO","SHIFT",iniStr,inifile);
+
+  sprintf(iniStr,"%d",vfo->getMode());
+  nIni = ini_puts("VFO","MODE",iniStr,inifile);
+
+  (cooler==true ? sprintf(iniStr,"%d",1) : sprintf(iniStr,"%d",0));
+
+  sprintf(iniStr,"%d",(int)vfo->get());
+  nIni = ini_puts("VFO","F",iniStr,inifile);
+
+
+//*--- Turn off LCD
 
   lcd->backlight(false);
   lcd->setCursor(0,0);
   lcd->clear();
 
+//*--- Turn off Cooler and PTT
+
   setCooler(false);
   setPTT(false);
+
+//*--- Terminate GPIO activity and exit (hopefully clean)
+
   gpioTerminate();
   exit(0);
 }

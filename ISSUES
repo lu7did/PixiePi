@@ -6,13 +6,8 @@ Issues:
 
 Implementation Backlog
 
+* Review Pi4D and OT4D to apply changes on genVFO object because of PixiePi
 * Test Pi4D over PixiePi platform
 * Update README.md for the PixiePi platform
-* Reorganize code base for OT to be the master project
-* PixiePi v2.0
-  - new menu strategy 
-  - new GUI
-  - scale options and functions (OCX paradigm)
-* implement FREQ and POWER commands at sendRF to support DDS operation
 * preserve librpitx to protect change on ModeIQ.
  

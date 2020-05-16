@@ -96,6 +96,51 @@ The Raspberry Pi Zero pinout assignments are:
 
 ![Alt Text](docs/RaspberryPiZero_Pinout_anotado.jpg?raw=true "Raspberry Pi Zero Pinout")
 
+Assignments are established as follows:
+
+```
+pin 1	3V3	Encoder Vcc
+pin 2	5V	LCD Vcc
+pin 3	GPIO2	LCD SDA
+pin 4	5V	+5Vcc supply (external)
+pin 5	GPIO3	LCD SCL
+pin 6	Ground	LCD ground
+pin 7	GPIO4	RF out (DDS)
+pin 8	GPIO14	N/C
+pin 9	Ground	RF ground (DDS)
+pin 10	GPIO15	Keyer Paddle Right
+pin 11	GPIO17	Encoder Clk
+pin 12	GPIO18	Encoder DT
+pin 13	GPIO27	Encoder Push (SW)
+pin 14	Ground	N/C
+pin 15	GPIO22	N/C
+pin 16	GPIO23	N/C
+pin 17	3V3	Not used
+pin 18	GPIO24	Cooler Fan Enable
+pin 19	GPIO10	N/C
+pin 20	Ground	N/C
+pin 21	GPIO9	N/C
+pin 22	GPIO25	N/C
+pin 23	GPIO11	N/C
+pin 24	GPIO8	N/C
+pin 25	Ground	N/C
+pin 26	GPIO7	N/C
+pin 27	ID_SD	N/C
+pin 28	ID_SC	N/C
+pin 29	GPIO5	N/C
+pin 30	Ground	Controller I/F Ground
+pin 31	GPIO6	N/C
+pin 32	GPIO12	PTT
+pin 33	GPIO13	Keyer Paddle left
+pin 34	Ground	Encoder Ground 
+pin 35	GPIO19	N/C
+pin 36	GPIO16	N/C
+pin 37	GPIO26	N/C
+pin 38	GPIO20	N/C
+pin 39	Ground	Aux push Ground
+pin 40	AUX	Aux push 
+```
+
 ## Hardware prototype
 
 This is a snapshot of the current prototype used to develop and debug this project:

@@ -64,6 +64,7 @@ typedef bool boolean;
 
 #include "./PiWSPR.h"		// wspr definitions and functions
 #include "../lib/WSPR.h"
+#include "/home/pi/OrangeThunder/src/OT/OT.h"
 #include "../lib/DDS.h"
 
 //----------------------------------------------------------------------------
@@ -83,6 +84,9 @@ struct sigaction sa;
 
 //---- Generic memory allocations
 
+byte   TRACE=0x00;
+byte   MSW=0x00;
+
 int    value=0;
 int    lastEncoded=0;
 int    counter=0;
@@ -92,30 +96,29 @@ byte   memstatus=0;
 byte   ntimes=1;
 int    a;
 int    anyargs = 0;
-float  SetFrequency=VFO_START;
+float  SetFrequency=7095600;
 float  ppm=1000.0;
 bool   running=true;
 byte   keepalive=0;
 bool   first=true;
 char   port[80];
-byte   gpio=GPIO04;
+byte   gpio=GPIO_DDS;;
 char   callsign[10];
 char   locator[10];
-int    POWER=10;
+int    POWER=7;
 int    ntx=0;
 int    nskip=0;
-byte   ptt=GPIO12;
+byte   ptt=GPIO_PTT;
 
 char   wspr_message[40];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
 unsigned long tuning_words[WSPR_LENGTH];
 
 bool WSPRwindow=false;
-void cbkDDS(float f);
 
 //*---- Define WSPR memory blocks
 
-DDS    *dds=new DDS(cbkDDS);
+DDS    *dds=new DDS(NULL);
 WSPR   wspr(NULL);
 
 //=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=*=
@@ -141,13 +144,6 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
 
 }
 
-//--------------------------------------------------------------------------
-// Callback for DDS pointers
-//--------------------------------------------------------------------------
-void cbkDDS(float f) {
-
-    //NOP
-}
 //-------------------------------------------------------------------------------------------------
 // print_usage
 // help message at program startup
@@ -191,7 +187,7 @@ int main(int argc, char *argv[])
 
    while(1)
         {
-                a = getopt(argc, argv, "f:ed:hs:g:p:n:c:l:x");
+                a = getopt(argc, argv, "f:ed:hs:g:p:n:v:c:l:x");
         
                 if(a == -1) 
                 {
@@ -256,6 +252,10 @@ int main(int argc, char *argv[])
 			POWER=atoi(optarg);
 			fprintf(stderr,"Power: %d dBm\n",POWER);
 			break;
+        	case 'v': //verbose
+			TRACE=atoi(optarg);
+			fprintf(stderr,"TRACE: %d\n",TRACE);
+			break;
 		case 'c': //callsign
 			sprintf(callsign,optarg);
 			fprintf(stderr,"Callsign: %s\n",callsign);
@@ -267,13 +267,13 @@ int main(int argc, char *argv[])
                 case 'n': // GPIO PTT
                         ptt=atoi(optarg);
                         if (gpio < 1 || gpio > 19) {
-                           ptt=GPIO12;
+                           ptt=GPIO_PTT;
                         }
                         fprintf(stderr,"PTT Out: GPIO%d\n",ptt);
                         break;
                 case 'g': // GPIO
                         gpio = atoi(optarg);
-                        if (gpio != GPIO04 && gpio != GPIO20) {
+                        if (gpio != GPIO_DDS) {
                            fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
                            break;
                         }
@@ -326,16 +326,30 @@ int main(int argc, char *argv[])
 //--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
 
     dds->gpio=gpio;
-    dds->POWER=DDS_MAXLEVEL;
+    dds->POWER=POWER;
     dds->setppm(1000.0);
 
 //*--- Seed random number generator
 
     srand(time(0));
 
-//--- Generate WSPR message
 
-    sprintf(wspr_message, "%s %s %d", callsign,locator,POWER);
+//--- Convert librpitx power level to WSPR power level
+//  0   10mW 10 dBm
+//  1
+//  2
+//  3  100mW 20 dBm 
+//  4
+//  5
+//  6    
+//  7    1W  30 dBm
+//--- Generate WSPR message
+int WSPRPower=20;
+    if (POWER>=0 && POWER <3) {WSPRPower=10;}
+    if (POWER>=3 && POWER <7) {WSPRPower=20;}
+    if (POWER>=7) {WSPRPower=30;}
+
+    sprintf(wspr_message, "%s %s %d", callsign,locator,WSPRPower);
     wspr.code_wspr(wspr_message, wspr_symbols);
     printf("WSPR Message\n");
     printf("------------\n");
@@ -386,7 +400,7 @@ int main(int argc, char *argv[])
 
 //*---- Turn on Transmitter
 
-    gpioWrite(ptt,PTT_ON);
+    gpioWrite(ptt,true);
     usleep(1000);
     fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",SetFrequency,f,wspr_offset);
     signal(SIGINT, terminate); 
@@ -404,7 +418,7 @@ int main(int argc, char *argv[])
 //*--- Finalize beacon
 
     fprintf(stderr,"Turning off TX\n");
-    gpioWrite(ptt,PTT_OFF);
+    gpioWrite(ptt,false);
 
     dds->stop();
     usleep(100000);

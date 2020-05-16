@@ -129,9 +129,7 @@ void DDS::start(float freq) {
      if (this->active==true) {return;}
 
      f=freq;
-     //generalgpio gengpio;
      gengpio.setpulloff(gpio);
-     //padgpio pad;
      pad.setlevel(POWER);
      clk=new clkgpio;
      clk->SetAdvancedPllMode(true);
@@ -145,7 +143,7 @@ void DDS::start(float freq) {
      usleep(1000);
      setWord(&MSW,RUN,true);
      usleep(1000);
-     (TRACE>=0x00 ? fprintf(stderr,"%s::start() GPIO(%d) power(%d) freq(%g) started!\n",PROGRAMID,this->gpio,this->POWER,this->f) : _NOP);
+     (TRACE>=0x02 ? fprintf(stderr,"%s::start() GPIO(%d) power(%d) freq(%g) started!\n",PROGRAMID,this->gpio,this->POWER,this->f) : _NOP);
      this->active=true;
 }
 //*-----------------------------------------------------------------------
