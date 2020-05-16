@@ -194,31 +194,14 @@ void DDS::set(float freq) {
       changeFreq(f);
    }
 
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() setpulloff(%d)\n",PROGRAMID,gpio) : _NOP);
    gengpio.setpulloff(gpio);
    usleep(1000);
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() padlevel(%d)\n",PROGRAMID,POWER) : _NOP);
    pad.setlevel(POWER);
-   usleep(1000);
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetAdvancedPllMode\n",PROGRAMID) : _NOP);
    clk->SetAdvancedPllMode(true);
-   usleep(1000);
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetCenterFrequency\n",PROGRAMID) : _NOP);
    clk->SetCenterFrequency(this->f,10);
-   usleep(1000);
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() SetFrequency\n",PROGRAMID) : _NOP);
    clk->SetFrequency(000);
-   usleep(1000);
-
-  (TRACE>=0x02 ? fprintf(stderr,"%s:set() enableclk\n",PROGRAMID) : _NOP);
    clk->enableclk(gpio);
-   usleep(1000);
-
-   (TRACE==0x02 ? fprintf(stderr,"DDS::set(): Frequency set (%d)\n",fx) : _NOP);
+   usleep(5000);
 
 }
 //*------------------------------------------------------------------------

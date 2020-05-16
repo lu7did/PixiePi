@@ -17,7 +17,7 @@ echo "socat PID($PID)"
 #*------------------------------------------------------------------------
 #* Launch program
 #*------------------------------------------------------------------------
-sudo PixiePi -f 7030000 -s 15 -m 2 -c LU7DID -g GF05 -l 3 -p /tmp/ttyv1 -v 2 -k 0
+sudo PixiePi -f 7030000 -s 15 -m 2 -l 3 -p /tmp/ttyv1 -v 2 -k 0
 
 #echo "Killing rigtcl PID($RIGCTL)"
 #sudo pkill rigctld

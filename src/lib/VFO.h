@@ -122,7 +122,14 @@ void CATchangeFreq() {
 void CATchangeMode() {
 
   (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) changed\n",PROGRAMID,cat->MODE) : _NOP);
-  vfo->setMode(cat->MODE);
+
+  if (cat->MODE==MCW || cat->MODE==MCWR) {
+      vfo->setMode(cat->MODE);
+     (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) changed\n",PROGRAMID,cat->MODE) : _NOP);
+  } else {
+     (TRACE>=0x02 ? fprintf(stderr,"%s:CATchangeMode() requested MODE(%d) rejected\n",PROGRAMID,cat->MODE) : _NOP);
+     cat->MODE=vfo->MODE;
+  }
   return;
 
 }

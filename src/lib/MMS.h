@@ -94,11 +94,15 @@ MMS::MMS(int val,char* text,CALLCHANGE pChange,CALLUPDATE pUpdate) {
 //*-------------------------------------------------------------------------------------------------
 void MMS::save() {
 
-   if (this->mVal != this->bupmVal || strcmp(this->mText,this->bupmText) != 0 || this->curr != this->bupcurr) {
+   if (this->curr == NULL) {
+      (TRACE>=0x02 ? fprintf(stderr,"%s::save() pointer is NULL, ignored\n",PROGRAMID) : _NOP);
+       return;
+   }
+   if (this->curr->mVal != this->bupmVal || strcmp(this->curr->mText,this->bupmText) != 0 || this->curr != this->bupcurr) {
       (TRACE>=0x02 ? fprintf(stderr,"%s::save() conditions for update met mVal(%d) bupmVal(%d) mText(%s) bupmText(%s)\n",PROGRAMID,this->mVal,this->bupmVal,this->mText,this->bupmText) : _NOP);
       if (this->procUpdate != NULL) {
-          this->procUpdate(this);
-          (TRACE>=0x02 ? fprintf(stderr,"%s::save() procUpdate(%s)\n",PROGRAMID,this->mText) : _NOP);
+          this->procUpdate(this->curr);
+          (TRACE>=0x02 ? fprintf(stderr,"%s::save() procUpdate(%s)\n",PROGRAMID,this->curr->mText) : _NOP);
       }
       this->backup();
    } else {

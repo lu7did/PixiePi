@@ -235,16 +235,16 @@ void showGui() {
 void setBacklight(bool v) {
 
      if (getWord(MSW,BCK)==false) {
-        TBCK=BACKLIGHT;
+        TBCK=backlight*1000;
         return;
      }
 
      if (TBCK>0) {
-        TBCK=BACKLIGHT;
+        TBCK=backlight*1000;
         setWord(&SSW,FBCK,false);
         return;
      }
-     TBCK=BACKLIGHT; 
+     TBCK=backlight*1000; 
      lcd->backlight(v);
      lcd->setCursor(0,0);
      setWord(&SSW,FBCK,false);
@@ -420,10 +420,7 @@ void processGui() {
         }
 
      }
-
-
 //*----- CMD=true GUI=false this is Menu panel
-
      if (getWord(MSW,CMD)==true && getWord(MSW,GUI)==false) {
 
         if (getWord(GSW,FSW)==true) {  //return to VFO mode
@@ -500,15 +497,9 @@ void processGui() {
            TSAVE=3000;
 
         }
-
-
-
-
      }
 
-
 //*------ Miscellaneaous services
-
 //*--- Manage backlight timeout
 
      if (getWord(SSW,FBCK)==true) {  //backlight timeout
@@ -605,7 +596,11 @@ void procKeyerUpdate(MMS* p) {
 void procSpeedUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procSpeedUpdate() \n",PROGRAMID) : _NOP);
-
+     if (p->mVal<5 || p->mVal>50) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:procSpeedUpdate() invalid speed value(%d) ignored.\n",PROGRAMID,p->mVal) : _NOP);
+        return;
+     }
+     cw_keyer_speed=p->mVal;
 }
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI update events
@@ -613,6 +608,12 @@ void procSpeedUpdate(MMS* p) {
 void procStepUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procStepUpdate() \n",PROGRAMID) : _NOP);
+     if (p->mVal<0 || p->mVal>11) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:procStepUpdate() invalid step value(%d) ignored.\n",PROGRAMID,p->mVal) : _NOP);
+        return;
+     }
+     if (vfo==nullptr) {return;}
+     vfo->setStep(vfo->vfo,p->mVal);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -621,7 +622,12 @@ void procStepUpdate(MMS* p) {
 void procModeUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procModeUpdate() \n",PROGRAMID) : _NOP);
-
+    if (p->mVal != MCW && p->mVal != MCWR) {
+        (TRACE>=0x02 ? fprintf(stderr,"%s:procModeUpdate() invalid mode value(%d) ignored.\n",PROGRAMID,p->mVal) : _NOP);
+        return;
+    }
+    if (vfo==nullptr) {return;}
+    vfo->setMode(p->mVal);
 }
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI update events
@@ -629,14 +635,30 @@ void procModeUpdate(MMS* p) {
 void procShiftUpdate(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procShiftUpdate() \n",PROGRAMID) : _NOP);
-
+    if (p->mVal<0 || p->mVal>4) {
+       p->mVal=2;
+    }
+    x=(float)(600.0+ p->mVal*50);
+    if (vfo==nullptr) {return;}
+    vfo->setShift(VFOA,x);
+    vfo->setShift(VFOB,x);
 }
 //*--------------------------------------------------------------------------------------------------
 //* handler for GUI update events
 //*--------------------------------------------------------------------------------------------------
 void procDriveUpdate(MMS* p) {
 
-     (TRACE>=0x02 ? fprintf(stderr,"%s:procDriveUpdate() \n",PROGRAMID) : _NOP);
+   (TRACE>=0x02 ? fprintf(stderr,"%s:procDriveUpdate() \n",PROGRAMID) : _NOP);
+
+    if (p->mVal<0 || p->mVal>7) {
+       (TRACE>=0x02 ? fprintf(stderr,"%s:procDriveUpdate() invalid driver value(%d) ignored.\n",PROGRAMID,p->mVal) : _NOP);
+        return;
+    }
+    if (vfo==nullptr) {return;}
+    vfo->POWER=p->mVal;
+
+    if (cat==nullptr) {return;}
+    cat->POWER=p->mVal;
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -647,12 +669,13 @@ void procBackUpdate(MMS* p) {
      (TRACE>=0x02 ? fprintf(stderr,"%s:procBackUpdate() \n",PROGRAMID) : _NOP);
      if (p->mVal==0) {
         setWord(&MSW,BCK,false);
-        TBCK=BACKLIGHT;
+        TBCK=backlight*1000;
         return;
      }
 
      setWord(&MSW,BCK,true);
-     TBCK=p->mVal*1000;
+     backlight=p->mVal;
+     TBCK=backlight*1000;
      lcd->backlight(true);
      lcd->setCursor(0,0);
 
@@ -721,7 +744,7 @@ void procStepChange(MMS* p) {
 void procShiftChange(MMS* p) {
 
      (TRACE>=0x02 ? fprintf(stderr,"%s:procShiftChange() \n",PROGRAMID) : _NOP);
-     sprintf(p->mText,"%3d Hz",p->mVal*100);
+     sprintf(p->mText,"%3d Hz",(p->mVal*50)+600);
 
 }
 //*--------------------------------------------------------------------------------------------------
@@ -764,7 +787,7 @@ void createMenu() {
 //*--- Create root menu item
 
      root=new MMS(0,(char*)"root",NULL,NULL);
-     root->TRACE=0x00;
+     root->TRACE=TRACE;
 
 //*--- Create first child level (actual menu)
 
@@ -776,7 +799,6 @@ void createMenu() {
      drive=  new MMS(5,(char*)"Drive",procDriveChange,procDriveUpdate);
      backl=  new MMS(6,(char*)"Backlight",procBacklChange,procBackUpdate);
      cool=   new MMS(7,(char*)"Cooler",NULL,procCoolUpdate);
-     beacon= new MMS(8,(char*)"Beacon",NULL,procBeaconUpdate);
 
 //*--- Associate menu items to root to establish navigation
 
@@ -788,8 +810,6 @@ void createMenu() {
      root->add(drive);
      root->add(backl);
      root->add(cool);
-     root->add(beacon);
-
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() First menu structure created\n",PROGRAMID) : _NOP);
 
 
@@ -799,52 +819,36 @@ void createMenu() {
      iambicA =new MMS(1,(char*)"Iambic A",NULL,NULL);
      iambicB =new MMS(2,(char*)"Iambic B",NULL,NULL);
 
+     
+
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Keyer created\n",PROGRAMID) : _NOP);
 
-
-     bcnoff=new MMS(0,(char*)"Beacon Off",NULL,NULL);
-     bcnon =new MMS(1,(char*)"Beacon On",NULL,NULL);
-
-     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Beacon created\n",PROGRAMID) : _NOP);
-
-
-//   spval=new MMS(3,(char*)"*",NULL,NULL);
      spval=new MMS((s/5),(char*)"*",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Keyer speed created speed(%d)\n",PROGRAMID,(s/5)) : _NOP);
 
-
-
-     stval=new MMS(1,(char*)"*",NULL,NULL);
+     stval=new MMS(3,(char*)"*",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Step structure created\n",PROGRAMID) : _NOP);
 
 
-int  sh=(int)x/100;
+int  sh=(int)x;
+     sh=sh-600;
+     sh=sh/50;
      shval=new MMS(sh,(char*)"*",NULL,NULL);
-//   shval=new MMS(6,(char*)"*",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Shift menu structure created shift(%d)\n",PROGRAMID,sh) : _NOP);
 
-
-
-//   drval=new MMS(6,(char*)"*",NULL,NULL);
      drval=new MMS(l,(char*)"*",NULL,NULL);  //initialize with level
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Drive menu structure created\n",PROGRAMID) : _NOP);
-
 
      if (vfo==nullptr) {
         modval=new MMS(m,(char*)"*",NULL,NULL);
      } else {
         modval=new MMS(vfo->MODE,(char*)"*",NULL,NULL);
      }
-
-//   modval=new MMS(2,(char*)"*",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Mode menu structure created\n",PROGRAMID) : _NOP);
 
 
-
      backval=new MMS(backlight,(char*)"*",NULL,NULL);
-//   backof=new MMS(1,(char*)"Backlight Off",NULL,NULL);
      (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Backlight menu structure created backlight(%d)\n",PROGRAMID,backlight) : _NOP);
-
 
      coolon=new MMS(0,(char*)"Cooler On",NULL,NULL);
      coolof=new MMS(1,(char*)"Cooler Off",NULL,NULL);
@@ -869,27 +873,22 @@ int  sh=(int)x/100;
      step->upperLimit(5);
 
      shift->add(shval);
-     shift->lowerLimit(4);
-     shift->upperLimit(8);
+     shift->lowerLimit(0);
+     shift->upperLimit(4);
 
      drive->add(drval);
      drive->lowerLimit(0);
-     drive->upperLimit(8);
+     drive->upperLimit(7);
 
      backl->add(backval);
      backl->lowerLimit(0);
      backl->upperLimit(60);
 
-//     backl->add(backof);
-
      cool->add(coolon);
      cool->add(coolof);
 
-     beacon->add(bcnoff);
-     beacon->add(bcnon);
-     fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID);
+     (TRACE>=0x01 ? fprintf(stderr,"%s:createMenu() Menu associations structure created\n",PROGRAMID) : _NOP);
      root->list();
-     fprintf(stderr,"%s:createMenu() *** END ***Menu associations structure finalized\n",PROGRAMID);
 
 }
 //*--------------------------------------------------------------------------------------------------

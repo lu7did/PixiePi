@@ -195,7 +195,7 @@ long    catbaud=4800;
 
 int     SNR;
 // *----------------------------------------------------------------*
-// *                  CAT support processing                        *
+// *               Initial setup values                             *
 // *----------------------------------------------------------------*
 float f=7030000;
 byte  s=20;
@@ -207,6 +207,8 @@ int   b=0;
 float x=600.0;
 byte  k=0;
 int   backlight=0;
+bool  cooler=false;
+byte  st=3;
 
 #include "../lib/GUI.h"
 #include "../lib/VFO.h"
@@ -285,15 +287,14 @@ void print_usage(void)
 fprintf(stderr,"\n%s version %s build (%s)\n"
 "Usage:\nPixiaPi [-f frequency {Hz}]\n"
 "                [-s keyer speed {5..50 wpm default=20}]\n"
+"                [-S tunning step {0..11 default=3 (100Hz)}]\n"
 "                [-m mode {0=LSB,1=USB,2=CW,3=CWR,4=AM,5=FM,6=WFM,7=PKT,8=DIG default=CW}]\n"
-"                [-c {callsign}]\n"
-"                [-g {grid locator}]\n"
+"                [-c cooler activated {defaul not, argument turns it on!}]\n"
 "                [-l {power level (0..7 default=7}]\n"
 "                [-p {CAT port}]\n"
-"                [-b Beacon enabled {0=inactive 1..60 minutes}]\n"
 "                [-v Verbose {0,1,2,3 default=0}]\n"
 "                [-x Shift {600..800Hz default=600}]\n"
-"                [-B Backlight timeout {0..60 minutes default=0 (not activated)}]\n"
+"                [-b Backlight timeout {0..60 secs default=0 (not activated)}]\n"
 "                [-k Keyer {0=Straight,1=Iambic A,2=Iambic B default=0}]\n",PROGRAMID,PROG_VERSION,PROG_BUILD);
 
 }
@@ -315,7 +316,7 @@ int main(int argc, char* argv[])
 
 while(true)
         {
-                a = getopt(argc, argv, "f:s:m:c:g:l:p:b:B:v:x:k:h?");
+                a = getopt(argc, argv, "f:s:S:m:c:l:p:b:v:x:k:h?");
 
                 if(a == -1) 
                 {
@@ -336,34 +337,35 @@ while(true)
                         break;
                 case 's':
                         s=atoi(optarg);
+                        if(s<5 || s>50) {s=15;}
                         fprintf(stderr,"%s:main() args(speed)=%d\n",PROGRAMID,s);
+                        break;
+                case 'S':
+                        st=atoi(optarg);
+                        if(st<0 || st>11) {st=3;}
+                        fprintf(stderr,"%s:main() args(step)=%d\n",PROGRAMID,st);
                         break;
                 case 'm':
                         m=atoi(optarg);
+                        if(m!=2 || m!=3) {m=2;}
                         fprintf(stderr,"%s:main() args(mode)=%d\n",PROGRAMID,m);
                         break;
                 case 'c':
-                        strcpy(callsign,optarg);
-                        fprintf(stderr,"%s:main() args(callsign)=%s\n",PROGRAMID,callsign);
-                        break;
-                case 'g': 
-                        strcpy(grid,optarg);
-                        fprintf(stderr,"%s:main() args(grid)=%s\n",PROGRAMID,grid);
+                        cooler=true;
+                        fprintf(stderr,"%s:main() args(cooler)=%s\n",PROGRAMID,BOOL2CHAR(cooler));
                         break;
                 case 'l':
                         l=atoi(optarg);
+                        if(l<0 || l>7) {l=3;}
                         fprintf(stderr,"%s:main() args(level)=%d\n",PROGRAMID,l);
                         break;
-                case 'p':     // gain in dB 
+                case 'p':     // CAT port
                         strcpy(port,optarg);
                         fprintf(stderr,"%s:main() args(port)=%s\n",PROGRAMID,port);
                         break;
                 case 'b':
-                        b=atoi(optarg);
-                        fprintf(stderr,"%s:main() args(beacon)=%d secs\n",PROGRAMID,b);
-                        break;
-                case 'B':
                         backlight=atoi(optarg);
+                        if(backlight<0 || backlight>60) {backlight=0;}
                         fprintf(stderr,"%s:main() args(backlight)=%d secs\n",PROGRAMID,backlight);
                         break;
                 case 'v':
@@ -372,10 +374,12 @@ while(true)
                         break;
                 case 'x':
 			x=atof(optarg);
+                        if (x<600 || x>800) {x=600.0;}
                         fprintf(stderr,"%s:main() args(shift)=%5.0f\n",PROGRAMID,x);
                         break;
                 case 'k': // keyer mode
                         k=atoi(optarg);
+                        if(k<0 ||k>2) {k=0;}
                         fprintf(stderr,"%s:main() args(keyer)=%d\n",PROGRAMID,k);
                         break;
                 case -1:
@@ -390,6 +394,7 @@ while(true)
                         break;
                 }
         }
+
 
 //*--- Create memory resources
 
@@ -417,7 +422,7 @@ while(true)
      vfo=new genVFO(&freqVfoHandler,&ritVfoHandler,&modeVfoHandler,&changeVfoHandler);
      vfo->TRACE=TRACE;
      vfo->FT817=0x00;
-     vfo->setMode(MCW);
+     vfo->setMode(m);
      vfo->setBand(VFOA,vfo->getBand(f));
      vfo->setBand(VFOB,vfo->getBand(f));
      vfo->set(VFOA,f);
@@ -426,7 +431,10 @@ while(true)
      vfo->setRIT(VFOA,false);
      vfo->setRIT(VFOB,false);
      vfo->POWER=(l & 0x0f);
-
+     vfo->setStep(VFOA,st);
+     vfo->setStep(VFOB,st);
+     vfo->setShift(VFOA,(x-600)/50);
+     vfo->setShift(VFOB,(x-600)/50);
      vfo->vfo=VFOA;
      setWord(&vfo->FT817,VFO,VFOA);
 
@@ -435,16 +443,9 @@ while(true)
     (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS sub-system initialization\n",PROGRAMID) : _NOP);
 
      dds=new DDS(NULL);
-    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS initialized\n",PROGRAMID) : _NOP);
-
      dds->TRACE=TRACE;
-    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS TRACE set\n",PROGRAMID) : _NOP);
-
      dds->POWER=vfo->POWER;
-    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS POWER set\n",PROGRAMID) : _NOP);
-
      dds->start(f);
-    (TRACE>=0x01 ? fprintf(stderr,"%s:main() DDS started freq(%5.0f)\n",PROGRAMID,dds->f) : _NOP);
 
 //*--- Setup the CAT system
 
@@ -486,15 +487,21 @@ while(true)
 
 
 //*--- start the keyer
+//*--- Setup initial values
+     cw_keyer_mode = k;
+     cw_keyer_speed= s;
 
-     cw_keyer_mode=k;
      iambic_init();
+
+//*--- set the initial LCD condition
 
      setBacklight(true);
      lcd->clear();
      showGui();
 
-     setCooler(true);
+//*--- turn the cooler and PTT
+
+     setCooler(cooler);
      setPTT(false);
 
      //gpio->writePin(GPIO_COOLER,1);
