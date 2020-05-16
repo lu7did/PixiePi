@@ -194,7 +194,7 @@ with it.
 
 The keyer transistor Q1 will benefit from a heat sink as well if long keying times are expected.
 
-A cooler can be activated using the GPIO 19 line, feed the cooler not from the Raspberry Pi board but from the +5V regulator or
+A cooler can be activated using the GPIO24 line, feed the cooler not from the Raspberry Pi board but from the +5V regulator or
 external power supply if used.
 
 
@@ -221,6 +221,24 @@ designs, among others:
 
 Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
 
+# Other NOT alternatives
+
+This project isn't a serious alternative to some excellent DIY Kits available in the market, which deliver tons of good features
+at reasonable cost. This project must be seen as a learning platform enabling a very cheap DIY kit with tons of features their
+intrisic limitations can not be extended to cover.
+In particular this kit is NOT a replacement nor an alternative to the following superb kits that I'm aware of:
+
+* QRP Lab's (Hans Summers) OCX series.
+* CRKits (Adam Rong's) D4D kit.
+* QRPGuys's DSB Digital Transceiver.
+* 4S QRP Group's Cricket 40.
+* ... and other similar projects ...
+
+For all of them do yourself a favor and buy a kit, assemble it and enjoy the experience.
+
+Not to mention other relatively higher scale setups such as the BitX, mcHF or minion SDR transceivers.
+
+
 # Case 3D Design
 
 The preliminar 3D design for a project case (with LCD) can be seen as follows
@@ -236,24 +254,28 @@ The preliminar 3D design for a project case (with LCD) can be seen as follows
 # Package requirements
 
 ```
-*   sudo apt-get install i2c-tools libi2c-dev
-*   sudo apt-get install socat
-*   sudo apt-get install telnet
-*   git clone git://git.drogon.net/wiringPi
-*   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
-*   Enable I2C and SPI with sudo raspi-config
-*   Follow instructions to download and build the HamLib package from https://sourceforge.net/projects/hamlib/files/hamlib/  (hamlib-1.0.1.tgz at this moment, check it out for latest)
-*   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
-*   Enable PWM in your Raspberry Pi [tutorial](https://learn.adafruit.com/adding-basic-audio-ouput-to-raspberry-pi-zero/pi-zero-pwm-audio) 
+
+   sudo apt-get install i2c-tools libi2c-dev
+   sudo apt-get install socat
+   sudo apt-get install telnet
+
+   git clone git://git.drogon.net/wiringPi
+   git clone https://github.com/F5OEO/librpitx && cd librpitx/src && make 
+
+   Enable I2C and SPI with sudo raspi-config
+   Follow instructions to download and build the HamLib package from https://sourceforge.net/projects/hamlib/files/hamlib/  (hamlib-1.0.1.tgz at this moment, check it out for latest)
+   Follow instructions to download and buid the FLRIG package from [here](http://www.w1hkj.com/flrig-help/)
+   Enable PWM in your Raspberry Pi [tutorial](https://learn.adafruit.com/adding-basic-audio-ouput-to-raspberry-pi-zero/pi-zero-pwm-audio) 
 ```
 
 # Build
 
 ```
-*  git clone https://github.com/lu7did/PixiePi
-*  cd /home/pi/PixiePi/src
-*  make
-*  sudo make install
+  git clone https://github.com/lu7did/OrangeThunder
+  git clone https://github.com/lu7did/PixiePi
+  cd /home/pi/PixiePi/src
+  make
+  sudo make install
 ``` 
 
 # Release notes:
@@ -265,6 +287,7 @@ The preliminar 3D design for a project case (with LCD) can be seen as follows
      - Pixie Transceiver
      - Glueware simple electronics to switch transmitter, connect keyer and others.
 ```
+
   This setup can be used with flrig as the front-end and CAT controller (**headless mode**), it should work with any
   other software supporting a Yaesu FT-817 model CAT command set.
 
@@ -289,7 +312,8 @@ double conversion receiver at work. Follows an example of a report captured from
 
 ## Beacon station
 
-* Run ./bash/PiWSPR.sh (replace your call, grid and power). A sample script can be found at bash/PiWSPR.sh
+* Run ./bash/PiWSPR.sh (replace your call, grid and power).
+
 This program will run once, so call it repeatedely with a timing of your choice, WSPR frames align and fire on even minutes.
 
 Follows a screen capture of some reports given by the WSPRNet monitoring network[link](http://www.wsprnet.org), a fair distance has been achieved considered
@@ -326,10 +350,31 @@ the power output were in the order of 200 mW during the tests!
 
 # Operating as a CW transceiver
 
-Configure settings accordingly at the pixie.cfg file and fire bash/pixie.sh
+Configure settings accordingly either thru the command line switches or manually using the LCD GUI, all changes made thru the LCD GUI would persist accross operations. The command line
+arguments override the previous setup though.
 
 The following settings can be configured using the CAT interface, most changes will be made permanent at the pixie.cfg
 file upon termination.
+
+A typical configuration file would be:
+
+```
+[MISC]
+TRACE=0
+BACKLIGHT=0
+[VFO]
+POWER=4800
+STEP=100
+SHIFT=-12
+MODE=2
+F=7030000
+[CAT]
+PORT=/tmp/ttyv1
+[KEYER]
+KEYER_MODE=0
+KEYER_SPEED=15
+
+```
 
 ## Keyer
 
@@ -416,4 +461,3 @@ In general the hardware can be used to implement modulation modes proposed by th
 In some cases the RF chain after the Raspberry Pi needs to be activated, the hardware on this project uses the
 GPIO12 line as the PTT, some programs might require this line to be activated or deactivated externally.
 
-#  Work in progress, this code has limited functionality
