@@ -377,9 +377,12 @@ int WSPRPower=20;
 //--- Generate librpitx fskburst object (ideas taken from pift8.cpp by Courjaud F5OEO)
 
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
-    fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
+    fprintf(stderr,"Random frequency offset f(%10.2f) offset(%10.2f) wspr(%10.2f)\n",f,offset,wspr_offset);
 
-    fsk= new fskburst(f+offset+wspr_offset, WSPR_RATE, Deviation, 14, FifoSize,Upsample,RampRatio);
+    FifoSize=162;
+    Deviation=1.46;
+
+    fsk= new fskburst(f+offset+wspr_offset, 1.46, Deviation, 14, FifoSize,Upsample,RampRatio);
     if(ppm!=1000) {   //ppm is set else use ntp
        fsk->Setppm(ppm);
        fsk->SetCenterFrequency(f+wspr_offset,50);            
@@ -396,7 +399,7 @@ unsigned char Symbols[FifoSize];
     wspr.code_wspr(wspr_message, wspr_symbols);
 
     fprintf(stderr,"\n%s\n","WSPR Message");
-    for (int i = 0; i < WSPR_LENGTH; i++) {
+    for (int i = 0; i < 162; i++) {
       fprintf(stderr,"%d", wspr_symbols[i]);
       Symbols[i]=wspr_symbols[i];
     }
