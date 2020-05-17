@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-#// turnon
-#// turn on bit at GPIO 27
+#// gpioset [GPIO pin] [0|1]
 #// License:
 #//   This program is free software: you can redistribute it and/or modify
 #//   it under the terms of the GNU General Public License as published by
@@ -23,12 +22,12 @@ import sys
 
 port=int(sys.argv[1]);
 st=int(sys.argv[2]);
-print("GPIO pin(%d) state(%d) " % (port,st));
+print("gpioset: GPIO pin(%d) state(%d) " % (port,st));
  
 #* Establish numbering convention, BCM in this case
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-#* Configure GPIO27 as output and turn it on
+#* Configure pin as output and set it
 GPIO.setup(port, GPIO.OUT)
 GPIO.output(port, st)
 

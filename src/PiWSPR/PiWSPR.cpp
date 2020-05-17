@@ -111,6 +111,7 @@ int      FifoSize=WSPR_LENGTH;
 float    Deviation=WSPR_RATE;
 float    offset=WSPR_SHIFT;
 float    RampRatio=0;
+char     command[256];
 
 fskburst *fsk=nullptr;
 
@@ -357,22 +358,22 @@ int WSPRPower=20;
 
 //*--- Initialize GPIO management (PTT)
 
-    if(gpioInitialise()<0) {
-       fprintf(stderr,"Cannot initialize GPIO\n");
-       return -1;
-    }
-
-    for (int i=0;i<64;i++) {   //establish termination handlers for GPIO
-        gpioSetSignalFunc(i,terminate);
-    }
+//    if(gpioInitialise()<0) {
+//       fprintf(stderr,"Cannot initialize GPIO\n");
+//       return -1;
+//    }
+//
+//    for (int i=0;i<64;i++) {   //establish termination handlers for GPIO
+//        gpioSetSignalFunc(i,terminate);
+//    }
 
 //*---- Turn cooler on
-    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
+//    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
 
-    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
-    usleep(1000);
-    gpioSetMode(GPIO_PTT, PI_OUTPUT);
-    usleep(1000);
+//    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
+//    usleep(1000);
+//    gpioSetMode(GPIO_PTT, PI_OUTPUT);
+//    usleep(1000);
 
 //--- Generate librpitx fskburst object (ideas taken from pift8.cpp by Courjaud F5OEO)
 
@@ -387,6 +388,7 @@ int WSPRPower=20;
        fsk->Setppm(ppm);
        fsk->SetCenterFrequency(f+wspr_offset,50);            
     }
+    usleep(1000);
 
 //*--- Seed random number generator
 
@@ -416,6 +418,8 @@ unsigned char Symbols[FifoSize];
 
     float freq=f;
 
+    sprintf(command,"python ./gpioset.py %d 1",GPIO_COOLER);
+    system(command);
 
 
 //*-------------------------------------------------------------------
@@ -450,9 +454,13 @@ unsigned char Symbols[FifoSize];
     lcd->setCursor(15,1);
     lcd->write(0);
 
-    gpioWrite(GPIO_PTT,true);
-    gpioWrite(GPIO_COOLER,true);
-    usleep(1000);
+//    gpioWrite(GPIO_PTT,true);
+//    gpioWrite(GPIO_COOLER,true);
+//    usleep(1000);
+
+    sprintf(command,"python ./gpioset.py %d 1",GPIO_PTT);
+    system(command);
+
     signal(SIGINT, terminate); 
     setWord(&MSW,RUN,true);
 
@@ -471,8 +479,13 @@ unsigned char Symbols[FifoSize];
 
 //*--- Finalize beacon
 
-    gpioWrite(GPIO_PTT,false);
-    gpioWrite(GPIO_COOLER,false);
+//    gpioWrite(GPIO_PTT,false);
+//    gpioWrite(GPIO_COOLER,false);
+    sprintf(command,"python ./gpioset.py %d 0",GPIO_COOLER);
+    system(command);
+
+    sprintf(command,"python ./gpioset.py %d 0",GPIO_PTT);
+    system(command);
 
 //*--- Turn off LCD
 
