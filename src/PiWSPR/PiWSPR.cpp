@@ -74,7 +74,7 @@ typedef bool boolean;
 const char   *PROGRAMID="PiWSPR";
 const char   *PROG_VERSION="1.0";
 const char   *PROG_BUILD="00";
-const char   *COPYRIGHT="(c) LU7DID 2019";
+const char   *COPYRIGHT="(c) LU7DID 2019,2020";
 
 //-------------------------------------------------------------------------------------------------
 // Main structures
@@ -185,6 +185,16 @@ static void terminate(int num)
     setWord(&MSW,RUN,false);
     setWord(&MSW,RETRY,true);
 }
+//---------------------------------------------------------------------------------------------
+// gpioWrite (manager gpio write externally)
+//---------------------------------------------------------------------------------------------
+void gpioWrite(int pin,int s) {
+    sprintf(command,"gpio write %d %d",pin,s);
+    system(command);
+    fprintf(stderr,"set gpio pin(%d) as (%s)\n",pin,(s==0 ? "Off" : "On"));
+    return;
+}
+
 //---------------------------------------------------------------------------------------------
 // MAIN Program
 //---------------------------------------------------------------------------------------------
@@ -356,25 +366,6 @@ int WSPRPower=20;
     sprintf(LCD_Buffer,"%s %s %d",callsign,locator,WSPRPower);
     lcd->println(0,1,LCD_Buffer);
 
-//*--- Initialize GPIO management (PTT)
-
-//    if(gpioInitialise()<0) {
-//       fprintf(stderr,"Cannot initialize GPIO\n");
-//       return -1;
-//    }
-//
-//    for (int i=0;i<64;i++) {   //establish termination handlers for GPIO
-//        gpioSetSignalFunc(i,terminate);
-//    }
-
-//*---- Turn cooler on
-//    (TRACE>=0x03 ? fprintf(stderr,"%s:setupGPIO() Setup Cooler\n",PROGRAMID) : _NOP);
-
-//    gpioSetMode(GPIO_COOLER, PI_OUTPUT);
-//    usleep(1000);
-//    gpioSetMode(GPIO_PTT, PI_OUTPUT);
-//    usleep(1000);
-
 //--- Generate librpitx fskburst object (ideas taken from pift8.cpp by Courjaud F5OEO)
 
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
@@ -418,9 +409,7 @@ unsigned char Symbols[FifoSize];
 
     float freq=f;
 
-    sprintf(command,"python ./gpioset.py %d 1",GPIO_COOLER);
-    system(command);
-
+    gpioWrite(GPIO_COOLER,1);
 
 //*-------------------------------------------------------------------
 // Wait for next WSPR window (even minutes)
@@ -454,12 +443,7 @@ unsigned char Symbols[FifoSize];
     lcd->setCursor(15,1);
     lcd->write(0);
 
-//    gpioWrite(GPIO_PTT,true);
-//    gpioWrite(GPIO_COOLER,true);
-//    usleep(1000);
-
-    sprintf(command,"python ./gpioset.py %d 1",GPIO_PTT);
-    system(command);
+    gpioWrite(GPIO_PTT,1);
 
     signal(SIGINT, terminate); 
     setWord(&MSW,RUN,true);
@@ -479,13 +463,8 @@ unsigned char Symbols[FifoSize];
 
 //*--- Finalize beacon
 
-//    gpioWrite(GPIO_PTT,false);
-//    gpioWrite(GPIO_COOLER,false);
-    sprintf(command,"python ./gpioset.py %d 0",GPIO_COOLER);
-    system(command);
-
-    sprintf(command,"python ./gpioset.py %d 0",GPIO_PTT);
-    system(command);
+    gpioWrite(GPIO_PTT,0);
+    gpioWrite(GPIO_COOLER,0);
 
 //*--- Turn off LCD
 

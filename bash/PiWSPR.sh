@@ -4,16 +4,16 @@
 #* Script to emit a WSPR beacon frame
 #* Progra is to emit every 120 secs
 #*-----------------------------------------------------------------------
-
+LAP="400"
+CALLSIGN="LU7DID"
+GRID="GF05"
+POWER="7"
+BAND="40m"
 while true;
    do
-   python gpioset.py 12 1
-   python gpioset.py 24 1
-   sudo PiWSPR -f 40m -c LU7DID -l GF05 -d 7 $1
-   echo "Sleeping for 100 secs"
-   python gpioset.py 12 0
-   python gpioset.py 24 0
-   sleep 100 
+   sudo PiWSPR -f $BAND -c $CALLSIGN -l $GRID -d $POWER $1
+   echo "Sleeping for $LAP secs"
+   sleep $LAP 
 
 done
 
