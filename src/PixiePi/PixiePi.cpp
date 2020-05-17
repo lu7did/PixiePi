@@ -348,6 +348,21 @@ int main(int argc, char* argv[])
      (ini_getl("MISC","COOLER",0,inifile)==0 ? cooler=false : cooler=true);
      f=(float)ini_getl("VFO","F",7030000,inifile);
 
+
+     fprintf(stderr,"%s:main() Configuration file\n",PROGRAMID);
+     fprintf(stderr,"%s:main() --- TRACE(%d)\n",PROGRAMID,TRACE);
+     fprintf(stderr,"%s:main() --- Backlight(%d)\n",PROGRAMID,backlight);
+     fprintf(stderr,"%s:main() --- Port(%s)\n",PROGRAMID,port);
+     fprintf(stderr,"%s:main() --- Keyer(%d)\n",PROGRAMID,k);
+     fprintf(stderr,"%s:main() --- CW Speed(%d)\n",PROGRAMID,s);
+     fprintf(stderr,"%s:main() --- CW Reverse(%d)\n",PROGRAMID,rev);
+     fprintf(stderr,"%s:main() --- Step(%d)\n",PROGRAMID,st);
+     fprintf(stderr,"%s:main() --- Shift(%f)\n",PROGRAMID,x);
+     fprintf(stderr,"%s:main() --- Mode(%d)\n",PROGRAMID,m);
+     fprintf(stderr,"%s:main() --- Cooler(%d)\n",PROGRAMID,cooler);
+     fprintf(stderr,"%s:main() --- f(%5.0f)\n",PROGRAMID,f);
+
+
 //*--------- Process arguments to override persistence
 
 while(true)
@@ -477,8 +492,8 @@ while(true)
      vfo->POWER=(l & 0x0f);
      vfo->setStep(VFOA,st);
      vfo->setStep(VFOB,st);
-     vfo->setShift(VFOA,(x-600)/50);
-     vfo->setShift(VFOB,(x-600)/50);
+     vfo->setShift(VFOA,x);
+     vfo->setShift(VFOB,x);
      vfo->vfo=VFOA;
      setWord(&vfo->FT817,VFO,VFOA);
 

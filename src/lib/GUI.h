@@ -325,7 +325,7 @@ void setPTT(bool f) {
     if (vfo!=nullptr) {
        float fx= vfo->setPTT(f);
        if(dds!=nullptr) {
-          (TRACE>=0x02 ? fprintf(stderr,"%s:setPTT() PTT set DDS Freq(%5.0f)\n",PROGRAMID,fx) : _NOP);
+          (TRACE>=0x00 ? fprintf(stderr,"%s:setPTT() PTT set DDS Freq(%5.0f) RIT(%5.0f) Shift(%5.0f)\n",PROGRAMID,fx,vfo->valueRIT(),vfo->getShift()) : _NOP);
           dds->set(fx);
        }
     }

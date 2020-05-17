@@ -3,9 +3,10 @@
  * PiWSPR.cpp 
  * Raspberry Pi based WSPR beacon
  *
-
+ *
  * This program turns the Raspberry pi into a WSPR beacon software able
  * to operate at the indicated frequency as a direct RF generator
+ * This program is part of the PixiePi platform
  *
  * Created by Pedro E. Colla (lu7did@gmail.com)
  * Code excerpts from several packages:
@@ -53,10 +54,9 @@
 #include <iostream>
 #include <csignal>
 
-//---  VFO initial setup
+//--- type initial setup
 typedef unsigned char byte;
 typedef bool boolean;
-
 
 
 #include <unistd.h>
@@ -65,9 +65,8 @@ typedef bool boolean;
 #include "./PiWSPR.h"		// wspr definitions and functions
 #include "../lib/WSPR.h"
 #include "/home/pi/OrangeThunder/src/OT/OT.h"
-#include "../lib/DDS.h"
 #include "../lib/LCDLib.h"
-
+#include "/home/pi/librpitx/src/librpitx.h"
 //----------------------------------------------------------------------------
 //  Program parameter definitions
 //----------------------------------------------------------------------------
@@ -98,14 +97,23 @@ byte   ntimes=1;
 int    a;
 int    anyargs = 0;
 int    lcd_light;
-float  f=7095600;
-float  ppm=1000.0;
-byte   gpio=GPIO_DDS;;
-char   callsign[10];
-char   locator[10];
-int    POWER=7;
-int    ntx=0;
-int    nskip=0;
+float    f=7038600;
+float    ppm=1000.0;
+byte     gpio=GPIO_DDS;;
+char     callsign[10];
+char     locator[10];
+int      POWER=7;
+int      ntx=0;
+int      nskip=0;
+
+int      Upsample=100;
+int      FifoSize=WSPR_LENGTH;
+float    Deviation=WSPR_RATE;
+float    offset=WSPR_SHIFT;
+float    RampRatio=0;
+
+fskburst *fsk=nullptr;
+
 
 char   wspr_message[40];          // user beacon message to encode
 unsigned char wspr_symbols[WSPR_LENGTH] = {};
@@ -115,7 +123,7 @@ bool WSPRwindow=false;
 
 //*---- Define WSPR memory blocks
 
-DDS    *dds=new DDS(NULL);
+//DDS    *dds=new DDS(NULL);
 WSPR   wspr(NULL);
 LCDLib *lcd;
 char*  LCD_Buffer;
@@ -160,7 +168,7 @@ Usage:\n\
 \t-g set GPIO port (4 or 20)\n\
 \t-x force WSPR Window now (test only)\n\
 \t-h help (this help).\n\n\
-\t e.g.: PiWSPR -c LU7DID -l GF05 -d 20 -f 14095600 -n 1 -g 20\n\
+\t e.g.: PiWSPR -c LU7DID -l GF05 -d 20 -f 7038600 -n 1 -g 20\n\
 \n");
 }
 //---------------------------------------------------------------------------------------------
@@ -354,10 +362,8 @@ int WSPRPower=20;
        return -1;
     }
 
-    for (int i=0;i<64;i++) {
-
+    for (int i=0;i<64;i++) {   //establish termination handlers for GPIO
         gpioSetSignalFunc(i,terminate);
-
     }
 
 //*---- Turn cooler on
@@ -368,25 +374,35 @@ int WSPRPower=20;
     gpioSetMode(GPIO_PTT, PI_OUTPUT);
     usleep(1000);
 
-//--- Generate DDS (code excerpt mainly from tune.cpp by Evariste Courjaud F5OEO
+//--- Generate librpitx fskburst object (ideas taken from pift8.cpp by Courjaud F5OEO)
 
-    dds->gpio=gpio;
-    dds->POWER=POWER;
-    dds->setppm(1000.0);
+    float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
+    fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
+
+    fsk= new fskburst(f+offset+wspr_offset, WSPR_RATE, Deviation, 14, FifoSize,Upsample,RampRatio);
+    if(ppm!=1000) {   //ppm is set else use ntp
+       fsk->Setppm(ppm);
+       fsk->SetCenterFrequency(f+wspr_offset,50);            
+    }
 
 //*--- Seed random number generator
 
     srand(time(0));
 
+//*--- transform message to FSK codes to be used during the WSPR frame
+unsigned char Symbols[FifoSize];
 
     sprintf(wspr_message, "%s %s %d", callsign,locator,WSPRPower);
     wspr.code_wspr(wspr_message, wspr_symbols);
-    printf("WSPR Message\n");
-    printf("------------\n");
+
+    fprintf(stderr,"\n%s\n","WSPR Message");
     for (int i = 0; i < WSPR_LENGTH; i++) {
-      printf("%d", wspr_symbols[i]);
+      fprintf(stderr,"%d", wspr_symbols[i]);
+      Symbols[i]=wspr_symbols[i];
     }
-    printf("\n");
+    fprintf(stderr,"%s","\n");
+
+//*---- wait for WSPR window to start
 
     tm *gmtm;
     char* dt;
@@ -395,18 +411,22 @@ int WSPRPower=20;
     now=time(0);
     dt=ctime(&now);
 
-    float freq=f+WSPR_SHIFT+WSPR_BAND;
+    float freq=f;
+
+
+
 //*-------------------------------------------------------------------
 // Wait for next WSPR window (even minutes)
 //*-------------------------------------------------------------------
-    printf("Waiting till next window\n");
-
+    fprintf(stderr,"%s","Waiting till next window\n");
     while (WSPRwindow==false) {
 
  // current date/time based on current system
        now = time(0);
+
  // convert now to string form
        dt = ctime(&now);
+
  // convert now to tm struct for UTC
        gmtm = gmtime(&now);
        dt = asctime(gmtm);
@@ -419,39 +439,35 @@ int WSPRPower=20;
 //*-------------------------------------------------------------------------------------------
 //* Start transmission of WSPR message
 //*-------------------------------------------------------------------------------------------
-
     fprintf(stderr,"Current time is %s Starting TX\n",dt);
-
-    int j=0;
-    float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
-    freq+=wspr_offset;
-    fprintf(stderr,"Random frequency offset %10.2f\n",wspr_offset);
-    dds->start(freq);
+    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",f,f+offset+wspr_offset,wspr_offset);
 
 //*---- Turn on Transmitter
+
     lcd->setCursor(15,1);
     lcd->write(0);
 
     gpioWrite(GPIO_PTT,true);
     gpioWrite(GPIO_COOLER,true);
     usleep(1000);
-    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",f,freq,wspr_offset);
     signal(SIGINT, terminate); 
     setWord(&MSW,RUN,true);
-    while (j<WSPR_LENGTH && getWord(MSW,RUN)==true){
-       int t=wspr_symbols[j];
-       if ((t >= 0) && (t <= 3) ) {
-          float frequency=(freq + (t * 1.4648));
-          dds->set(frequency);
-          usleep(1000);
-       }
-       j++;
-       usleep(683000); 
-    } //* End of symbol sending while
+
+
+    fprintf(stderr,"%s\n","Starting to TX!");
+
+//*--- the object will send the entire symbol table and then return
+
+    fsk->enableclk(GPIO_DDS);
+    fsk->SetSymbols(Symbols, 162);
+    fsk->stop();
+    fsk->disableclk(GPIO_DDS);
+
+    delete(fsk);
+    fprintf(stderr,"End of Tx\n");
 
 //*--- Finalize beacon
 
-    fprintf(stderr,"Turning off TX\n");
     gpioWrite(GPIO_PTT,false);
     gpioWrite(GPIO_COOLER,false);
 
@@ -461,10 +477,5 @@ int WSPRPower=20;
     lcd->setCursor(0,0);
     lcd->clear();
 
-    dds->stop();
-    usleep(100000);
-
-    delete(dds);
-    printf("\nEnding beacon\n");
     exit(0);
 }

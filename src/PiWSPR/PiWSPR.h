@@ -14,5 +14,8 @@ void code_wspr(char* wspr_message, unsigned char* wspr_symbol);		// encode the w
 #endif
 
 #define WSPR_RAND_OFFSET 80
-#define WSPR_SHIFT    1400
-#define WSPR_BAND      100
+//#define WSPR_SHIFT     1400
+#define WSPR_BAND       100
+#define WSPR_RATE      1.46
+#define WSPR_LENGTH     162
+#define WSPR_SHIFT     1500

@@ -312,7 +312,7 @@ double conversion receiver at work. Follows an example of a report captured from
 
 ## Beacon station
 
-* Run ./bash/PiWSPR.sh (replace your call, grid and power).
+* Run ./bash/PiWSPR.sh (replace your call, grid and power before executing the program).
 
 This program will run once, so call it repeatedely with a timing of your choice, WSPR frames align and fire on even minutes.
 
@@ -320,7 +320,7 @@ Follows a screen capture of some reports given by the WSPRNet monitoring network
 the power output were in the order of 200 mW during the tests!
 
 ![Alt Text](docs/PixiePi_Reports_WSPR.png?raw=true "Reports from WSPRNet during the test")
-
+![Alt Text](docs/PixiePi_WSPR_sample.jpg?raw=true "Reports from WSPRNet during the test")
 
 # Operating FT8
 
@@ -346,6 +346,7 @@ Follows a screen capture of some reports given by the PSKReporter monitoring net
 the power output were in the order of 200 mW during the tests!
 
 ![Alt Text](docs/PixiePi_Reports_FT8.png?raw=true "Reports from PSKReporter network during the test")
+![Alt Text](docs/PixiePi_FT8_sample.jpg?raw=true "Reports from PSKReporter network at 40 meters")
 
 
 # Operating as a CW transceiver
@@ -365,7 +366,7 @@ BACKLIGHT=0
 [VFO]
 POWER=4800
 STEP=100
-SHIFT=-12
+SHIFT=600
 MODE=2
 F=7030000
 [CAT]
