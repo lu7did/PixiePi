@@ -221,7 +221,7 @@ designs, among others:
 
 Lots of good QRPp projects can be found at [link](http://www.ncqrpp.org/) or SPRAT magazine [link](http://www.gqrp.com/sprat.htm).
 
-# Other NOT alternatives
+# NOT really to be seen as alternative to
 
 This project isn't a serious alternative to some excellent DIY Kits available in the market, which deliver tons of good features
 at reasonable cost. This project must be seen as a learning platform enabling a very cheap DIY kit with tons of features their
@@ -298,7 +298,7 @@ WSPR can be operated either as a monitoring station or as a beacon.
 ## Monitoring station
 
 * Plug the PHONE exit to the LINE-IN entry of a soundcard.
-* Start the pixie program with ./bash/pixie.sh (correct frequency to 7074000).
+* Start the PixiePi program with ./bash/PixiePi.sh (correct frequency to 7074000).
 * Use WSJTX to monitor, select Mode as WSPR
 * Ctl-C to terminate.
 
@@ -376,6 +376,43 @@ KEYER_MODE=0
 KEYER_SPEED=15
 
 ```
+
+## LCD Panel 
+
+If connected a LCD 16x2 display plus a rotary encoder can be used to control the operation of the CW transceiver using the PixiePi program there are two modes of operation
+```
+     VFO mode
+     Menu mode
+     Option selection mode
+```
+The different modes of operation and features can be used by means of operating the available keys either stand-alone or thru combinations as follows
+
+![Alt Text](docs/PixiePi_controls.jpg?raw=true "Controls")
+
+### VFO mode
+
+The main mode of operation is the VFO mode where the frequency or other essential information is expossed, the panel looks as
+![Alt Text](docs/PixiePi_VFO_Panel.jpg?raw=true "VFO Panel")
+
+### Menu mode
+
+When activated the menu mode shows the different parameters that can be accessed for modification
+![Alt Text](docs/PixiePi_Menu_Panel.jpg?raw=true "Menu Panel")
+
+The parameters which can be changed are:
+```
+  Keyer          (0-Straight,1-Iambic A,2-Iambic B)
+  Mode           (2-CW,3-CWR)
+  Speed          (5 to 50 wpm)
+  Step           (10 Hz to 1 MHz)
+  Shift          (500 to 800 Hz)
+  Drive          (0 to 7)
+  Backlight      (0 to 60 secs)
+  Cooler         (On/Off)
+  Reverse Paddle (On/Off)
+```
+
+### Option selection mode
 
 ## Keyer
 
