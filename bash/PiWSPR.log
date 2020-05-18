@@ -1255,3 +1255,15 @@ lun may 18 16:01:51 -03 2020 ./PiWSPR.sh Sleeping for 400 secs
 16:11:51 PiWSPR:main() Program execution terminated
 Call: LU7DID / Locator: GF05 / Power: 30dBm
 lun may 18 16:11:51 -03 2020 ./PiWSPR.sh Sleeping for 400 secs
+16:18:31 PiWSPR Version 1.0 Build(00) (c) LU7DID 2019,2020
+16:18:31 PiWSPR:main() Frequency:    7038600 Hz
+16:18:31 PiWSPR:main() Callsign: LU7DID
+16:18:31 PiWSPR:main() Locator: GF05
+16:18:31 PiWSPR:main() Power: 7 dBm
+16:18:31 PiWSPR:main() Power GPIO level(7) Power to be informed is 30 dBm
+16:18:31 PiWSPR:main() LCD display turned on
+16:18:32 PiWSPR:main() Frequency f(7038600.00) WSPR offset(   1500.00) random offset(     54.43)
+
+16:18:32 PiWSPR:main() WSPR Message:310222023000113022300103111022002210212100220212310211232023321000031230121232032030112201121012221202001003021110312231030021312000010300112202222130123122031200
+16:18:32 PiWSPR:gpioWrite: set gpio pin(24) as (On)
+16:18:32 PiWSPR:main() Waiting till next window

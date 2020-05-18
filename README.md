@@ -335,7 +335,7 @@ transceiver so probably relatively strong signals will be detected.
 
 Sample of FT8 receiving:
 
-![Alt Text](docs/PixiePi_FT8.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for FT8 monitoring")
+![Alt Text](docs/PixiePi_FT8_sample.jpg?raw=true "WSJT-X Program using PixiePi as the receiver for FT8 monitoring")
 
 ## Beacon station
 
@@ -413,6 +413,9 @@ The parameters which can be changed are:
 ```
 
 ### Option selection mode
+
+When enabled the option selection mode (shown as a little arrow next to the option) the different alternatives to the menu item can be rotated. A quick push of the Encoder Pushbutton exit the modification without
+saving any change whilst a long press commits it (a "Saving..." message appears when that happens).
 
 ## Keyer
 
