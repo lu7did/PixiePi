@@ -1,0 +1,60 @@
+lun may 18 09:02:08 -03 2020 ./PiWSPR.sh Executing Call(LU7DID) Grid(GF05) POWER(7) BAND(40m) LAP(400 secs)
+PiWSPR Version 1.0 Build(00) (c) LU7DID 2019
+Frequency:    7038600 Hz
+Callsign: LU7DID
+Locator: GF05
+Power: 7 dBm
+Random frequency offset f(7038600.00) offset(   1500.00) wspr(     54.43)
+
+WSPR Message
+310222023000113022300103111022002210212100220212310211232023321000031230121232032030112201121012221202001003021110312231030021312000010300112202222130123122031200
+set gpio pin(24) as (On)
+Waiting till next window
+lun may 18 09:03:12 -03 2020 ./PiWSPR.sh Sleeping for 400 secs
+lun may 18 09:04:35 -03 2020 ./PiWSPR.sh Executing Call(LU7DID) Grid(GF05) POWER(7) BAND(40m) LAP(400 secs)
+09:04:35 PiWSPR Version 1.0 Build(00) (c) LU7DID 2019,2020
+09:04:35 PiWSPR:main() Frequency:    7038600 Hz
+09:04:35 PiWSPR:main() Callsign: LU7DID
+09:04:35 PiWSPR:main() Locator: GF05
+09:04:35 PiWSPR:main() Power: 7 dBm
+09:04:35 PiWSPR:main() Power to be informed is 7 dBm
+09:04:35 PiWSPR:main() LCD display turned on
+09:04:35 PiWSPR:main() Frequency f(7038600.00) WSPR offset(   1500.00) random offset(     54.43)
+
+09:04:35 PiWSPR:main() WSPR Message:310222023000113022300103111022002210212100220212310211232023321000031230121232032030112201121012221202001003021110312231030021312000010300112202222130123122031200
+09:04:35 PiWSPR:gpioWrite: set gpio pin(24) as (On)
+09:04:35 PiWSPR:main() Waiting till next window
+09:06:00 PiWSPR:main() Current time is Mon May 18 12:06:00 2020
+ Starting TX
+09:06:00 PiWSPR:main() Frequency base(   7038600) center(   7040154) offset(        54)
+09:06:00 PiWSPR:gpioWrite: set gpio pin(12) as (On)
+Starting to TX!
+09:07:51 PiWSPR:main() End of Tx
+09:07:51 PiWSPR:gpioWrite: set gpio pin(12) as (Off)
+09:07:51 PiWSPR:gpioWrite: set gpio pin(24) as (Off)
+09:07:51 PiWSPR:main() Program execution terminated
+Call: LU7DID / Locator: GF05 / Power: 30dBm
+lun may 18 09:07:51 -03 2020 ./PiWSPR.sh Sleeping for 400 secs
+09:09:53 PiWSPR Version 1.0 Build(00) (c) LU7DID 2019,2020
+09:09:53 PiWSPR:main() Frequency:    7038600 Hz
+09:09:53 PiWSPR:main() Callsign: LU7DID
+09:09:53 PiWSPR:main() Locator: GF05
+09:09:53 PiWSPR:main() Power: 7 dBm
+09:09:53 PiWSPR:main() Power GPIO level(7) Power to be informed is 30 dBm
+09:09:53 PiWSPR:main() LCD display turned on
+09:09:53 PiWSPR:main() Frequency f(7038600.00) WSPR offset(   1500.00) random offset(     54.43)
+
+09:09:53 PiWSPR:main() WSPR Message:310222023000113022300103111022002210212100220212310211232023321000031230121232032030112201121012221202001003021110312231030021312000010300112202222130123122031200
+09:09:53 PiWSPR:gpioWrite: set gpio pin(24) as (On)
+09:09:53 PiWSPR:main() Waiting till next window
+09:10:00 PiWSPR:main() Current time is Mon May 18 12:10:00 2020
+ Starting TX
+09:10:00 PiWSPR:main() Frequency base(   7038600) center(   7040154) offset(        54)
+09:10:00 PiWSPR:gpioWrite: set gpio pin(12) as (On)
+09:10:00 PiWSPR:main() Starting to TX!
+09:11:51 PiWSPR:main() End of Tx
+09:11:51 PiWSPR:gpioWrite: set gpio pin(12) as (Off)
+09:11:51 PiWSPR:gpioWrite: set gpio pin(24) as (Off)
+09:11:51 PiWSPR:main() Program execution terminated
+Call: LU7DID / Locator: GF05 / Power: 30dBm
+lun may 18 09:11:51 -03 2020 ./PiWSPR.sh Sleeping for 400 secs

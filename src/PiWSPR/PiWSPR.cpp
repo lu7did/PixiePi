@@ -105,7 +105,7 @@ char     locator[10];
 int      POWER=7;
 int      ntx=0;
 int      nskip=0;
-
+char     timestr[16];
 int      Upsample=100;
 int      FifoSize=WSPR_LENGTH;
 float    Deviation=WSPR_RATE;
@@ -151,6 +151,20 @@ void setWord(unsigned char* SysWord,unsigned char v, bool val) {
   }
 
 }
+//--------------------------------------------------------------------------------------------------
+// returns the time in a string format
+//--------------------------------------------------------------------------------------------------
+char* getTime() {
+
+       time_t theTime = time(NULL);
+       struct tm *aTime = localtime(&theTime);
+       int hour=aTime->tm_hour;
+       int min=aTime->tm_min;
+       int sec=aTime->tm_sec;
+       sprintf(timestr,"%02d:%02d:%02d",hour,min,sec);
+       return (char*) &timestr;
+
+}
 
 //-------------------------------------------------------------------------------------------------
 // print_usage
@@ -177,9 +191,9 @@ Usage:\n\
 //---------------------------------------------------------------------------------------------
 static void terminate(int num)
 {
-    fprintf(stderr,"\n Received signal INT(%d %s)\n",num,strsignal(num));
+    fprintf(stderr,"\n%s %s:terminate() Received signal INT(%d %s)\n",getTime(),PROGRAMID,num,strsignal(num));
     if (getWord(MSW,RETRY)==true) {
-       fprintf(stderr,"\n Re-entry of termination signal force exit INT(%d %s)\n",num,strsignal(num));
+       fprintf(stderr,"\n%s %s:terminate() Re-entry of termination signal force exit INT(%d %s)\n",getTime(),PROGRAMID,num,strsignal(num));
        exit(16);
     }
     setWord(&MSW,RUN,false);
@@ -191,7 +205,7 @@ static void terminate(int num)
 void gpioWrite(int pin,int s) {
     sprintf(command,"gpio write %d %d",pin,s);
     system(command);
-    fprintf(stderr,"set gpio pin(%d) as (%s)\n",pin,(s==0 ? "Off" : "On"));
+    fprintf(stderr,"%s %s:gpioWrite: set gpio pin(%d) as (%s)\n",getTime(),PROGRAMID,pin,(s==0 ? "Off" : "On"));
     return;
 }
 
@@ -203,7 +217,7 @@ int main(int argc, char *argv[])
 
 //--- Initial presentation
 
-  fprintf(stderr,"%s Version %s Build(%s) %s\n",PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
+  fprintf(stderr,"%s %s Version %s Build(%s) %s\n",getTime(),PROGRAMID,PROG_VERSION,PROG_BUILD,COPYRIGHT);
 
 //--- Parse arguments
 
@@ -225,7 +239,7 @@ int main(int argc, char *argv[])
                 {
                 case 'x': // Force WSPR window now (test only!)
                      WSPRwindow=true;
-                     fprintf(stderr,"Forcing WSPR window now!\n");
+                     fprintf(stderr,"%s %s:main() Forcing WSPR window now!\n",getTime(),PROGRAMID);
                      break; 
                 case 'f': // Frequency
                      if (!strcasecmp(optarg,"LF")) {
@@ -268,35 +282,35 @@ int main(int argc, char *argv[])
                                                                                                                                                f = atof(optarg);
                                                                                                                                             }
                      
-		     fprintf(stderr,"Frequency: %10.0f Hz\n",f);
+		     fprintf(stderr,"%s %s:main() Frequency: %10.0f Hz\n",getTime(),PROGRAMID,f);
                      break;
         	case 'd': //power
 			POWER=atoi(optarg);
-			fprintf(stderr,"Power: %d dBm\n",POWER);
+			fprintf(stderr,"%s %s:main() Power: %d dBm\n",getTime(),PROGRAMID,POWER);
 			break;
         	case 'v': //verbose
 			TRACE=atoi(optarg);
-			fprintf(stderr,"TRACE: %d\n",TRACE);
+			fprintf(stderr,"%s %s:main() TRACE: %d\n",getTime(),PROGRAMID,TRACE);
 			break;
 		case 'c': //callsign
 			sprintf(callsign,optarg);
-			fprintf(stderr,"Callsign: %s\n",callsign);
+			fprintf(stderr,"%s %s:main() Callsign: %s\n",getTime(),PROGRAMID,callsign);
 			break;
 		case 'l': //locator
 			sprintf(locator,optarg);
-			fprintf(stderr,"Locator: %s\n",locator);
+			fprintf(stderr,"%s %s:main() Locator: %s\n",getTime(),PROGRAMID,locator);
 			break;
                 case 'g': // GPIO
                         gpio = atoi(optarg);
                         if (gpio != GPIO_DDS) {
-                           fprintf(stderr,"Invalid selection for GPIO(%s), must be 4 or 20\n",optarg);
+                           fprintf(stderr,"%s %s:main() Invalid selection for GPIO(%s), must be 4\n",getTime(),PROGRAMID,optarg);
                            break;
                         }
-			fprintf(stderr,"Pin Out: GPIO%d\n",gpio);
+			fprintf(stderr,"%s %s:main() Pin Out: GPIO%d\n",getTime(),PROGRAMID,gpio);
                         break;
                 case 'p': //ppm
                         ppm=atof(optarg);
-			fprintf(stderr,"PPM: %10.2f",ppm);
+			fprintf(stderr,"%s %s:main() PPM: %10.2f",getTime(),PROGRAMID,ppm);
                         break;  
                 case 'h': // help
                         print_usage();
@@ -306,9 +320,9 @@ int main(int argc, char *argv[])
                 break;
                 case '?':
                         if (isprint(optopt) ) {
-                           fprintf(stderr, "PiWSPR: unknown option `-%c'.\n", optopt);
+                           fprintf(stderr, "%s %s:main() unknown option `-%c'.\n",getTime(),PROGRAMID, optopt);
                         } else {
-                           fprintf(stderr, "PiWSPR: unknown option character `\\x%x'.\n", optopt);
+                           fprintf(stderr, "%s %s:main() unknown option character `\\x%x'.\n",getTime(),PROGRAMID, optopt);
                         }
                         print_usage();
 
@@ -346,6 +360,7 @@ int WSPRPower=20;
     if (POWER>=3 && POWER <7) {WSPRPower=20;}
     if (POWER>=7) {WSPRPower=30;}
 
+    fprintf(stderr,"%s %s:main() Power GPIO level(%d) Power to be informed is %d dBm\n",getTime(),PROGRAMID,POWER,WSPRPower);
 
 //*-----------------------------------------------------------------------------------------
 //* Setup LCD Display 
@@ -360,6 +375,7 @@ int WSPRPower=20;
     lcd->backlight(true);
     lcd->setCursor(0,0);
   
+    fprintf(stderr,"%s %s:main() LCD display turned on\n",getTime(),PROGRAMID);
     sprintf(LCD_Buffer,"%s %s(%s)",PROGRAMID,PROG_VERSION,PROG_BUILD);
     lcd->println(0,0,LCD_Buffer);
 
@@ -369,7 +385,7 @@ int WSPRPower=20;
 //--- Generate librpitx fskburst object (ideas taken from pift8.cpp by Courjaud F5OEO)
 
     float wspr_offset=(2.0*rand()/((double)RAND_MAX+1.0)-1.0)*(WSPR_RAND_OFFSET);
-    fprintf(stderr,"Random frequency offset f(%10.2f) offset(%10.2f) wspr(%10.2f)\n",f,offset,wspr_offset);
+    fprintf(stderr,"%s %s:main() Frequency f(%10.2f) WSPR offset(%10.2f) random offset(%10.2f)\n",getTime(),PROGRAMID,f,offset,wspr_offset);
 
     FifoSize=162;
     Deviation=1.46;
@@ -391,7 +407,8 @@ unsigned char Symbols[FifoSize];
     sprintf(wspr_message, "%s %s %d", callsign,locator,WSPRPower);
     wspr.code_wspr(wspr_message, wspr_symbols);
 
-    fprintf(stderr,"\n%s\n","WSPR Message");
+
+    fprintf(stderr,"\n%s %s:main() %s:",getTime(),PROGRAMID,"WSPR Message");
     for (int i = 0; i < 162; i++) {
       fprintf(stderr,"%d", wspr_symbols[i]);
       Symbols[i]=wspr_symbols[i];
@@ -414,7 +431,7 @@ unsigned char Symbols[FifoSize];
 //*-------------------------------------------------------------------
 // Wait for next WSPR window (even minutes)
 //*-------------------------------------------------------------------
-    fprintf(stderr,"%s","Waiting till next window\n");
+    fprintf(stderr,"%s %s:main() %s",getTime(),PROGRAMID,"Waiting till next window\n");
     while (WSPRwindow==false) {
 
  // current date/time based on current system
@@ -435,8 +452,8 @@ unsigned char Symbols[FifoSize];
 //*-------------------------------------------------------------------------------------------
 //* Start transmission of WSPR message
 //*-------------------------------------------------------------------------------------------
-    fprintf(stderr,"Current time is %s Starting TX\n",dt);
-    fprintf(stderr,"Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",f,f+offset+wspr_offset,wspr_offset);
+    fprintf(stderr,"%s %s:main() Current time is %s Starting TX\n",getTime(),PROGRAMID,dt);
+    fprintf(stderr,"%s %s:main() Frequency base(%10.0f) center(%10.0f) offset(%10.0f)\n",getTime(),PROGRAMID,f,f+offset+wspr_offset,wspr_offset);
 
 //*---- Turn on Transmitter
 
@@ -449,7 +466,7 @@ unsigned char Symbols[FifoSize];
     setWord(&MSW,RUN,true);
 
 
-    fprintf(stderr,"%s\n","Starting to TX!");
+    fprintf(stderr,"%s %s:main() %s\n",getTime(),PROGRAMID,"Starting to TX!");
 
 //*--- the object will send the entire symbol table and then return
 
@@ -459,7 +476,7 @@ unsigned char Symbols[FifoSize];
     fsk->disableclk(GPIO_DDS);
 
     delete(fsk);
-    fprintf(stderr,"End of Tx\n");
+    fprintf(stderr,"%s %s:main() End of Tx\n",getTime(),PROGRAMID);
 
 //*--- Finalize beacon
 
@@ -472,5 +489,6 @@ unsigned char Symbols[FifoSize];
     lcd->setCursor(0,0);
     lcd->clear();
 
+    fprintf(stderr,"%s %s:main() Program execution terminated\n",getTime(),PROGRAMID);
     exit(0);
 }
