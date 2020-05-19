@@ -14,7 +14,9 @@ LOG="PiWSPR.log"
 echo "$(date) $0 Executing Call($CALLSIGN) Grid($GRID) POWER($POWER) BAND($BAND) LAP($LAP secs)" 2>&1 | tee -a $DPATH$LOG
 while true;
    do
+   ./gpioset.py 12 1
    sudo PiWSPR -f $BAND -c $CALLSIGN -l $GRID -d $POWER $1 2>&1 | tee -a $DPATH$LOG
+   ./gpioset.py 12 0
    echo "$(date) $0 Sleeping for $LAP secs" 2>&1 | tee -a $DPATH$LOG
    sleep $LAP 
 
