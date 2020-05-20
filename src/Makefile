@@ -16,7 +16,7 @@ CXXFLAGS = -std=c++11 -Wall -g -O2 -Wno-unused-variable
 ../bin/PixiePi : PixiePi/PixiePi.cpp /home/pi/librpitx/src/librpitx.a lib/GUI.h lib/LCDLib.h lib/MMS.h $(OT)/lib/gpioWrapper.h $(OT)/lib/genVFO.h $(OT)/lib/CAT817.h lib/DDS.h lib/iambic.c lib/VFO.h
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/PixiePi ./PixiePi/PixiePi.cpp ./minIni/minIni.c  $(LDFLAGS)
 
-../bin/Pi4D : Pi4D/Pi4D.cpp /home/pi/librpitx/src/librpitx.a minIni/minIni.c $(OT)/OT4D/OT4D.h $(OT)/lib/genSSB.h
+../bin/Pi4D : Pi4D/Pi4D.cpp /home/pi/librpitx/src/librpitx.a minIni/minIni.c $(OT)/OT4D/OT4D.h $(OT)/lib/genSSB.h $(OT)/lib/gpioWrapper.h
 	$(CCP) $(OSC_CFLAGS) $(CXXFLAGS) -o ../bin/Pi4D ./Pi4D/Pi4D.cpp minIni/minIni.c  $(LDFLAGS)
 
 ../bin/PiWSPR : PiWSPR/PiWSPR.cpp /home/pi/librpitx/src/librpitx.a lib/DDS.h ./PiWSPR/PiWSPR.h lib/WSPR.h lib/LCDLib.h
