@@ -24,7 +24,7 @@ sudo modprobe snd-aloop
 #*----------------------------------------*
 #* Transceiver execution using loopback   *
 #*----------------------------------------*
-sudo Pi4D  -x  -f 7074000 
+sudo Pi4D -t 2  -x  -f 7074000 
 
 #*----------------------------------------*
 #* terminating                            *
