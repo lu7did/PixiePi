@@ -1,0 +1,135 @@
+Pi4D version 1.0 build(00) (c) LU7DID 2019,2020 tracelevel(2)
+Pi4D:main() initialize memory areas
+Pi4D:main() args--- vox(True)
+Pi4D:main() args--- frequency(7074000.000000)
+18:34:52 Pi4D:main() LCD display turned on
+Pi4D:main() initialize gpio Wrapper
+Pi4D:main() operating relay to cooler activation
+gpioset: GPIO pin(24) state(1) 
+gpioWrapper::writePin write pin(24) value(1) command(python /home/pi/OrangeThunder/python/gpioset.py 24 1) rc(0)
+Pi4D:main() initialize SSB generator interface
+genSSB::setSoundChannel() Soundchannel defined (1)
+genSSB::setSoundSR() Sound card sample rate(48000)
+genSSB::setFrequency <FREQ=14074000>
+genSSB::genSSB() Making FIFO...
+genSSB::genSSB() Initialization completed new FIFO (/tmp/ptt_fifo) created
+genSSB::setFrequency <FREQ=7074000>
+genSSB::setSoundChannel() Soundchannel defined (1)
+genSSB::setSoundSR() Sound card sample rate(48000)
+genSSB::setSoundHW() Sound card Hardware(hw:1)
+genSSB::start() starting tracelevel(2) DDS(True)
+genSSB::start() starting pid(7917)
+genSSB::start() <PARENT> Opening FIFO pipe pid(7917)
+genSSB::start() starting pid(0)
+genSSB::start() <CHILD> thread pid(0)
+genSSB::start() opened ptt fifo(/tmp/ptt_fifo)
+Pi4D:main() initialize CAT controller interface
+CAT817::open() Unable to open serial device: /tmp/ttyv0 rc(No such file or directory)
+genVFO::getBand()  freq[7074000.000000] band[4]
+genVFO::set() VFO[VfoA] freq(7000000.000000) fmin(7000000.000000) fmax(7300000.000000) band(4)
+genVFO::setBand() VFO[VfoA] Code[4] fmin[7000000.000000 fmax[7300000.000000] f[7000000.000000]
+genVFO::getBand()  freq[7074000.000000] band[4]
+genVFO::set() VFO[VfoB] freq(7000000.000000) fmin(7000000.000000) fmax(7300000.000000) band(4)
+genVFO::setBand() VFO[VfoB] Code[4] fmin[7000000.000000 fmax[7300000.000000] f[7000000.000000]
+genVFO::set() VFO[VfoA] freq(7074000.000000) fmin(7000000.000000) fmax(7300000.000000) band(4)
+genVFO::set() VFO[VfoB] freq(7074000.000000) fmin(7000000.000000) fmax(7300000.000000) band(4)
+genVFO::setSplit() VFO[VfoA] Split[False]
+genVFO::setRIT() VFO[VfoA] RIT[False] RitOffset[0.000000]
+genVFO::setRIT() VFO[VfoB] RIT[False] RitOffset[0.000000]
+Pi4D:main() start operation
+Pi4D:setPTT(False)
+genSSB::setPTT() setPTT(False) sending PTT=0
+Pi4D:setPTT() set GPIO as(False)
+gpioset: GPIO pin(12) state(0) 
+gpioWrapper::writePin write pin(12) value(0) command(python /home/pi/OrangeThunder/python/gpioset.py 12 0) rc(0)
+Pi4D:setPTT() set PTT as(False)
+genSSB::readpipe() Buffer(genSSB::start() <CHILD> debug set to ( -t 2 )
+genSSB::start() mode set to[usb]
+genSSB::start() cmd[arecord -c1 -r48000 -D hw:1 -fS16_LE -   | genSSB -d  -x -v 2  -t 2  | sudo sendRF -i /dev/stdin -d  -s 6000 -f 7074000  ]
+Recording WAVE '-' : Signed 16 bit Little Endian, Rate 48000 Hz, Mono
+genSSB 1.0 [00] tracelevel(2)
+genSSB:main() Command FIFO(/tmp/ptt_fifo) created
+genSSB:main() Command FIFO opened
+genSSB:main() args--- DDS operation enabled
+genSSB:main() args--- Auto PTT set
+genSSB:main() args--- VOX enabled timeout(2) Secs
+genSSB:main() args--- Debug level established TRACE(2)
+genSSB:main(): Trap handler initialization
+genSSB:main(): VOX timeout set to (2000) secs
+genSSB:main(): Define master timer
+SSB:: AGC Object Initialization
+AGControl::AGC() Object creation completed
+SSB: Filter coefficiente buffer creation
+SSB:init(): Filter initialization
+SSB: Decimator creation
+SSB: I/Q FIR Hilbert Filter
+FIRFilter Object creation completed taps(89)
+FIRFilter Object creation completed taps(89)
+SSB::SSB() Object ) len(1024)
+genSSB::readpipe() parsed token(genSSB::start() <CHILD> debug set to ( -t 2 ))
+genSSB::readpipe() parsed token(genSSB::start() mode set to[usb])
+genSSB::readpipe() parsed token(genSSB::start() cmd[arecord -c1 -r48000 -D hw:1 -fS16_LE -   | genSSB -d  -x -v 2  -t 2  | sudo sendRF -i /dev/stdin -d  -s 6000 -f 7074000  ])
+genSSB::readpipe() parsed token(Recording WAVE '-' : Signed 16 bit Little Endian, Rate 48000 Hz, Mono)
+genSSB::readpipe() parsed token(genSSB 1.0 [00] tracelevel(2))
+genSSB::readpipe() parsed token(genSSB:main() Command FIFO(/tmp/ptt_fifo) created)
+genSSB::readpipe() parsed token(genSSB:main() Command FIFO opened)
+genSSB::readpipe() parsed token(genSSB:main() args--- DDS operation enabled)
+genSSB::readpipe() parsed token(genSSB:main() args--- Auto PTT set)
+genSSB::readpipe() parsed token(genSSB:main() args--- VOX enabled timeout(2) Secs)
+genSSB::readpipe() parsed token(genSSB:main() args--- Debug level established TRACE(2))
+genSSB::readpipe() parsed token(genSSB:main(): Trap handler initialization)
+genSSB::readpipe() parsed token(genSSB:main(): VOX timeout set to (2000) secs)
+genSSB::readpipe() parsed token(genSSB:main(): Define master timer)
+genSSB::readpipe() parsed token(SSB:: AGC Object Initialization)
+genSSB::readpipe() parsed token(AGControl::AGC() Object creation completed)
+genSSB::readpipe() parsed token(SSB: Filter coefficiente buffer creation)
+genSSB::readpipe() parsed token(SSB:init(): Filter initialization)
+genSSB::readpipe() parsed token(SSB: Decimator creation)
+genSSB::readpipe() parsed token(SSB: I/Q FIR Hilbert Filter)
+genSSB::readpipe() parsed token(FIRFilter Object creation completed taps(89))
+genSSB::readpipe() parsed token(FIRFilter Object creation completed taps(89))
+genSSB::readpipe() parsed token(SSB::SSB() Object )
+genSSB::start() <CHILD> debug set to ( -t 2 )genSSB::readpipe() Buffer(creation completed
+genSSB:main(): SSB controller generation completed
+genSSB:main(): Starting main loop VOX(True) Timeout(2000)
+genSSB:main(): command pipe cmd(PTT=0
+) len(6)
+genSSB:main(): PTT=0 signal received
+genSSB:setPTT() set PTT(False)
+VOX=1
+genSSB:main() VOX=1 signal sent
+genSSB:setPTT() set PTT(True)
+genSSB:setPTT() sending 1111 to sendRF
+genSSB:main() VOX triggered auto PTT set and PTT==false
+sendRF:main() starting operation at frequency(7074000) with ModeIQ(1)
+) len(476)
+genSSB::readpipe() parsed token(creation completed)
+genSSB::readpipe() parsed token(genSSB:main(): SSB controller generation completed)
+genSSB::readpipe() parsed token(genSSB:main(): Starting main loop VOX(True) Timeout(2000))
+genSSB::readpipe() parsed token(genSSB:main(): command pipe cmd(PTT=0)
+genSSB::readpipe() parsed token() len(6))
+genSSB::readpipe() parsed token(genSSB:main(): PTT=0 signal received)
+genSSB::readpipe() parsed token(genSSB:setPTT() set PTT(False))
+Pi4D:SSBchangeVOX() received upcall from genSSB object state(True)
+Pi4D:setPTT(True)
+Pi4D:setPTT(True) operating relay to TX position
+gpioset: GPIO pin(12) state(1) 
+gpioWrapper::writePin write pin(12) value(1) command(python /home/pi/OrangeThunder/python/gpioset.py 12 1) rc(0)
+genSSB::setPTT() setPTT(True) sending PTT=1
+genSSB::readpipe() received VOX=1 signal from child
+genSSB::readpipe() parsed token(VOX=1)
+genSSB::readpipe() parsed token(genSSB:main() VOX=1 signal sent)
+genSSB::readpipe() parsed token(genSSB:setPTT() set PTT(True))
+genSSB::readpipe() parsed token(genSSB:setPTT() sending 1111 to sendRF)
+genSSB::readpipe() parsed token(genSSB:main() VOX triggered auto PTT set and PTT==false)
+genSSB::readpipe() parsed token(sendRF:main() starting operation at frequency(7074000) with ModeIQ(1))
+creation completedgenSSB::readpipe() Buffer(genSSB:main(): command pipe cmd(PTT=1
+) len(6)
+genSSB:main(): PTT=1 signal received
+genSSB:setPTT() set PTT(True)
+) len(114)
+genSSB::readpipe() parsed token(genSSB:main(): command pipe cmd(PTT=1)
+genSSB::readpipe() parsed token() len(6))
+genSSB::readpipe() parsed token(genSSB:main(): PTT=1 signal received)
+genSSB::readpipe() parsed token(genSSB:setPTT() set PTT(True))
+genSSB:main(): command pipe cmd(PTT=1

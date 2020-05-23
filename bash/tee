@@ -1,0 +1,15 @@
+Pi4D version 1.0 build(00) (c) LU7DID 2019,2020 tracelevel(2)
+Pi4D:main() initialize memory areas
+Pi4D:main() args--- vox(True)
+Pi4D:main() args--- frequency(7074000.000000)
+Pi4D: invalid option -- 'a'
+Pi4D:main()  unknown option `-a'.
+Pi4D 1.0 [00]
+Usage: [-f Frequency] [-v volume] [-p portname] [-t tracelevel] 
+-p            portname (default /tmp/ttyv0)
+-f float      central frequency Hz(50 kHz to 1500 MHz),
+-t            tracelevel (0 to 3)
+-x            enable VOX control
+-v            sound card volume (-10 to 30)
+-?            help (this help).
+
