@@ -1,0 +1,21 @@
+Stopping ntp (via systemctl): ntp.service.
+23 May 16:32:27 ntpd[1723]: ntpd 4.2.8p10@1.3728-o Sat Mar 10 18:03:33 UTC 2018 (1): Starting
+23 May 16:32:27 ntpd[1723]: Command line: ntpd -q -g
+23 May 16:32:27 ntpd[1723]: proto: precision = 1.999 usec (-19)
+23 May 16:32:27 ntpd[1723]: Listen and drop on 0 v6wildcard [::]:123
+23 May 16:32:27 ntpd[1723]: Listen and drop on 1 v4wildcard 0.0.0.0:123
+23 May 16:32:27 ntpd[1723]: Listen normally on 2 lo 127.0.0.1:123
+23 May 16:32:27 ntpd[1723]: Listen normally on 3 wlan0 192.168.0.215:123
+23 May 16:32:27 ntpd[1723]: Listen normally on 4 lo [::1]:123
+23 May 16:32:27 ntpd[1723]: Listen normally on 5 wlan0 [fe80::ba27:ebff:fe20:8a68%2]:123
+23 May 16:32:27 ntpd[1723]: Listening on routing socket on fd #22 for interface updates
+23 May 16:32:28 ntpd[1723]: Soliciting pool server 162.159.200.123
+23 May 16:32:29 ntpd[1723]: Soliciting pool server 162.159.200.1
+23 May 16:32:29 ntpd[1723]: Soliciting pool server 168.96.251.195
+23 May 16:32:30 ntpd[1723]: Soliciting pool server 168.96.251.197
+23 May 16:32:30 ntpd[1723]: Soliciting pool server 168.96.251.197
+23 May 16:32:30 ntpd[1723]: Soliciting pool server 2606:4700:f1::123
+23 May 16:32:36 ntpd[1723]: ntpd: time slew -0.001264 s
+ntpd: time slew -0.001264s
+Starting ntp (via systemctl): ntp.service.
+date  ntpd syncrhonization completed 
