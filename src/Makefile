@@ -1,4 +1,4 @@
-all: ../bin/pixie ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/PixiePi
+all:  ../bin/PiWSPR ../bin/PiRTTY ../bin/Pi4D  ../bin/PixiePi
 
 OSC_CFLAGS=-DOSCILLATOR_Z -DOSCILLATOR_D
 CCP = c++
