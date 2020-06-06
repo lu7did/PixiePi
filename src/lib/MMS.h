@@ -27,6 +27,7 @@ typedef void (*CALLUPDATE)(MMS* m);
     void  lowerLimit(int m);
     void  upperLimit(int m);
     MMS*  move(int CW);
+    void  setChild(int m);
     void  save();
     void  backup();
     void  restore();
@@ -156,6 +157,23 @@ void MMS::set(char* t) {
    strcpy(this->curr->mText,t);
    return;
 }
+void MMS::setChild(int m) {
+   if (this->curr==NULL) {
+      return;
+   }
+MMS* p=this->child;
+  (TRACE>=0x02 ? fprintf(stderr,"%s::setChild() Pointing to value (%d)\n",PROGRAMID,m) : _NOP);
+   while (p->next!=NULL) {
+      (TRACE>=0x02 ? fprintf(stderr,"%s::setChild() current value(%d)\n",PROGRAMID,p->mVal) : _NOP);
+       if (p->mVal == m) {
+          this->curr=p;
+         (TRACE>=0x02 ? fprintf(stderr,"%s::setChild() pointer set(%d)\n",PROGRAMID,p->mVal) : _NOP);
+          return;
+       }
+       p=p->next;
+   }
+
+}
 //*-------------------------------------------------------------------------------------------------
 //* add a child beneath a parent, link both and place child at the end of the current list
 //*-------------------------------------------------------------------------------------------------
@@ -175,7 +193,7 @@ void MMS::add(MMS* child) {
       child->prev=NULL;
       child->last=NULL;
       if(parent->procChange!=NULL) {parent->procChange(child);}
-      (TRACE>=0x02 ? fprintf(stderr,"%s::constructor() tracelevel(%d)\n",PROGRAMID,TRACE) : _NOP);
+      (TRACE>=0x03 ? fprintf(stderr,"%s::add() tracelevel(%d)\n",PROGRAMID,TRACE) : _NOP);
       return;
    }
 
